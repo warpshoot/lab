@@ -87,7 +87,6 @@
 
         canvas {
             border: 2px solid #3a3a3a;
-            background: #fff;
             cursor: crosshair;
             image-rendering: pixelated;
         }
@@ -116,22 +115,35 @@
         <div class="control-group">
             <button id="triangleMode" class="active">▲ Triangle</button>
             <button id="arcMode">◗ Arc</button>
+            <button id="rectMode">■ Rectangle</button>
         </div>
 
         <div class="control-group">
-            <label>Color:</label>
+            <label>Fill:</label>
             <input type="color" id="colorPicker" value="#000000">
         </div>
 
         <div class="control-group">
-            <label>Grid Size:</label>
+            <label>BG:</label>
+            <input type="color" id="bgColorPicker" value="#ffffff">
+        </div>
+
+        <div class="control-group">
+            <label>Grid:</label>
             <input type="range" id="gridSize" min="8" max="128" value="32" step="8">
             <span class="size-display" id="sizeDisplay">32x32</span>
         </div>
 
         <div class="control-group">
+            <label>Zoom:</label>
+            <button id="zoomOut">-</button>
+            <span class="size-display" id="zoomDisplay">100%</span>
+            <button id="zoomIn">+</button>
+        </div>
+
+        <div class="control-group">
             <button id="clearBtn">Clear</button>
-            <button id="downloadBtn">Download PNG</button>
+            <button id="downloadBtn">Download</button>
             <button id="copyBtn">Copy</button>
         </div>
     </div>
@@ -146,45 +158,32 @@
 
         let gridSize = 32;
         let cellSize = 20;
-        let mode = 'triangle'; // 'triangle' or 'arc'
+        let zoom = 1.0;
+        let mode = 'triangle'; // 'triangle', 'arc', or 'rect'
         let currentColor = '#000000';
+        let bgColor = '#ffffff';
         let grid = [];
 
         // Initialize grid
         function initGrid() {
             grid = Array(gridSize).fill(null).map(() =>
                 Array(gridSize).fill(null).map(() => ({
-                    type: null, // 'triangle' or 'arc'
+                    type: null, // 'triangle', 'arc', or 'rect'
                     corner: null, // 'tl', 'tr', 'bl', 'br'
-                    color: null
+                    color: null,
+                    inverted: false // for inverted shapes
                 }))
             );
         }
 
         // Set canvas size
         function resizeCanvas() {
+            const displaySize = gridSize * cellSize * zoom;
             canvas.width = gridSize * cellSize;
             canvas.height = gridSize * cellSize;
+            canvas.style.width = displaySize + 'px';
+            canvas.style.height = displaySize + 'px';
             render();
-        }
-
-        // Detect which corner was clicked
-        function getCorner(x, y) {
-            const halfX = x < 0.5;
-            const halfY = y < 0.5;
-
-            // Determine which diagonal the point is on
-            const onTopLeftDiagonal = y < x;
-
-            if (halfX && halfY) {
-                return onTopLeftDiagonal ? 'tl' : 'tl';
-            } else if (!halfX && halfY) {
-                return onTopLeftDiagonal ? 'tr' : 'tr';
-            } else if (halfX && !halfY) {
-                return onTopLeftDiagonal ? 'bl' : 'bl';
-            } else {
-                return onTopLeftDiagonal ? 'br' : 'br';
-            }
         }
 
         // Better corner detection using distance from corners
@@ -214,31 +213,57 @@
         }
 
         // Draw triangle
-        function drawTriangle(x, y, size, corner, color) {
+        function drawTriangle(x, y, size, corner, color, inverted) {
             ctx.fillStyle = color;
             ctx.beginPath();
 
-            switch (corner) {
-                case 'tl':
-                    ctx.moveTo(x, y);
-                    ctx.lineTo(x + size, y);
-                    ctx.lineTo(x, y + size);
-                    break;
-                case 'tr':
-                    ctx.moveTo(x + size, y);
-                    ctx.lineTo(x + size, y + size);
-                    ctx.lineTo(x, y);
-                    break;
-                case 'bl':
-                    ctx.moveTo(x, y + size);
-                    ctx.lineTo(x, y);
-                    ctx.lineTo(x + size, y + size);
-                    break;
-                case 'br':
-                    ctx.moveTo(x + size, y + size);
-                    ctx.lineTo(x, y + size);
-                    ctx.lineTo(x + size, y);
-                    break;
+            if (!inverted) {
+                switch (corner) {
+                    case 'tl':
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x + size, y);
+                        ctx.lineTo(x, y + size);
+                        break;
+                    case 'tr':
+                        ctx.moveTo(x + size, y);
+                        ctx.lineTo(x + size, y + size);
+                        ctx.lineTo(x, y);
+                        break;
+                    case 'bl':
+                        ctx.moveTo(x, y + size);
+                        ctx.lineTo(x, y);
+                        ctx.lineTo(x + size, y + size);
+                        break;
+                    case 'br':
+                        ctx.moveTo(x + size, y + size);
+                        ctx.lineTo(x, y + size);
+                        ctx.lineTo(x + size, y);
+                        break;
+                }
+            } else {
+                // Inverted triangle (3 corners)
+                switch (corner) {
+                    case 'tl':
+                        ctx.moveTo(x + size, y);
+                        ctx.lineTo(x + size, y + size);
+                        ctx.lineTo(x, y + size);
+                        break;
+                    case 'tr':
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x, y + size);
+                        ctx.lineTo(x + size, y + size);
+                        break;
+                    case 'bl':
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x + size, y);
+                        ctx.lineTo(x + size, y + size);
+                        break;
+                    case 'br':
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x + size, y);
+                        ctx.lineTo(x, y + size);
+                        break;
+                }
             }
 
             ctx.closePath();
@@ -246,41 +271,68 @@
         }
 
         // Draw arc (quarter circle)
-        function drawArc(x, y, size, corner, color) {
+        function drawArc(x, y, size, corner, color, inverted) {
             ctx.fillStyle = color;
-            ctx.beginPath();
 
-            switch (corner) {
-                case 'tl':
-                    ctx.arc(x, y, size, 0, Math.PI / 2);
-                    ctx.lineTo(x, y);
-                    break;
-                case 'tr':
-                    ctx.arc(x + size, y, size, Math.PI / 2, Math.PI);
-                    ctx.lineTo(x + size, y);
-                    break;
-                case 'bl':
-                    ctx.arc(x, y + size, size, -Math.PI / 2, 0);
-                    ctx.lineTo(x, y + size);
-                    break;
-                case 'br':
-                    ctx.arc(x + size, y + size, size, Math.PI, Math.PI * 1.5);
-                    ctx.lineTo(x + size, y + size);
-                    break;
+            if (!inverted) {
+                ctx.beginPath();
+                switch (corner) {
+                    case 'tl':
+                        ctx.arc(x, y, size, 0, Math.PI / 2);
+                        ctx.lineTo(x, y);
+                        break;
+                    case 'tr':
+                        ctx.arc(x + size, y, size, Math.PI / 2, Math.PI);
+                        ctx.lineTo(x + size, y);
+                        break;
+                    case 'bl':
+                        ctx.arc(x, y + size, size, -Math.PI / 2, 0);
+                        ctx.lineTo(x, y + size);
+                        break;
+                    case 'br':
+                        ctx.arc(x + size, y + size, size, Math.PI, Math.PI * 1.5);
+                        ctx.lineTo(x + size, y + size);
+                        break;
+                }
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                // Inverted arc (fill everything except the arc)
+                ctx.fillRect(x, y, size, size);
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.beginPath();
+                switch (corner) {
+                    case 'tl':
+                        ctx.arc(x, y, size, 0, Math.PI / 2);
+                        ctx.lineTo(x, y);
+                        break;
+                    case 'tr':
+                        ctx.arc(x + size, y, size, Math.PI / 2, Math.PI);
+                        ctx.lineTo(x + size, y);
+                        break;
+                    case 'bl':
+                        ctx.arc(x, y + size, size, -Math.PI / 2, 0);
+                        ctx.lineTo(x, y + size);
+                        break;
+                    case 'br':
+                        ctx.arc(x + size, y + size, size, Math.PI, Math.PI * 1.5);
+                        ctx.lineTo(x + size, y + size);
+                        break;
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.globalCompositeOperation = 'source-over';
             }
-
-            ctx.closePath();
-            ctx.fill();
         }
 
         // Render grid
         function render() {
-            // Clear canvas
-            ctx.fillStyle = '#fff';
+            // Clear canvas with background color
+            ctx.fillStyle = bgColor;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // Draw grid lines
-            ctx.strokeStyle = '#e0e0e0';
+            ctx.strokeStyle = bgColor === '#ffffff' ? '#e0e0e0' : '#444444';
             ctx.lineWidth = 1;
 
             for (let i = 0; i <= gridSize; i++) {
@@ -299,14 +351,17 @@
             for (let row = 0; row < gridSize; row++) {
                 for (let col = 0; col < gridSize; col++) {
                     const cell = grid[row][col];
-                    if (cell.type && cell.corner && cell.color) {
+                    if (cell.type && cell.color) {
                         const x = col * cellSize;
                         const y = row * cellSize;
 
                         if (cell.type === 'triangle') {
-                            drawTriangle(x, y, cellSize, cell.corner, cell.color);
+                            drawTriangle(x, y, cellSize, cell.corner, cell.color, cell.inverted);
                         } else if (cell.type === 'arc') {
-                            drawArc(x, y, cellSize, cell.corner, cell.color);
+                            drawArc(x, y, cellSize, cell.corner, cell.color, cell.inverted);
+                        } else if (cell.type === 'rect') {
+                            ctx.fillStyle = cell.color;
+                            ctx.fillRect(x, y, cellSize, cellSize);
                         }
                     }
                 }
@@ -314,34 +369,64 @@
         }
 
         // Handle canvas click
-        canvas.addEventListener('click', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+        function handleClick(x, y) {
+            const displaySize = gridSize * cellSize * zoom;
+            const scaleX = canvas.width / displaySize;
+            const scaleY = canvas.height / displaySize;
 
-            const col = Math.floor(x / cellSize);
-            const row = Math.floor(y / cellSize);
+            const canvasX = x * scaleX;
+            const canvasY = y * scaleY;
+
+            const col = Math.floor(canvasX / cellSize);
+            const row = Math.floor(canvasY / cellSize);
 
             if (col >= 0 && col < gridSize && row >= 0 && row < gridSize) {
-                const relX = (x % cellSize) / cellSize;
-                const relY = (y % cellSize) / cellSize;
-                const corner = getCornerByDistance(relX, relY);
-
                 const cell = grid[row][col];
 
-                // Toggle: if same corner and type, clear it
-                if (cell.type === mode && cell.corner === corner) {
-                    cell.type = null;
-                    cell.corner = null;
-                    cell.color = null;
+                if (mode === 'rect') {
+                    // Rectangle mode: toggle fill
+                    if (cell.type === 'rect') {
+                        cell.type = null;
+                        cell.color = null;
+                    } else {
+                        cell.type = 'rect';
+                        cell.corner = null;
+                        cell.color = currentColor;
+                        cell.inverted = false;
+                    }
                 } else {
-                    cell.type = mode;
-                    cell.corner = corner;
-                    cell.color = currentColor;
+                    // Triangle or Arc mode
+                    const relX = (canvasX % cellSize) / cellSize;
+                    const relY = (canvasY % cellSize) / cellSize;
+                    const corner = getCornerByDistance(relX, relY);
+
+                    // Click cycle: normal → inverted → clear
+                    if (cell.type === mode && cell.corner === corner) {
+                        if (!cell.inverted) {
+                            cell.inverted = true;
+                        } else {
+                            cell.type = null;
+                            cell.corner = null;
+                            cell.color = null;
+                            cell.inverted = false;
+                        }
+                    } else {
+                        cell.type = mode;
+                        cell.corner = corner;
+                        cell.color = currentColor;
+                        cell.inverted = false;
+                    }
                 }
 
                 render();
             }
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            handleClick(x, y);
         });
 
         // Touch support for mobile
@@ -351,47 +436,29 @@
             const rect = canvas.getBoundingClientRect();
             const x = touch.clientX - rect.left;
             const y = touch.clientY - rect.top;
-
-            const col = Math.floor(x / cellSize);
-            const row = Math.floor(y / cellSize);
-
-            if (col >= 0 && col < gridSize && row >= 0 && row < gridSize) {
-                const relX = (x % cellSize) / cellSize;
-                const relY = (y % cellSize) / cellSize;
-                const corner = getCornerByDistance(relX, relY);
-
-                const cell = grid[row][col];
-
-                if (cell.type === mode && cell.corner === corner) {
-                    cell.type = null;
-                    cell.corner = null;
-                    cell.color = null;
-                } else {
-                    cell.type = mode;
-                    cell.corner = corner;
-                    cell.color = currentColor;
-                }
-
-                render();
-            }
+            handleClick(x, y);
         });
 
         // Mode buttons
-        document.getElementById('triangleMode').addEventListener('click', () => {
-            mode = 'triangle';
-            document.getElementById('triangleMode').classList.add('active');
-            document.getElementById('arcMode').classList.remove('active');
-        });
+        function setMode(newMode) {
+            mode = newMode;
+            document.getElementById('triangleMode').classList.toggle('active', newMode === 'triangle');
+            document.getElementById('arcMode').classList.toggle('active', newMode === 'arc');
+            document.getElementById('rectMode').classList.toggle('active', newMode === 'rect');
+        }
 
-        document.getElementById('arcMode').addEventListener('click', () => {
-            mode = 'arc';
-            document.getElementById('arcMode').classList.add('active');
-            document.getElementById('triangleMode').classList.remove('active');
-        });
+        document.getElementById('triangleMode').addEventListener('click', () => setMode('triangle'));
+        document.getElementById('arcMode').addEventListener('click', () => setMode('arc'));
+        document.getElementById('rectMode').addEventListener('click', () => setMode('rect'));
 
-        // Color picker
+        // Color pickers
         document.getElementById('colorPicker').addEventListener('input', (e) => {
             currentColor = e.target.value;
+        });
+
+        document.getElementById('bgColorPicker').addEventListener('input', (e) => {
+            bgColor = e.target.value;
+            render();
         });
 
         // Grid size slider
@@ -400,6 +467,21 @@
             document.getElementById('sizeDisplay').textContent = `${gridSize}x${gridSize}`;
             initGrid();
             resizeCanvas();
+        });
+
+        // Zoom controls
+        function updateZoom(newZoom) {
+            zoom = Math.max(0.25, Math.min(4, newZoom));
+            document.getElementById('zoomDisplay').textContent = `${Math.round(zoom * 100)}%`;
+            resizeCanvas();
+        }
+
+        document.getElementById('zoomIn').addEventListener('click', () => {
+            updateZoom(zoom * 1.25);
+        });
+
+        document.getElementById('zoomOut').addEventListener('click', () => {
+            updateZoom(zoom / 1.25);
         });
 
         // Clear button
@@ -428,7 +510,6 @@
                         new ClipboardItem({ 'image/png': blob })
                     ]);
 
-                    // Visual feedback
                     const btn = document.getElementById('copyBtn');
                     const originalText = btn.textContent;
                     btn.textContent = 'Copied!';
