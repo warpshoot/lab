@@ -12,7 +12,7 @@
     }
 
     body {
-      background: #0f0a1a;
+      background: #000;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     }
@@ -38,7 +38,7 @@
     #layer-back {
       width: 120vw;
       height: 120vh;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      background: transparent;
       z-index: 1;
     }
 
@@ -48,34 +48,32 @@
       z-index: 2;
     }
 
-    .mid-shape {
+    /* 削除: カラフルな図形 */
+
+    .grid-lines {
       position: absolute;
-      border-radius: 50%;
-      opacity: 0.7;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
     }
 
-    .mid-shape:nth-child(1) {
-      width: 250px;
-      height: 250px;
-      background: linear-gradient(180deg, #e94560 0%, #533483 100%);
-      top: 15%;
-      left: 10%;
+    .grid-lines line {
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
     }
 
-    .mid-shape:nth-child(2) {
-      width: 200px;
-      height: 200px;
-      background: linear-gradient(180deg, #00fff5 0%, #0077b6 100%);
-      bottom: 20%;
-      right: 15%;
+    /* 各レイヤーの線の色と透明度 */
+    #layer-back .grid-lines line {
+      stroke: rgba(255, 0, 0, 0.15);
     }
 
-    .mid-shape:nth-child(3) {
-      width: 120px;
-      height: 120px;
-      background: linear-gradient(180deg, #ffd700 0%, #ff8c00 100%);
-      top: 55%;
-      left: 55%;
+    #layer-mid .grid-lines line {
+      stroke: rgba(255, 0, 0, 0.3);
+    }
+
+    #layer-front .grid-lines line {
+      stroke: rgba(255, 0, 0, 0.5);
     }
 
     #layer-front {
@@ -90,17 +88,18 @@
     .front-element {
       width: 220px;
       height: 220px;
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 32px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid #ff0000;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 16px;
-      color: #1a1a2e;
+      color: #ff0000;
       font-weight: 600;
       text-align: center;
       padding: 24px;
-      box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+      box-shadow: 0 0 40px rgba(255, 0, 0, 0.3);
       line-height: 1.6;
     }
 
@@ -180,13 +179,54 @@
 </head>
 <body>
   <div id="container">
-    <div id="layer-back" class="layer"></div>
-    <div id="layer-mid" class="layer">
-      <div class="mid-shape"></div>
-      <div class="mid-shape"></div>
-      <div class="mid-shape"></div>
+    <!-- 最奥レイヤー: 大きいグリッド -->
+    <div id="layer-back" class="layer">
+      <svg class="grid-lines" xmlns="http://www.w3.org/2000/svg">
+        <!-- 横線 -->
+        <line x1="0" y1="20%" x2="100%" y2="20%"/>
+        <line x1="0" y1="40%" x2="100%" y2="40%"/>
+        <line x1="0" y1="60%" x2="100%" y2="60%"/>
+        <line x1="0" y1="80%" x2="100%" y2="80%"/>
+        <!-- 縦線 -->
+        <line x1="20%" y1="0" x2="20%" y2="100%"/>
+        <line x1="40%" y1="0" x2="40%" y2="100%"/>
+        <line x1="60%" y1="0" x2="60%" y2="100%"/>
+        <line x1="80%" y1="0" x2="80%" y2="100%"/>
+        <!-- 対角線（遠近感） -->
+        <line x1="0" y1="0" x2="100%" y2="100%"/>
+        <line x1="100%" y1="0" x2="0" y2="100%"/>
+      </svg>
     </div>
+
+    <!-- 中間レイヤー: 中サイズのグリッド -->
+    <div id="layer-mid" class="layer">
+      <svg class="grid-lines" xmlns="http://www.w3.org/2000/svg">
+        <!-- 横線 -->
+        <line x1="10%" y1="25%" x2="90%" y2="25%"/>
+        <line x1="10%" y1="50%" x2="90%" y2="50%"/>
+        <line x1="10%" y1="75%" x2="90%" y2="75%"/>
+        <!-- 縦線 -->
+        <line x1="25%" y1="10%" x2="25%" y2="90%"/>
+        <line x1="50%" y1="10%" x2="50%" y2="90%"/>
+        <line x1="75%" y1="10%" x2="75%" y2="90%"/>
+        <!-- 中心から放射状 -->
+        <line x1="50%" y1="50%" x2="10%" y2="10%"/>
+        <line x1="50%" y1="50%" x2="90%" y2="10%"/>
+        <line x1="50%" y1="50%" x2="10%" y2="90%"/>
+        <line x1="50%" y1="50%" x2="90%" y2="90%"/>
+      </svg>
+    </div>
+
+    <!-- 手前レイヤー: 小さいグリッド+メッセージ -->
     <div id="layer-front" class="layer">
+      <svg class="grid-lines" xmlns="http://www.w3.org/2000/svg">
+        <!-- 枠 -->
+        <rect x="20%" y="20%" width="60%" height="60%" fill="none" stroke="rgba(255, 0, 0, 0.6)" stroke-width="2"/>
+        <rect x="25%" y="25%" width="50%" height="50%" fill="none" stroke="rgba(255, 0, 0, 0.5)" stroke-width="1"/>
+        <!-- クロスライン -->
+        <line x1="20%" y1="50%" x2="80%" y2="50%"/>
+        <line x1="50%" y1="20%" x2="50%" y2="80%"/>
+      </svg>
       <div class="front-element">顔を左右に動かすと<br>視差で立体的に<br>見えます</div>
     </div>
   </div>
