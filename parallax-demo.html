@@ -24,14 +24,15 @@
       width: 100vw;
       height: 100vh;
       overflow: hidden;
+      perspective: 1200px;
     }
 
     .layer {
       position: absolute;
       top: 50%;
       left: 50%;
-      transform: translate(-50%, -50%);
-      transition: transform 0.06s ease-out;
+      transform-style: preserve-3d;
+      transition: transform 0.1s ease-out;
       will-change: transform;
     }
 
@@ -48,33 +49,42 @@
       z-index: 2;
     }
 
-    /* 削除: カラフルな図形 */
-
-    .grid-lines {
+    /* 立方体のワイヤーフレーム */
+    .cube {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      width: 200px;
+      height: 200px;
+      transform-style: preserve-3d;
     }
 
-    .grid-lines line {
-      stroke-width: 1;
-      vector-effect: non-scaling-stroke;
+    .cube-face {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border: 2px solid;
+      background: transparent;
     }
 
-    /* 各レイヤーの線の色と透明度 */
-    #layer-back .grid-lines line {
-      stroke: rgba(255, 0, 0, 0.15);
+    /* 各レイヤーの立方体の色と透明度 */
+    #layer-back .cube-face {
+      border-color: rgba(255, 0, 0, 0.2);
     }
 
-    #layer-mid .grid-lines line {
-      stroke: rgba(255, 0, 0, 0.3);
+    #layer-mid .cube-face {
+      border-color: rgba(255, 0, 0, 0.4);
     }
 
-    #layer-front .grid-lines line {
-      stroke: rgba(255, 0, 0, 0.5);
+    #layer-front .cube-face {
+      border-color: rgba(255, 0, 0, 0.7);
     }
+
+    /* 立方体の6面の配置 */
+    .cube-face.front  { transform: translateZ(100px); }
+    .cube-face.back   { transform: translateZ(-100px) rotateY(180deg); }
+    .cube-face.right  { transform: rotateY(90deg) translateZ(100px); }
+    .cube-face.left   { transform: rotateY(-90deg) translateZ(100px); }
+    .cube-face.top    { transform: rotateX(90deg) translateZ(100px); }
+    .cube-face.bottom { transform: rotateX(-90deg) translateZ(100px); }
 
     #layer-front {
       width: 100vw;
@@ -179,54 +189,72 @@
 </head>
 <body>
   <div id="container">
-    <!-- 最奥レイヤー: 大きいグリッド -->
+    <!-- 最奥レイヤー: 複数の大きい立方体 -->
     <div id="layer-back" class="layer">
-      <svg class="grid-lines" xmlns="http://www.w3.org/2000/svg">
-        <!-- 横線 -->
-        <line x1="0" y1="20%" x2="100%" y2="20%"/>
-        <line x1="0" y1="40%" x2="100%" y2="40%"/>
-        <line x1="0" y1="60%" x2="100%" y2="60%"/>
-        <line x1="0" y1="80%" x2="100%" y2="80%"/>
-        <!-- 縦線 -->
-        <line x1="20%" y1="0" x2="20%" y2="100%"/>
-        <line x1="40%" y1="0" x2="40%" y2="100%"/>
-        <line x1="60%" y1="0" x2="60%" y2="100%"/>
-        <line x1="80%" y1="0" x2="80%" y2="100%"/>
-        <!-- 対角線（遠近感） -->
-        <line x1="0" y1="0" x2="100%" y2="100%"/>
-        <line x1="100%" y1="0" x2="0" y2="100%"/>
-      </svg>
+      <div class="cube" style="left: -100px; top: -100px;">
+        <div class="cube-face front"></div>
+        <div class="cube-face back"></div>
+        <div class="cube-face right"></div>
+        <div class="cube-face left"></div>
+        <div class="cube-face top"></div>
+        <div class="cube-face bottom"></div>
+      </div>
+      <div class="cube" style="left: 200px; top: -150px; transform: scale(0.7);">
+        <div class="cube-face front"></div>
+        <div class="cube-face back"></div>
+        <div class="cube-face right"></div>
+        <div class="cube-face left"></div>
+        <div class="cube-face top"></div>
+        <div class="cube-face bottom"></div>
+      </div>
+      <div class="cube" style="left: -300px; top: 100px; transform: scale(0.6);">
+        <div class="cube-face front"></div>
+        <div class="cube-face back"></div>
+        <div class="cube-face right"></div>
+        <div class="cube-face left"></div>
+        <div class="cube-face top"></div>
+        <div class="cube-face bottom"></div>
+      </div>
     </div>
 
-    <!-- 中間レイヤー: 中サイズのグリッド -->
+    <!-- 中間レイヤー: 中サイズの立方体 -->
     <div id="layer-mid" class="layer">
-      <svg class="grid-lines" xmlns="http://www.w3.org/2000/svg">
-        <!-- 横線 -->
-        <line x1="10%" y1="25%" x2="90%" y2="25%"/>
-        <line x1="10%" y1="50%" x2="90%" y2="50%"/>
-        <line x1="10%" y1="75%" x2="90%" y2="75%"/>
-        <!-- 縦線 -->
-        <line x1="25%" y1="10%" x2="25%" y2="90%"/>
-        <line x1="50%" y1="10%" x2="50%" y2="90%"/>
-        <line x1="75%" y1="10%" x2="75%" y2="90%"/>
-        <!-- 中心から放射状 -->
-        <line x1="50%" y1="50%" x2="10%" y2="10%"/>
-        <line x1="50%" y1="50%" x2="90%" y2="10%"/>
-        <line x1="50%" y1="50%" x2="10%" y2="90%"/>
-        <line x1="50%" y1="50%" x2="90%" y2="90%"/>
-      </svg>
+      <div class="cube" style="left: -100px; top: -100px; transform: scale(0.9);">
+        <div class="cube-face front"></div>
+        <div class="cube-face back"></div>
+        <div class="cube-face right"></div>
+        <div class="cube-face left"></div>
+        <div class="cube-face top"></div>
+        <div class="cube-face bottom"></div>
+      </div>
+      <div class="cube" style="left: 150px; top: 120px; transform: scale(0.5);">
+        <div class="cube-face front"></div>
+        <div class="cube-face back"></div>
+        <div class="cube-face right"></div>
+        <div class="cube-face left"></div>
+        <div class="cube-face top"></div>
+        <div class="cube-face bottom"></div>
+      </div>
     </div>
 
-    <!-- 手前レイヤー: 小さいグリッド+メッセージ -->
+    <!-- 手前レイヤー: 小さい立方体+メッセージ -->
     <div id="layer-front" class="layer">
-      <svg class="grid-lines" xmlns="http://www.w3.org/2000/svg">
-        <!-- 枠 -->
-        <rect x="20%" y="20%" width="60%" height="60%" fill="none" stroke="rgba(255, 0, 0, 0.6)" stroke-width="2"/>
-        <rect x="25%" y="25%" width="50%" height="50%" fill="none" stroke="rgba(255, 0, 0, 0.5)" stroke-width="1"/>
-        <!-- クロスライン -->
-        <line x1="20%" y1="50%" x2="80%" y2="50%"/>
-        <line x1="50%" y1="20%" x2="50%" y2="80%"/>
-      </svg>
+      <div class="cube" style="left: -100px; top: -100px; transform: scale(0.8);">
+        <div class="cube-face front"></div>
+        <div class="cube-face back"></div>
+        <div class="cube-face right"></div>
+        <div class="cube-face left"></div>
+        <div class="cube-face top"></div>
+        <div class="cube-face bottom"></div>
+      </div>
+      <div class="cube" style="left: -250px; top: -50px; transform: scale(0.4);">
+        <div class="cube-face front"></div>
+        <div class="cube-face back"></div>
+        <div class="cube-face right"></div>
+        <div class="cube-face left"></div>
+        <div class="cube-face top"></div>
+        <div class="cube-face bottom"></div>
+      </div>
       <div class="front-element">顔を左右に動かすと<br>視差で立体的に<br>見えます</div>
     </div>
   </div>
@@ -254,10 +282,10 @@
     const layerMid = document.getElementById('layer-mid');
     const layerFront = document.getElementById('layer-front');
 
-    const PARALLAX_STRENGTH = {
-      back: 40,
-      mid: 80,
-      front: 130
+    const ROTATION_STRENGTH = {
+      back: 15,   // 奥は回転が小さい
+      mid: 30,    // 中間
+      front: 50   // 手前は回転が大きい
     };
 
     let smoothedX = 0.5;
@@ -265,23 +293,25 @@
     const SMOOTHING = 0.12;
 
     function updateParallax(normalizedX, normalizedY) {
-      const offsetX = (normalizedX - 0.5) * 2;
-      const offsetY = (normalizedY - 0.5) * 2;
+      const offsetX = (normalizedX - 0.5) * 2;  // -1 to 1
+      const offsetY = (normalizedY - 0.5) * 2;  // -1 to 1
 
-      const backX = -offsetX * PARALLAX_STRENGTH.back;
-      const backY = -offsetY * PARALLAX_STRENGTH.back;
-      
-      const midX = -offsetX * PARALLAX_STRENGTH.mid;
-      const midY = -offsetY * PARALLAX_STRENGTH.mid;
-      
-      const frontX = -offsetX * PARALLAX_STRENGTH.front;
-      const frontY = -offsetY * PARALLAX_STRENGTH.front;
+      // 3D回転角度を計算（左から見たら左側面が見える）
+      const rotateY_back = offsetX * ROTATION_STRENGTH.back;
+      const rotateX_back = -offsetY * ROTATION_STRENGTH.back;
 
-      layerBack.style.transform = `translate(calc(-50% + ${backX}px), calc(-50% + ${backY}px))`;
-      layerMid.style.transform = `translate(calc(-50% + ${midX}px), calc(-50% + ${midY}px))`;
-      layerFront.style.transform = `translate(calc(-50% + ${frontX}px), calc(-50% + ${frontY}px))`;
+      const rotateY_mid = offsetX * ROTATION_STRENGTH.mid;
+      const rotateX_mid = -offsetY * ROTATION_STRENGTH.mid;
 
-      debug.textContent = `X: ${offsetX.toFixed(2)} / Y: ${offsetY.toFixed(2)}`;
+      const rotateY_front = offsetX * ROTATION_STRENGTH.front;
+      const rotateX_front = -offsetY * ROTATION_STRENGTH.front;
+
+      // 3D変換を適用
+      layerBack.style.transform = `translate(-50%, -50%) rotateY(${rotateY_back}deg) rotateX(${rotateX_back}deg)`;
+      layerMid.style.transform = `translate(-50%, -50%) rotateY(${rotateY_mid}deg) rotateX(${rotateX_mid}deg)`;
+      layerFront.style.transform = `translate(-50%, -50%) rotateY(${rotateY_front}deg) rotateX(${rotateX_front}deg)`;
+
+      debug.textContent = `X: ${offsetX.toFixed(2)} / Y: ${offsetY.toFixed(2)} / RotY: ${rotateY_front.toFixed(1)}°`;
     }
 
     async function start() {
