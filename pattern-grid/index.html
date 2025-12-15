@@ -457,13 +457,38 @@
             handleClick(x, y);
         });
 
+        // Track touch state
+        let touchStartTime = 0;
+        let touchMoved = false;
+
         canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
-            handleClick(x, y);
+            // Only handle single touch for drawing
+            if (e.touches.length === 1) {
+                touchStartTime = Date.now();
+                touchMoved = false;
+                // Don't preventDefault to allow scrolling with momentum
+            }
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1) {
+                touchMoved = true;
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            // Only trigger click for single tap (not scroll)
+            if (e.changedTouches.length === 1 && !touchMoved) {
+                const touchDuration = Date.now() - touchStartTime;
+                // Only register as click if it was a quick tap (< 200ms)
+                if (touchDuration < 200) {
+                    const touch = e.changedTouches[0];
+                    const rect = canvas.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    const y = touch.clientY - rect.top;
+                    handleClick(x, y);
+                }
+            }
         });
 
         // Mode buttons
