@@ -118,20 +118,42 @@
         <h1>🛠️ Tools</h1>
         <p class="subtitle">A collection of web-based utilities</p>
 
-        <div class="tools-grid">
-            <a href="./parallax-demo/" class="tool-card">
-                <span class="tool-icon">🌊</span>
-                <div class="tool-title">Parallax Demo</div>
-                <div class="tool-description">Interactive parallax scrolling demonstration with smooth animations</div>
-            </a>
-
-            <a href="./color-inspiration/" class="tool-card">
-                <span class="tool-icon">🎨</span>
-                <div class="tool-title">Color Inspiration</div>
-                <div class="tool-description">Generate beautiful color palettes with various harmony modes</div>
-            </a>
+        <div class="tools-grid" id="tools-grid">
+            <!-- Tools will be dynamically loaded from tools.json -->
         </div>
     </div>
+
+    <script>
+        // Load and display tools from tools.json
+        async function loadTools() {
+            try {
+                const response = await fetch('./tools.json');
+                const data = await response.json();
+                const grid = document.getElementById('tools-grid');
+
+                data.tools.forEach(tool => {
+                    const card = document.createElement('a');
+                    card.href = tool.path;
+                    card.className = 'tool-card';
+
+                    card.innerHTML = `
+                        <span class="tool-icon">${tool.icon}</span>
+                        <div class="tool-title">${tool.title}</div>
+                        <div class="tool-description">${tool.description}</div>
+                    `;
+
+                    grid.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Failed to load tools:', error);
+                document.getElementById('tools-grid').innerHTML =
+                    '<p style="color: rgba(255,255,255,0.7); text-align: center; grid-column: 1/-1;">Failed to load tools</p>';
+            }
+        }
+
+        // Load tools when page loads
+        loadTools();
+    </script>
 </body>
 
 </html>

@@ -1,0 +1,16 @@
+{
+  "tools": [
+    {
+      "path": "./parallax-demo/",
+      "icon": "🌊",
+      "title": "Parallax Demo",
+      "description": "Interactive parallax scrolling demonstration with smooth animations"
+    },
+    {
+      "path": "./color-inspiration/",
+      "icon": "🎨",
+      "title": "Color Inspiration",
+      "description": "Generate beautiful color palettes with various harmony modes"
+    }
+  ]
+}
