@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Head Tracking Parallax - PC</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0f0a1a;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    #container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .layer {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      transition: transform 0.06s ease-out;
+      will-change: transform;
+    }
+
+    #layer-back {
+      width: 120vw;
+      height: 120vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      z-index: 1;
+    }
+
+    #layer-mid {
+      width: 110vw;
+      height: 110vh;
+      z-index: 2;
+    }
+
+    .mid-shape {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.7;
+    }
+
+    .mid-shape:nth-child(1) {
+      width: 250px;
+      height: 250px;
+      background: linear-gradient(180deg, #e94560 0%, #533483 100%);
+      top: 15%;
+      left: 10%;
+    }
+
+    .mid-shape:nth-child(2) {
+      width: 200px;
+      height: 200px;
+      background: linear-gradient(180deg, #00fff5 0%, #0077b6 100%);
+      bottom: 20%;
+      right: 15%;
+    }
+
+    .mid-shape:nth-child(3) {
+      width: 120px;
+      height: 120px;
+      background: linear-gradient(180deg, #ffd700 0%, #ff8c00 100%);
+      top: 55%;
+      left: 55%;
+    }
+
+    #layer-front {
+      width: 100vw;
+      height: 100vh;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .front-element {
+      width: 220px;
+      height: 220px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: #1a1a2e;
+      font-weight: 600;
+      text-align: center;
+      padding: 24px;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+      line-height: 1.6;
+    }
+
+    #video-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 160px;
+      height: 120px;
+      border-radius: 12px;
+      overflow: hidden;
+      z-index: 100;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    #status {
+      position: fixed;
+      top: 24px;
+      left: 24px;
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      z-index: 100;
+      background: rgba(0,0,0,0.6);
+      padding: 12px 16px;
+      border-radius: 8px;
+      backdrop-filter: blur(10px);
+    }
+
+    #status.ready { color: #00ff88; }
+    #status.error { color: #ff6b6b; }
+
+    #start-btn {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 200;
+      background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+      color: #fff;
+      border: none;
+      padding: 24px 48px;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 10px 40px rgba(6,182,212,0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    #start-btn:hover {
+      transform: translate(-50%, -50%) scale(1.05);
+    }
+
+    #start-btn.hidden { display: none; }
+
+    #debug {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      font-family: monospace;
+      z-index: 100;
+      background: rgba(0,0,0,0.4);
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="layer-back" class="layer"></div>
+    <div id="layer-mid" class="layer">
+      <div class="mid-shape"></div>
+      <div class="mid-shape"></div>
+      <div class="mid-shape"></div>
+    </div>
+    <div id="layer-front" class="layer">
+      <div class="front-element">顔を左右に動かすと<br>視差で立体的に<br>見えます</div>
+    </div>
+  </div>
+
+  <div id="video-container">
+    <video id="video" playsinline></video>
+  </div>
+
+  <div id="status">v6-PC - 初期化中...</div>
+  <div id="debug">--</div>
+  
+  <button id="start-btn">カメラを起動</button>
+
+  <!-- TensorFlow.js を使う（face-api より軽量なアプローチ） -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+  <script>
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
+    const debug = document.getElementById('debug');
+    const startBtn = document.getElementById('start-btn');
+    
+    const layerBack = document.getElementById('layer-back');
+    const layerMid = document.getElementById('layer-mid');
+    const layerFront = document.getElementById('layer-front');
+
+    const PARALLAX_STRENGTH = {
+      back: 40,
+      mid: 80,
+      front: 130
+    };
+
+    let smoothedX = 0.5;
+    let smoothedY = 0.5;
+    const SMOOTHING = 0.12;
+
+    function updateParallax(normalizedX, normalizedY) {
+      const offsetX = (normalizedX - 0.5) * 2;
+      const offsetY = (normalizedY - 0.5) * 2;
+
+      const backX = -offsetX * PARALLAX_STRENGTH.back;
+      const backY = -offsetY * PARALLAX_STRENGTH.back;
+      
+      const midX = -offsetX * PARALLAX_STRENGTH.mid;
+      const midY = -offsetY * PARALLAX_STRENGTH.mid;
+      
+      const frontX = -offsetX * PARALLAX_STRENGTH.front;
+      const frontY = -offsetY * PARALLAX_STRENGTH.front;
+
+      layerBack.style.transform = `translate(calc(-50% + ${backX}px), calc(-50% + ${backY}px))`;
+      layerMid.style.transform = `translate(calc(-50% + ${midX}px), calc(-50% + ${midY}px))`;
+      layerFront.style.transform = `translate(calc(-50% + ${frontX}px), calc(-50% + ${frontY}px))`;
+
+      debug.textContent = `X: ${offsetX.toFixed(2)} / Y: ${offsetY.toFixed(2)}`;
+    }
+
+    async function start() {
+      startBtn.classList.add('hidden');
+      status.textContent = 'v6-PC - カメラ起動中...';
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: 640, height: 480 },
+          audio: false
+        });
+        video.srcObject = stream;
+        await video.play();
+
+        status.textContent = 'v6-PC - 顔検出初期化中...';
+
+        const faceDetection = new FaceDetection({
+          locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`;
+          }
+        });
+
+        faceDetection.setOptions({
+          model: 'short',
+          minDetectionConfidence: 0.5
+        });
+
+        faceDetection.onResults((results) => {
+          if (results.detections.length > 0) {
+            const detection = results.detections[0];
+            const box = detection.boundingBox;
+            
+            // boundingBox: xCenter, yCenter, width, height (0-1 normalized)
+            const centerX = box.xCenter;
+            const centerY = box.yCenter;
+            
+            smoothedX += (centerX - smoothedX) * SMOOTHING;
+            smoothedY += (centerY - smoothedY) * SMOOTHING;
+            
+            // ミラー表示なので X 反転
+            updateParallax(1 - smoothedX, smoothedY);
+          }
+        });
+
+        // カメラループ開始
+        const camera = new Camera(video, {
+          onFrame: async () => {
+            await faceDetection.send({ image: video });
+          },
+          width: 640,
+          height: 480
+        });
+
+        await camera.start();
+        
+        status.textContent = 'v6-PC - 準備完了';
+        status.classList.add('ready');
+
+      } catch (err) {
+        status.textContent = 'v6-PC - エラー: ' + err.message;
+        status.classList.add('error');
+        console.error(err);
+        startBtn.classList.remove('hidden');
+      }
+    }
+
+    startBtn.addEventListener('click', start);
+  </script>
+</body>
+</html>
