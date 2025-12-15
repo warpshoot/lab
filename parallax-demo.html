@@ -36,19 +36,6 @@
       will-change: transform;
     }
 
-    #layer-back {
-      width: 120vw;
-      height: 120vh;
-      background: transparent;
-      z-index: 1;
-    }
-
-    #layer-mid {
-      width: 110vw;
-      height: 110vh;
-      z-index: 2;
-    }
-
     /* 立方体のワイヤーフレーム */
     .cube {
       position: absolute;
@@ -61,21 +48,8 @@
       position: absolute;
       width: 200px;
       height: 200px;
-      border: 2px solid;
+      border: 2px solid rgba(255, 0, 0, 0.8);
       background: transparent;
-    }
-
-    /* 各レイヤーの立方体の色と透明度 */
-    #layer-back .cube-face {
-      border-color: rgba(255, 0, 0, 0.2);
-    }
-
-    #layer-mid .cube-face {
-      border-color: rgba(255, 0, 0, 0.4);
-    }
-
-    #layer-front .cube-face {
-      border-color: rgba(255, 0, 0, 0.7);
     }
 
     /* 立方体の6面の配置 */
@@ -90,27 +64,6 @@
       width: 100vw;
       height: 100vh;
       z-index: 3;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .front-element {
-      width: 220px;
-      height: 220px;
-      background: rgba(0, 0, 0, 0.8);
-      border: 2px solid #ff0000;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      color: #ff0000;
-      font-weight: 600;
-      text-align: center;
-      padding: 24px;
-      box-shadow: 0 0 40px rgba(255, 0, 0, 0.3);
-      line-height: 1.6;
     }
 
     #video-container {
@@ -189,8 +142,8 @@
 </head>
 <body>
   <div id="container">
-    <!-- 最奥レイヤー: 複数の大きい立方体 -->
-    <div id="layer-back" class="layer">
+    <!-- 中央に1つの立方体 -->
+    <div id="layer-front" class="layer">
       <div class="cube" style="left: -100px; top: -100px;">
         <div class="cube-face front"></div>
         <div class="cube-face back"></div>
@@ -199,63 +152,6 @@
         <div class="cube-face top"></div>
         <div class="cube-face bottom"></div>
       </div>
-      <div class="cube" style="left: 200px; top: -150px; transform: scale(0.7);">
-        <div class="cube-face front"></div>
-        <div class="cube-face back"></div>
-        <div class="cube-face right"></div>
-        <div class="cube-face left"></div>
-        <div class="cube-face top"></div>
-        <div class="cube-face bottom"></div>
-      </div>
-      <div class="cube" style="left: -300px; top: 100px; transform: scale(0.6);">
-        <div class="cube-face front"></div>
-        <div class="cube-face back"></div>
-        <div class="cube-face right"></div>
-        <div class="cube-face left"></div>
-        <div class="cube-face top"></div>
-        <div class="cube-face bottom"></div>
-      </div>
-    </div>
-
-    <!-- 中間レイヤー: 中サイズの立方体 -->
-    <div id="layer-mid" class="layer">
-      <div class="cube" style="left: -100px; top: -100px; transform: scale(0.9);">
-        <div class="cube-face front"></div>
-        <div class="cube-face back"></div>
-        <div class="cube-face right"></div>
-        <div class="cube-face left"></div>
-        <div class="cube-face top"></div>
-        <div class="cube-face bottom"></div>
-      </div>
-      <div class="cube" style="left: 150px; top: 120px; transform: scale(0.5);">
-        <div class="cube-face front"></div>
-        <div class="cube-face back"></div>
-        <div class="cube-face right"></div>
-        <div class="cube-face left"></div>
-        <div class="cube-face top"></div>
-        <div class="cube-face bottom"></div>
-      </div>
-    </div>
-
-    <!-- 手前レイヤー: 小さい立方体+メッセージ -->
-    <div id="layer-front" class="layer">
-      <div class="cube" style="left: -100px; top: -100px; transform: scale(0.8);">
-        <div class="cube-face front"></div>
-        <div class="cube-face back"></div>
-        <div class="cube-face right"></div>
-        <div class="cube-face left"></div>
-        <div class="cube-face top"></div>
-        <div class="cube-face bottom"></div>
-      </div>
-      <div class="cube" style="left: -250px; top: -50px; transform: scale(0.4);">
-        <div class="cube-face front"></div>
-        <div class="cube-face back"></div>
-        <div class="cube-face right"></div>
-        <div class="cube-face left"></div>
-        <div class="cube-face top"></div>
-        <div class="cube-face bottom"></div>
-      </div>
-      <div class="front-element">顔を左右に動かすと<br>視差で立体的に<br>見えます</div>
     </div>
   </div>
 
@@ -277,16 +173,10 @@
     const status = document.getElementById('status');
     const debug = document.getElementById('debug');
     const startBtn = document.getElementById('start-btn');
-    
-    const layerBack = document.getElementById('layer-back');
-    const layerMid = document.getElementById('layer-mid');
-    const layerFront = document.getElementById('layer-front');
 
-    const ROTATION_STRENGTH = {
-      back: 15,   // 奥は回転が小さい
-      mid: 30,    // 中間
-      front: 50   // 手前は回転が大きい
-    };
+    const layer = document.getElementById('layer-front');
+
+    const ROTATION_STRENGTH = 50;  // 回転の強度
 
     let smoothedX = 0.5;
     let smoothedY = 0.5;
@@ -297,21 +187,13 @@
       const offsetY = (normalizedY - 0.5) * 2;  // -1 to 1
 
       // 3D回転角度を計算（左から見たら左側面が見える）
-      const rotateY_back = offsetX * ROTATION_STRENGTH.back;
-      const rotateX_back = -offsetY * ROTATION_STRENGTH.back;
-
-      const rotateY_mid = offsetX * ROTATION_STRENGTH.mid;
-      const rotateX_mid = -offsetY * ROTATION_STRENGTH.mid;
-
-      const rotateY_front = offsetX * ROTATION_STRENGTH.front;
-      const rotateX_front = -offsetY * ROTATION_STRENGTH.front;
+      const rotateY = offsetX * ROTATION_STRENGTH;
+      const rotateX = -offsetY * ROTATION_STRENGTH;
 
       // 3D変換を適用
-      layerBack.style.transform = `translate(-50%, -50%) rotateY(${rotateY_back}deg) rotateX(${rotateX_back}deg)`;
-      layerMid.style.transform = `translate(-50%, -50%) rotateY(${rotateY_mid}deg) rotateX(${rotateX_mid}deg)`;
-      layerFront.style.transform = `translate(-50%, -50%) rotateY(${rotateY_front}deg) rotateX(${rotateX_front}deg)`;
+      layer.style.transform = `translate(-50%, -50%) rotateY(${rotateY}deg) rotateX(${rotateX}deg)`;
 
-      debug.textContent = `X: ${offsetX.toFixed(2)} / Y: ${offsetY.toFixed(2)} / RotY: ${rotateY_front.toFixed(1)}°`;
+      debug.textContent = `X: ${offsetX.toFixed(2)} / Y: ${offsetY.toFixed(2)} / RotY: ${rotateY.toFixed(1)}°`;
     }
 
     async function start() {
