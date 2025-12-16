@@ -23,9 +23,9 @@
     },
     {
       "path": "./dual-battle/",
-      "icon": "⚔️",
-      "title": "Dual Battle",
-      "description": "2-player tap battle game on one screen",
+      "icon": "🏒",
+      "title": "Air Hockey",
+      "description": "2-player air hockey on one screen",
       "device": "mobile"
     }
   ]

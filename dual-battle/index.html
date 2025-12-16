@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Dual Battle</title>
+    <title>Air Hockey</title>
     <style>
         * {
             margin: 0;
@@ -26,7 +26,7 @@
 
         #gameCanvas {
             display: block;
-            background: linear-gradient(180deg, #1a0033 0%, #000 50%, #330033 100%);
+            background: linear-gradient(180deg, #001a33 0%, #000 50%, #1a0033 100%);
             touch-action: none;
         }
 
@@ -37,40 +37,33 @@
         }
 
         .hud-top {
-            top: 20px;
+            top: 40px;
             transform: rotate(180deg);
         }
 
         .hud-bottom {
-            bottom: 20px;
+            bottom: 40px;
         }
 
-        .hp-bar {
+        .score {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            font-size: 20px;
+            gap: 12px;
+            font-size: 48px;
             font-weight: bold;
         }
 
-        .hp-container {
-            width: 200px;
-            height: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            overflow: hidden;
+        .score span {
+            text-shadow: 0 0 20px currentColor;
         }
 
-        .hp-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ff0066, #ff6600);
-            transition: width 0.3s ease;
-            border-radius: 10px;
+        .score .p1 {
+            color: #ff6600;
         }
 
-        .hp-fill.low {
-            background: linear-gradient(90deg, #ff0000, #ff3300);
+        .score .p2 {
+            color: #00ffff;
         }
 
         .game-over {
@@ -84,6 +77,7 @@
             text-align: center;
             display: none;
             border: 2px solid rgba(255, 255, 255, 0.3);
+            z-index: 100;
         }
 
         .game-over.show {
@@ -93,10 +87,7 @@
         .game-over h2 {
             font-size: 36px;
             margin-bottom: 16px;
-            background: linear-gradient(90deg, #ff0066, #ff6600);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            text-shadow: 0 0 20px currentColor;
         }
 
         .game-over p {
@@ -129,11 +120,11 @@
             text-align: center;
             pointer-events: none;
             opacity: 0;
-            animation: fadeOut 3s forwards;
+            animation: fadeOut 4s forwards;
         }
 
         @keyframes fadeOut {
-            0%, 50% {
+            0%, 60% {
                 opacity: 1;
             }
             100% {
@@ -157,26 +148,20 @@
     <canvas id="gameCanvas"></canvas>
 
     <div class="hud hud-top">
-        <div class="hp-bar">
-            <span>P2</span>
-            <div class="hp-container">
-                <div class="hp-fill" id="hp2" style="width: 100%;"></div>
-            </div>
+        <div class="score">
+            <span class="p2" id="score2">0</span>
         </div>
     </div>
 
     <div class="hud hud-bottom">
-        <div class="hp-bar">
-            <span>P1</span>
-            <div class="hp-container">
-                <div class="hp-fill" id="hp1" style="width: 100%;"></div>
-            </div>
+        <div class="score">
+            <span class="p1" id="score1">0</span>
         </div>
     </div>
 
     <div class="instructions">
-        <h3>タップして攻撃！</h3>
-        <p>相手のHPを0にしたら勝利</p>
+        <h3>ドラッグしてパックを打ち返せ！</h3>
+        <p>3点先取で勝利</p>
     </div>
 
     <div class="game-over" id="gameOver">
@@ -189,10 +174,23 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
+        // 調整可能なパラメータ
+        const PHYSICS = {
+            puckFriction: 0.99,        // パックの摩擦（0.99 = よく滑る）
+            puckMaxSpeed: 15,          // パックの最大速度
+            paddleSpeedMultiplier: 1.5 // パドルの速度がパックに与える影響
+        };
+
         // キャンバスサイズ設定
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+
+            // リサイズ時にゲームオブジェクトの位置を調整
+            if (puck) {
+                puck.x = canvas.width / 2;
+                puck.y = canvas.height / 2;
+            }
         }
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
@@ -200,105 +198,75 @@
         // ゲーム状態
         let gameState = {
             running: true,
-            player1: { hp: 100, bullets: [] },
-            player2: { hp: 100, bullets: [] }
+            score1: 0,
+            score2: 0,
+            winScore: 3
         };
 
-        // 弾のクラス
-        class Bullet {
-            constructor(x, y, targetX, targetY, player) {
-                this.x = x;
-                this.y = y;
-                this.player = player;
-                this.radius = 8;
-                this.speed = 8;
+        // パック
+        let puck = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            vx: 0,
+            vy: 0,
+            radius: 15,
+            trail: [] // 軌跡用
+        };
 
-                // 方向計算
-                const dx = targetX - x;
-                const dy = targetY - y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                this.vx = (dx / distance) * this.speed;
-                this.vy = (dy / distance) * this.speed;
-            }
+        // パドル
+        let paddle1 = {
+            x: canvas.width / 2,
+            y: canvas.height - 100,
+            prevX: canvas.width / 2,
+            prevY: canvas.height - 100,
+            radius: 35,
+            isDragging: false,
+            touchId: null
+        };
 
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-            }
+        let paddle2 = {
+            x: canvas.width / 2,
+            y: 100,
+            prevX: canvas.width / 2,
+            prevY: 100,
+            radius: 35,
+            isDragging: false,
+            touchId: null
+        };
 
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        // パーティクル
+        const particles = [];
 
-                // グラデーション
-                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-                if (this.player === 1) {
-                    gradient.addColorStop(0, '#ff6600');
-                    gradient.addColorStop(1, '#ff0066');
-                } else {
-                    gradient.addColorStop(0, '#00ffff');
-                    gradient.addColorStop(1, '#0066ff');
-                }
-                ctx.fillStyle = gradient;
-                ctx.fill();
+        // ゴール描画
+        function drawGoals() {
+            const goalWidth = 200;
+            const goalX = (canvas.width - goalWidth) / 2;
 
-                // グロー効果
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = this.player === 1 ? '#ff0066' : '#00ffff';
-                ctx.fill();
-                ctx.shadowBlur = 0;
-            }
-
-            isOffScreen() {
-                return this.x < -50 || this.x > canvas.width + 50 ||
-                       this.y < -50 || this.y > canvas.height + 50;
-            }
-
-            collidesWith(x, y, radius) {
-                const dx = this.x - x;
-                const dy = this.y - y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                return distance < this.radius + radius;
-            }
-        }
-
-        // プレイヤー描画
-        function drawPlayers() {
-            // Player 1 (下)
-            ctx.save();
-            ctx.translate(canvas.width / 2, canvas.height - 50);
+            // Player 1のゴール（下）
+            ctx.strokeStyle = '#ff6600';
+            ctx.lineWidth = 8;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#ff6600';
             ctx.beginPath();
-            ctx.moveTo(0, -20);
-            ctx.lineTo(-15, 20);
-            ctx.lineTo(15, 20);
-            ctx.closePath();
-            const gradient1 = ctx.createLinearGradient(0, -20, 0, 20);
-            gradient1.addColorStop(0, '#ff6600');
-            gradient1.addColorStop(1, '#ff0066');
-            ctx.fillStyle = gradient1;
-            ctx.fill();
-            ctx.restore();
+            ctx.moveTo(goalX, canvas.height - 5);
+            ctx.lineTo(goalX + goalWidth, canvas.height - 5);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
 
-            // Player 2 (上・逆さま)
-            ctx.save();
-            ctx.translate(canvas.width / 2, 50);
-            ctx.rotate(Math.PI);
+            // Player 2のゴール（上）
+            ctx.strokeStyle = '#00ffff';
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#00ffff';
             ctx.beginPath();
-            ctx.moveTo(0, -20);
-            ctx.lineTo(-15, 20);
-            ctx.lineTo(15, 20);
-            ctx.closePath();
-            const gradient2 = ctx.createLinearGradient(0, -20, 0, 20);
-            gradient2.addColorStop(0, '#00ffff');
-            gradient2.addColorStop(1, '#0066ff');
-            ctx.fillStyle = gradient2;
-            ctx.fill();
-            ctx.restore();
+            ctx.moveTo(goalX, 5);
+            ctx.lineTo(goalX + goalWidth, 5);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
         }
 
         // 中央線描画
         function drawCenterLine() {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.lineWidth = 2;
             ctx.setLineDash([10, 10]);
             ctx.beginPath();
@@ -308,63 +276,145 @@
             ctx.setLineDash([]);
         }
 
-        // 弾の更新と描画
-        function updateBullets() {
-            // Player 1の弾
-            gameState.player1.bullets = gameState.player1.bullets.filter(bullet => {
-                bullet.update();
-                bullet.draw();
-
-                // 画面外チェック
-                if (bullet.isOffScreen()) return false;
-
-                // Player 2との衝突チェック
-                if (bullet.y < canvas.height / 2 &&
-                    bullet.collidesWith(canvas.width / 2, 50, 20)) {
-                    gameState.player2.hp = Math.max(0, gameState.player2.hp - 10);
-                    updateHP();
-                    createExplosion(bullet.x, bullet.y, 1);
-                    return false;
+        // パック描画
+        function drawPuck() {
+            // 軌跡
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let i = 0; i < puck.trail.length; i++) {
+                const point = puck.trail[i];
+                if (i === 0) {
+                    ctx.moveTo(point.x, point.y);
+                } else {
+                    ctx.lineTo(point.x, point.y);
                 }
+            }
+            ctx.stroke();
 
-                return true;
-            });
+            // パック本体
+            const gradient = ctx.createRadialGradient(puck.x, puck.y, 0, puck.x, puck.y, puck.radius);
+            gradient.addColorStop(0, '#fff');
+            gradient.addColorStop(0.5, '#ffff00');
+            gradient.addColorStop(1, '#ff6600');
 
-            // Player 2の弾
-            gameState.player2.bullets = gameState.player2.bullets.filter(bullet => {
-                bullet.update();
-                bullet.draw();
+            ctx.beginPath();
+            ctx.arc(puck.x, puck.y, puck.radius, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = '#ffff00';
+            ctx.fill();
+            ctx.shadowBlur = 0;
 
-                // 画面外チェック
-                if (bullet.isOffScreen()) return false;
-
-                // Player 1との衝突チェック
-                if (bullet.y > canvas.height / 2 &&
-                    bullet.collidesWith(canvas.width / 2, canvas.height - 50, 20)) {
-                    gameState.player1.hp = Math.max(0, gameState.player1.hp - 10);
-                    updateHP();
-                    createExplosion(bullet.x, bullet.y, 2);
-                    return false;
-                }
-
-                return true;
-            });
+            // ハイライト
+            ctx.beginPath();
+            ctx.arc(puck.x - 5, puck.y - 5, 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fill();
         }
 
-        // 爆発エフェクト
-        const particles = [];
-        function createExplosion(x, y, player) {
-            for (let i = 0; i < 20; i++) {
+        // パドル描画
+        function drawPaddle(paddle, color1, color2) {
+            const gradient = ctx.createRadialGradient(paddle.x, paddle.y, 0, paddle.x, paddle.y, paddle.radius);
+            gradient.addColorStop(0, color1);
+            gradient.addColorStop(1, color2);
+
+            ctx.beginPath();
+            ctx.arc(paddle.x, paddle.y, paddle.radius, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.globalAlpha = 0.6;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = color1;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+
+            // 外枠
+            ctx.beginPath();
+            ctx.arc(paddle.x, paddle.y, paddle.radius, 0, Math.PI * 2);
+            ctx.strokeStyle = color1;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+
+        // 衝突判定
+        function checkCollision(obj1, obj2) {
+            const dx = obj1.x - obj2.x;
+            const dy = obj1.y - obj2.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < obj1.radius + obj2.radius;
+        }
+
+        // パドルとパックの衝突処理
+        function handlePaddleCollision(paddle) {
+            if (checkCollision(puck, paddle)) {
+                // 衝突方向
+                const dx = puck.x - paddle.x;
+                const dy = puck.y - paddle.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // 正規化
+                const nx = dx / distance;
+                const ny = dy / distance;
+
+                // パドルの速度を計算
+                const paddleVx = paddle.x - paddle.prevX;
+                const paddleVy = paddle.y - paddle.prevY;
+
+                // 反射ベクトル
+                const dotProduct = puck.vx * nx + puck.vy * ny;
+                puck.vx = puck.vx - 2 * dotProduct * nx;
+                puck.vy = puck.vy - 2 * dotProduct * ny;
+
+                // パドルの速度を加算
+                puck.vx += paddleVx * PHYSICS.paddleSpeedMultiplier;
+                puck.vy += paddleVy * PHYSICS.paddleSpeedMultiplier;
+
+                // 最大速度制限
+                const speed = Math.sqrt(puck.vx * puck.vx + puck.vy * puck.vy);
+                if (speed > PHYSICS.puckMaxSpeed) {
+                    puck.vx = (puck.vx / speed) * PHYSICS.puckMaxSpeed;
+                    puck.vy = (puck.vy / speed) * PHYSICS.puckMaxSpeed;
+                }
+
+                // パックを押し出す
+                const overlap = puck.radius + paddle.radius - distance;
+                puck.x += nx * overlap;
+                puck.y += ny * overlap;
+
+                // エフェクト
+                createHitEffect(puck.x, puck.y);
+            }
+        }
+
+        // ヒットエフェクト
+        function createHitEffect(x, y) {
+            for (let i = 0; i < 10; i++) {
                 particles.push({
                     x, y,
-                    vx: (Math.random() - 0.5) * 8,
-                    vy: (Math.random() - 0.5) * 8,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
                     life: 1,
-                    player
+                    color: '#ffff00'
                 });
             }
         }
 
+        // ゴールエフェクト
+        function createGoalEffect(y) {
+            for (let i = 0; i < 50; i++) {
+                particles.push({
+                    x: canvas.width / 2 + (Math.random() - 0.5) * 200,
+                    y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    life: 1,
+                    color: y < canvas.height / 2 ? '#00ffff' : '#ff6600'
+                });
+            }
+        }
+
+        // パーティクル更新
         function updateParticles() {
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
@@ -375,9 +425,7 @@
                 if (p.life > 0) {
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-                    ctx.fillStyle = p.player === 1 ?
-                        `rgba(255, 102, 0, ${p.life})` :
-                        `rgba(0, 255, 255, ${p.life})`;
+                    ctx.fillStyle = p.color.replace(')', `, ${p.life})`).replace('rgb', 'rgba');
                     ctx.fill();
                 } else {
                     particles.splice(i, 1);
@@ -385,19 +433,92 @@
             }
         }
 
-        // HP更新
-        function updateHP() {
-            const hp1 = document.getElementById('hp1');
-            const hp2 = document.getElementById('hp2');
+        // パック更新
+        function updatePuck() {
+            if (!gameState.running) return;
 
-            hp1.style.width = gameState.player1.hp + '%';
-            hp2.style.width = gameState.player2.hp + '%';
+            // パドルの前回位置を更新
+            paddle1.prevX = paddle1.x;
+            paddle1.prevY = paddle1.y;
+            paddle2.prevX = paddle2.x;
+            paddle2.prevY = paddle2.y;
 
-            if (gameState.player1.hp < 30) hp1.classList.add('low');
-            if (gameState.player2.hp < 30) hp2.classList.add('low');
+            // パックの位置更新
+            puck.x += puck.vx;
+            puck.y += puck.vy;
 
-            // ゲームオーバーチェック
-            if (gameState.player1.hp === 0 || gameState.player2.hp === 0) {
+            // 摩擦
+            puck.vx *= PHYSICS.puckFriction;
+            puck.vy *= PHYSICS.puckFriction;
+
+            // 軌跡を追加
+            puck.trail.push({ x: puck.x, y: puck.y });
+            if (puck.trail.length > 15) {
+                puck.trail.shift();
+            }
+
+            // 壁との衝突（左右）
+            if (puck.x - puck.radius < 0) {
+                puck.x = puck.radius;
+                puck.vx = -puck.vx * 0.8;
+            }
+            if (puck.x + puck.radius > canvas.width) {
+                puck.x = canvas.width - puck.radius;
+                puck.vx = -puck.vx * 0.8;
+            }
+
+            // ゴール判定
+            const goalWidth = 200;
+            const goalX = (canvas.width - goalWidth) / 2;
+
+            // Player 2のゴール（上）
+            if (puck.y - puck.radius < 0) {
+                if (puck.x > goalX && puck.x < goalX + goalWidth) {
+                    // ゴール！
+                    gameState.score1++;
+                    updateScore();
+                    createGoalEffect(puck.y);
+                    resetPuck();
+                } else {
+                    puck.y = puck.radius;
+                    puck.vy = -puck.vy * 0.8;
+                }
+            }
+
+            // Player 1のゴール（下）
+            if (puck.y + puck.radius > canvas.height) {
+                if (puck.x > goalX && puck.x < goalX + goalWidth) {
+                    // ゴール！
+                    gameState.score2++;
+                    updateScore();
+                    createGoalEffect(puck.y);
+                    resetPuck();
+                } else {
+                    puck.y = canvas.height - puck.radius;
+                    puck.vy = -puck.vy * 0.8;
+                }
+            }
+
+            // パドルとの衝突
+            handlePaddleCollision(paddle1);
+            handlePaddleCollision(paddle2);
+        }
+
+        // パックリセット
+        function resetPuck() {
+            puck.x = canvas.width / 2;
+            puck.y = canvas.height / 2;
+            puck.vx = (Math.random() - 0.5) * 6;
+            puck.vy = (Math.random() - 0.5) * 6;
+            puck.trail = [];
+        }
+
+        // スコア更新
+        function updateScore() {
+            document.getElementById('score1').textContent = gameState.score1;
+            document.getElementById('score2').textContent = gameState.score2;
+
+            if (gameState.score1 >= gameState.winScore || gameState.score2 >= gameState.winScore) {
                 endGame();
             }
         }
@@ -408,10 +529,12 @@
             const gameOver = document.getElementById('gameOver');
             const winnerText = document.getElementById('winnerText');
 
-            if (gameState.player1.hp === 0) {
-                winnerText.textContent = 'Player 2 WIN! 🎉';
+            if (gameState.score1 >= gameState.winScore) {
+                winnerText.textContent = 'Player 1 WIN! 🏆';
+                winnerText.style.color = '#ff6600';
             } else {
-                winnerText.textContent = 'Player 1 WIN! 🎉';
+                winnerText.textContent = 'Player 2 WIN! 🏆';
+                winnerText.style.color = '#00ffff';
             }
 
             gameOver.classList.add('show');
@@ -421,68 +544,147 @@
         function restartGame() {
             gameState = {
                 running: true,
-                player1: { hp: 100, bullets: [] },
-                player2: { hp: 100, bullets: [] }
+                score1: 0,
+                score2: 0,
+                winScore: 3
             };
             particles.length = 0;
-
-            document.getElementById('hp1').style.width = '100%';
-            document.getElementById('hp2').style.width = '100%';
-            document.getElementById('hp1').classList.remove('low');
-            document.getElementById('hp2').classList.remove('low');
+            resetPuck();
+            updateScore();
             document.getElementById('gameOver').classList.remove('show');
         }
 
-        // タッチ/クリックイベント
-        function handleInput(e) {
-            if (!gameState.running) return;
-
-            e.preventDefault();
+        // タッチイベント処理
+        function getTouchPos(touch) {
             const rect = canvas.getBoundingClientRect();
-            const touches = e.touches || [e];
+            return {
+                x: touch.clientX - rect.left,
+                y: touch.clientY - rect.top
+            };
+        }
 
-            for (let touch of touches) {
-                const x = touch.clientX - rect.left;
-                const y = touch.clientY - rect.top;
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            for (let touch of e.changedTouches) {
+                const pos = getTouchPos(touch);
 
                 // Player 1のエリア（下半分）
-                if (y > canvas.height / 2) {
-                    const bullet = new Bullet(
-                        canvas.width / 2,
-                        canvas.height - 50,
-                        x, y, 1
-                    );
-                    gameState.player1.bullets.push(bullet);
+                if (pos.y > canvas.height / 2) {
+                    if (Math.hypot(pos.x - paddle1.x, pos.y - paddle1.y) < paddle1.radius * 2) {
+                        paddle1.isDragging = true;
+                        paddle1.touchId = touch.identifier;
+                    }
                 }
                 // Player 2のエリア（上半分）
                 else {
-                    const bullet = new Bullet(
-                        canvas.width / 2,
-                        50,
-                        x, y, 2
-                    );
-                    gameState.player2.bullets.push(bullet);
+                    if (Math.hypot(pos.x - paddle2.x, pos.y - paddle2.y) < paddle2.radius * 2) {
+                        paddle2.isDragging = true;
+                        paddle2.touchId = touch.identifier;
+                    }
                 }
             }
-        }
+        });
 
-        canvas.addEventListener('touchstart', handleInput);
-        canvas.addEventListener('mousedown', handleInput);
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for (let touch of e.changedTouches) {
+                const pos = getTouchPos(touch);
+
+                // Player 1のパドル
+                if (paddle1.isDragging && paddle1.touchId === touch.identifier) {
+                    // エリア制限（下半分のみ）
+                    if (pos.y > canvas.height / 2 && pos.y < canvas.height - paddle1.radius) {
+                        paddle1.x = Math.max(paddle1.radius, Math.min(canvas.width - paddle1.radius, pos.x));
+                        paddle1.y = pos.y;
+                    }
+                }
+
+                // Player 2のパドル
+                if (paddle2.isDragging && paddle2.touchId === touch.identifier) {
+                    // エリア制限（上半分のみ）
+                    if (pos.y < canvas.height / 2 && pos.y > paddle2.radius) {
+                        paddle2.x = Math.max(paddle2.radius, Math.min(canvas.width - paddle2.radius, pos.x));
+                        paddle2.y = pos.y;
+                    }
+                }
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            for (let touch of e.changedTouches) {
+                if (paddle1.touchId === touch.identifier) {
+                    paddle1.isDragging = false;
+                    paddle1.touchId = null;
+                }
+                if (paddle2.touchId === touch.identifier) {
+                    paddle2.isDragging = false;
+                    paddle2.touchId = null;
+                }
+            }
+        });
+
+        // マウスイベント（デスクトップ用）
+        let activeMousePaddle = null;
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (y > canvas.height / 2) {
+                if (Math.hypot(x - paddle1.x, y - paddle1.y) < paddle1.radius * 2) {
+                    paddle1.isDragging = true;
+                    activeMousePaddle = paddle1;
+                }
+            } else {
+                if (Math.hypot(x - paddle2.x, y - paddle2.y) < paddle2.radius * 2) {
+                    paddle2.isDragging = true;
+                    activeMousePaddle = paddle2;
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!activeMousePaddle || !activeMousePaddle.isDragging) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (activeMousePaddle === paddle1 && y > canvas.height / 2 && y < canvas.height - paddle1.radius) {
+                paddle1.x = Math.max(paddle1.radius, Math.min(canvas.width - paddle1.radius, x));
+                paddle1.y = y;
+            } else if (activeMousePaddle === paddle2 && y < canvas.height / 2 && y > paddle2.radius) {
+                paddle2.x = Math.max(paddle2.radius, Math.min(canvas.width - paddle2.radius, x));
+                paddle2.y = y;
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (activeMousePaddle) {
+                activeMousePaddle.isDragging = false;
+                activeMousePaddle = null;
+            }
+        });
 
         // ゲームループ
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            if (gameState.running) {
-                drawCenterLine();
-                drawPlayers();
-                updateBullets();
-                updateParticles();
-            }
+            drawGoals();
+            drawCenterLine();
+            drawPuck();
+            drawPaddle(paddle1, '#ff6600', '#ff0066');
+            drawPaddle(paddle2, '#00ffff', '#0066ff');
+            updatePuck();
+            updateParticles();
 
             requestAnimationFrame(gameLoop);
         }
 
+        // 初期化
+        resetPuck();
         gameLoop();
     </script>
 </body>
