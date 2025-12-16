@@ -286,19 +286,24 @@
 
         // パック描画
         function drawPuck() {
-            // 軌跡
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
+            // 軌跡（リッチなフェードアウト円形トレイル）
             for (let i = 0; i < puck.trail.length; i++) {
                 const point = puck.trail[i];
-                if (i === 0) {
-                    ctx.moveTo(point.x, point.y);
-                } else {
-                    ctx.lineTo(point.x, point.y);
-                }
+                const age = i / puck.trail.length; // 0（古い）から1（新しい）
+                const opacity = age * 0.6;
+                const radius = puck.radius * (0.3 + age * 0.7);
+
+                // グラデーション
+                const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius);
+                gradient.addColorStop(0, `rgba(255, 255, 100, ${opacity})`);
+                gradient.addColorStop(0.5, `rgba(255, 200, 50, ${opacity * 0.7})`);
+                gradient.addColorStop(1, `rgba(255, 150, 0, 0)`);
+
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
             }
-            ctx.stroke();
 
             // パック本体
             const gradient = ctx.createRadialGradient(puck.x, puck.y, 0, puck.x, puck.y, puck.radius);
@@ -408,6 +413,19 @@
             }
         }
 
+        // 壁衝突エフェクト
+        function createWallEffect(x, y) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: (Math.random() - 0.5) * 5,
+                    life: 1,
+                    color: '#ffffff'
+                });
+            }
+        }
+
         // ゴールエフェクト
         function createGoalEffect(y) {
             for (let i = 0; i < 50; i++) {
@@ -463,10 +481,12 @@
             if (puck.x - puck.radius < 0) {
                 puck.x = puck.radius;
                 puck.vx = -puck.vx * 0.8;
+                createWallEffect(puck.x, puck.y);
             }
             if (puck.x + puck.radius > canvas.width) {
                 puck.x = canvas.width - puck.radius;
                 puck.vx = -puck.vx * 0.8;
+                createWallEffect(puck.x, puck.y);
             }
 
             // ゴール判定
@@ -484,6 +504,7 @@
                 } else {
                     puck.y = puck.radius;
                     puck.vy = -puck.vy * 0.8;
+                    createWallEffect(puck.x, puck.y);
                 }
             }
 
@@ -498,6 +519,7 @@
                 } else {
                     puck.y = canvas.height - puck.radius;
                     puck.vy = -puck.vy * 0.8;
+                    createWallEffect(puck.x, puck.y);
                 }
             }
 
