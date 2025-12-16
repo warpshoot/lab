@@ -445,12 +445,6 @@
         function updatePuck() {
             if (!gameState.running) return;
 
-            // パドルの前回位置を更新
-            paddle1.prevX = paddle1.x;
-            paddle1.prevY = paddle1.y;
-            paddle2.prevX = paddle2.x;
-            paddle2.prevY = paddle2.y;
-
             // パックの位置更新
             puck.x += puck.vx;
             puck.y += puck.vy;
@@ -510,14 +504,31 @@
             // パドルとの衝突
             handlePaddleCollision(paddle1);
             handlePaddleCollision(paddle2);
+
+            // パドルの前回位置を更新（次フレーム用）
+            paddle1.prevX = paddle1.x;
+            paddle1.prevY = paddle1.y;
+            paddle2.prevX = paddle2.x;
+            paddle2.prevY = paddle2.y;
         }
 
         // パックリセット
         function resetPuck() {
             puck.x = canvas.width / 2;
-            puck.y = canvas.height / 2;
-            puck.vx = (Math.random() - 0.5) * 6;
-            puck.vy = (Math.random() - 0.5) * 6;
+
+            // ランダムでP1またはP2のエリアの中央に配置
+            if (Math.random() < 0.5) {
+                // Player 1のエリア（下側）
+                puck.y = canvas.height * 0.75;
+                puck.vx = (Math.random() - 0.5) * 4;
+                puck.vy = -(Math.random() * 3 + 2); // 上向き
+            } else {
+                // Player 2のエリア（上側）
+                puck.y = canvas.height * 0.25;
+                puck.vx = (Math.random() - 0.5) * 4;
+                puck.vy = Math.random() * 3 + 2; // 下向き
+            }
+
             puck.trail = [];
         }
 
