@@ -181,20 +181,6 @@
             paddleSpeedMultiplier: 1.5 // パドルの速度がパックに与える影響
         };
 
-        // キャンバスサイズ設定
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            // リサイズ時にゲームオブジェクトの位置を調整
-            if (puck) {
-                puck.x = canvas.width / 2;
-                puck.y = canvas.height / 2;
-            }
-        }
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
-
         // ゲーム状態
         let gameState = {
             running: true,
@@ -205,8 +191,8 @@
 
         // パック
         let puck = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
+            x: 0,
+            y: 0,
             vx: 0,
             vy: 0,
             radius: 15,
@@ -215,24 +201,46 @@
 
         // パドル
         let paddle1 = {
-            x: canvas.width / 2,
-            y: canvas.height - 100,
-            prevX: canvas.width / 2,
-            prevY: canvas.height - 100,
+            x: 0,
+            y: 0,
+            prevX: 0,
+            prevY: 0,
             radius: 35,
             isDragging: false,
             touchId: null
         };
 
         let paddle2 = {
-            x: canvas.width / 2,
-            y: 100,
-            prevX: canvas.width / 2,
-            prevY: 100,
+            x: 0,
+            y: 0,
+            prevX: 0,
+            prevY: 0,
             radius: 35,
             isDragging: false,
             touchId: null
         };
+
+        // キャンバスサイズ設定
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // ゲームオブジェクトの位置を調整
+            puck.x = canvas.width / 2;
+            puck.y = canvas.height / 2;
+
+            paddle1.x = canvas.width / 2;
+            paddle1.y = canvas.height - 100;
+            paddle1.prevX = paddle1.x;
+            paddle1.prevY = paddle1.y;
+
+            paddle2.x = canvas.width / 2;
+            paddle2.y = 100;
+            paddle2.prevX = paddle2.x;
+            paddle2.prevY = paddle2.y;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
 
         // パーティクル
         const particles = [];
