@@ -432,20 +432,30 @@
                     const relY = (canvasY % cellSize) / cellSize;
                     const corner = getCornerByDistance(relX, relY);
 
-                    // Find existing shape with same type and corner
-                    const shapeIndex = shapes.findIndex(s =>
-                        s.type === mode && s.corner === corner
-                    );
+                    // Find any existing shape at this corner (regardless of type)
+                    const existingShapeIndex = shapes.findIndex(s => s.corner === corner);
 
-                    if (shapeIndex !== -1) {
-                        // Shape exists - toggle inverted or remove
-                        if (!shapes[shapeIndex].inverted) {
-                            shapes[shapeIndex].inverted = true;
+                    if (existingShapeIndex !== -1) {
+                        const existingShape = shapes[existingShapeIndex];
+
+                        if (existingShape.type === mode) {
+                            // Same type and corner - toggle inverted or remove
+                            if (!existingShape.inverted) {
+                                existingShape.inverted = true;
+                            } else {
+                                shapes.splice(existingShapeIndex, 1);
+                            }
                         } else {
-                            shapes.splice(shapeIndex, 1);
+                            // Different type - replace with new shape
+                            shapes[existingShapeIndex] = {
+                                type: mode,
+                                corner: corner,
+                                color: currentColor,
+                                inverted: false
+                            };
                         }
                     } else {
-                        // Add new shape
+                        // No shape at this corner - add new shape
                         shapes.push({
                             type: mode,
                             corner: corner,
