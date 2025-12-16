@@ -14,33 +14,79 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #000;
+            background-image:
+                radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
             min-height: 100vh;
+            color: #fff;
+        }
+
+        header {
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .site-title {
+            font-size: 64px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -2px;
+        }
+
+        .site-subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 18px;
+            margin-bottom: 40px;
+        }
+
+        nav {
             display: flex;
-            align-items: center;
             justify-content: center;
-            padding: 20px;
+            gap: 0;
+            margin-bottom: 60px;
+        }
+
+        .nav-tab {
+            padding: 16px 40px;
+            background: transparent;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-right: none;
+        }
+
+        .nav-tab:first-child {
+            border-radius: 0;
+        }
+
+        .nav-tab:last-child {
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-tab.active {
+            background: #fff;
+            color: #000;
+        }
+
+        .nav-tab:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .container {
-            max-width: 800px;
-            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 20px 60px;
         }
 
         h1 {
             color: #fff;
             font-size: 48px;
             font-weight: 700;
-            margin-bottom: 16px;
-            text-align: center;
-            text-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
-        }
-
-        .subtitle {
-            color: rgba(255, 255, 255, 0.9);
-            text-align: center;
             margin-bottom: 48px;
-            font-size: 18px;
         }
 
         .tools-grid {
@@ -50,36 +96,20 @@
         }
 
         .tool-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
             padding: 32px;
             text-decoration: none;
-            color: #333;
+            color: #fff;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             position: relative;
-            overflow: hidden;
-        }
-
-        .tool-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
         }
 
         .tool-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-        }
-
-        .tool-card:hover::before {
-            transform: scaleX(1);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-4px);
         }
 
         .tool-icon {
@@ -92,16 +122,40 @@
             font-size: 24px;
             font-weight: 600;
             margin-bottom: 8px;
-            color: #1a1a1a;
+            color: #fff;
         }
 
         .tool-description {
             font-size: 14px;
-            color: #666;
+            color: rgba(255, 255, 255, 0.7);
             line-height: 1.6;
         }
 
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+        }
+
         @media (max-width: 640px) {
+            .site-title {
+                font-size: 48px;
+            }
+
+            nav {
+                flex-direction: column;
+            }
+
+            .nav-tab {
+                border-right: 1px solid rgba(255, 255, 255, 0.2);
+                border-bottom: none;
+            }
+
+            .nav-tab:last-child {
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            }
+
             h1 {
                 font-size: 36px;
             }
@@ -114,14 +168,24 @@
 </head>
 
 <body>
-    <div class="container">
-        <h1>🧪 Lab</h1>
-        <p class="subtitle">A collection of web-based utilities</p>
+    <header>
+        <h1 class="site-title">lab</h1>
+        <p class="site-subtitle">web experiments</p>
 
+        <nav>
+            <a href="#" class="nav-tab active">TOOLS</a>
+        </nav>
+    </header>
+
+    <div class="container">
         <div class="tools-grid" id="tools-grid">
             <!-- Tools will be dynamically loaded from tools.json -->
         </div>
     </div>
+
+    <footer>
+        © 2025 warpshoot
+    </footer>
 
     <script>
         // Load and display tools from tools.json
