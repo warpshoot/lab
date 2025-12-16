@@ -144,14 +144,14 @@
 
         .hyper-indicator {
             position: absolute;
-            width: 60px;
-            height: 60px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             pointer-events: none;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 32px;
+            font-size: 20px;
             transition: all 0.3s ease;
         }
 
@@ -167,9 +167,9 @@
         }
 
         .hyper-indicator.available {
-            background: rgba(255, 215, 0, 0.3);
-            border: 3px solid rgba(255, 215, 0, 0.8);
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            background: rgba(255, 215, 0, 0.15);
+            border: 2px solid rgba(255, 215, 0, 0.6);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
             animation: pulse 2s infinite;
         }
 
@@ -191,7 +191,7 @@
                 transform: scale(1);
             }
             50% {
-                transform: scale(1.1);
+                transform: scale(1.05);
             }
         }
 
@@ -256,6 +256,9 @@
             winScore: 3
         };
 
+        // 全画面モードフラグ
+        let fullscreenRequested = false;
+
         // パック
         let puck = {
             x: 0,
@@ -280,6 +283,7 @@
             touchId: null,
             hyperState: 'available', // 'available', 'active', 'used'
             isDestroyed: false,
+            destroyedTime: null,
             tapTimes: [], // トリプルタップ検出用
             lastTapTime: 0
         };
@@ -295,6 +299,7 @@
             touchId: null,
             hyperState: 'available',
             isDestroyed: false,
+            destroyedTime: null,
             tapTimes: [],
             lastTapTime: 0
         };
@@ -560,6 +565,7 @@
                 // ハイパーパックがパドルに当たった場合、パドル破壊
                 if (puck.isHyper && puck.hyperOwner !== playerNum) {
                     paddle.isDestroyed = true;
+                    paddle.destroyedTime = Date.now();
                     createPaddleDestroyEffect(paddle.x, paddle.y, playerNum);
                     puck.isHyper = false; // ハイパー状態は貫通後に解除
                     puck.hyperOwner = null;
@@ -671,6 +677,27 @@
                     ctx.fill();
                 } else {
                     particles.splice(i, 1);
+                }
+            }
+        }
+
+        // 破壊されたパドルの自動復活チェック
+        function checkPaddleRevival() {
+            const revivalTime = 3000; // 3秒
+
+            if (paddle1.isDestroyed && paddle1.destroyedTime) {
+                if (Date.now() - paddle1.destroyedTime >= revivalTime) {
+                    paddle1.isDestroyed = false;
+                    paddle1.destroyedTime = null;
+                    paddle1.radius = paddle1.baseRadius;
+                }
+            }
+
+            if (paddle2.isDestroyed && paddle2.destroyedTime) {
+                if (Date.now() - paddle2.destroyedTime >= revivalTime) {
+                    paddle2.isDestroyed = false;
+                    paddle2.destroyedTime = null;
+                    paddle2.radius = paddle2.baseRadius;
                 }
             }
         }
@@ -829,6 +856,18 @@
             document.getElementById('gameOver').classList.remove('show');
         }
 
+        // 全画面モードリクエスト
+        function requestFullscreenOnce() {
+            if (!fullscreenRequested) {
+                fullscreenRequested = true;
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.log('Fullscreen request failed:', err);
+                    });
+                }
+            }
+        }
+
         // タッチイベント処理
         function getTouchPos(touch) {
             const rect = canvas.getBoundingClientRect();
@@ -840,6 +879,7 @@
 
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            requestFullscreenOnce();
             for (let touch of e.changedTouches) {
                 const pos = getTouchPos(touch);
 
@@ -907,6 +947,7 @@
         let activeMousePaddle = null;
 
         canvas.addEventListener('mousedown', (e) => {
+            requestFullscreenOnce();
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
@@ -958,6 +999,7 @@
             drawPaddle(paddle2, '#00ffff', '#0066ff');
             updatePuck();
             updateParticles();
+            checkPaddleRevival();
 
             requestAnimationFrame(gameLoop);
         }
