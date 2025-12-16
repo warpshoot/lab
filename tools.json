@@ -4,19 +4,22 @@
       "path": "./parallax-demo/",
       "icon": "🌊",
       "title": "Parallax Demo",
-      "description": "Interactive parallax scrolling demonstration with smooth animations"
+      "description": "Interactive parallax scrolling demonstration with smooth animations",
+      "device": "desktop"
     },
     {
       "path": "./color-inspiration/",
       "icon": "🎨",
       "title": "Color Inspiration",
-      "description": "Generate beautiful color palettes with various harmony modes"
+      "description": "Generate beautiful color palettes with various harmony modes",
+      "device": "both"
     },
     {
       "path": "./pattern-grid/",
       "icon": "◧",
       "title": "Pattern Grid",
-      "description": "Create geometric patterns with triangles and arcs"
+      "description": "Create geometric patterns with triangles and arcs",
+      "device": "both"
     }
   ]
 }

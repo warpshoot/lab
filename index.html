@@ -200,9 +200,19 @@
                     card.href = tool.path;
                     card.className = 'tool-card';
 
+                    // Determine device icon
+                    let deviceIcon = '';
+                    if (tool.device === 'mobile') {
+                        deviceIcon = '📱';
+                    } else if (tool.device === 'desktop') {
+                        deviceIcon = '💻';
+                    } else if (tool.device === 'both') {
+                        deviceIcon = '📱💻';
+                    }
+
                     card.innerHTML = `
                         <span class="tool-icon">${tool.icon}</span>
-                        <div class="tool-title">${tool.title}</div>
+                        <div class="tool-title">${tool.title} <span style="font-size: 16px;">${deviceIcon}</span></div>
                         <div class="tool-description">${tool.description}</div>
                     `;
 
