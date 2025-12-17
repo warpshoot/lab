@@ -103,7 +103,7 @@
         }
 
         .hud-top {
-            top: 20px;
+            top: 120px;
             transform: rotate(180deg);
         }
 
@@ -334,38 +334,6 @@
                 transform: scale(1.1);
             }
         }
-
-        /* 速度レベル表示 */
-        .speed-display {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 20px;
-            font-weight: bold;
-            color: rgba(255, 255, 255, 0.6);
-            pointer-events: none;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
-            letter-spacing: 2px;
-        }
-
-        @keyframes speedFlash {
-            0% {
-                color: rgba(255, 255, 255, 0.6);
-                text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
-                transform: translate(-50%, -50%) scale(1);
-            }
-            50% {
-                color: rgba(255, 215, 0, 1);
-                text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
-                transform: translate(-50%, -50%) scale(1.2);
-            }
-            100% {
-                color: rgba(255, 255, 255, 0.6);
-                text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
-                transform: translate(-50%, -50%) scale(1);
-            }
-        }
     </style>
 </head>
 
@@ -396,8 +364,6 @@
     </div>
 
     <canvas id="gameCanvas"></canvas>
-
-    <div class="speed-display" id="speedLevel">SPEED LV.1</div>
 
     <div class="hud hud-top">
         <span class="heart p2" id="life2-1">❤️</span>
@@ -554,24 +520,6 @@
             gameState.totalShots++;
             const newSpeed = CONFIG.handSpeed + (gameState.totalShots * CONFIG.handSpeedIncrement);
             gameState.currentHandSpeed = Math.min(newSpeed, CONFIG.maxHandSpeed);
-            updateSpeedDisplay();
-        }
-
-        // 速度表示を更新
-        function updateSpeedDisplay() {
-            const speedLevel = Math.floor((gameState.currentHandSpeed - CONFIG.handSpeed) / CONFIG.handSpeedIncrement) + 1;
-            const speedDisplay = document.getElementById('speedLevel');
-            if (speedDisplay) {
-                speedDisplay.textContent = `SPEED LV.${speedLevel}`;
-
-                // 速度が上がったときのフラッシュエフェクト
-                if (speedLevel > 1 && gameState.totalShots % 2 === 0) {
-                    speedDisplay.style.animation = 'none';
-                    setTimeout(() => {
-                        speedDisplay.style.animation = 'speedFlash 0.5s ease';
-                    }, 10);
-                }
-            }
         }
 
         // じゃんけん判定（hand1がhand2に勝つかチェック）
@@ -667,6 +615,9 @@
                     endGame(1);
                 }
             }
+            // 1点入るごとにスピードをリセット
+            gameState.currentHandSpeed = CONFIG.handSpeed;
+            gameState.totalShots = 0;
         }
 
         // ライフ表示更新
@@ -717,7 +668,6 @@
 
             updateLifeDisplay(1);
             updateLifeDisplay(2);
-            updateSpeedDisplay();
             enableButtons(1, false);
             enableButtons(2, false);
 
@@ -804,8 +754,17 @@
         }
 
         // 手を描画
-        function drawHand(hand) {
+        function drawHand(hand, player) {
             if (!hand) return;
+
+            ctx.save();
+
+            // Player 2の手は180度回転
+            if (player === 2) {
+                ctx.translate(hand.x, hand.y);
+                ctx.rotate(Math.PI);
+                ctx.translate(-hand.x, -hand.y);
+            }
 
             // 光るエフェクト
             ctx.shadowBlur = 20;
@@ -817,6 +776,7 @@
             ctx.fillText(hand.emoji, hand.x, hand.y);
 
             ctx.shadowBlur = 0;
+            ctx.restore();
         }
 
         // ゲームループ
@@ -825,8 +785,8 @@
 
             drawCenterLine();
             updateHands();
-            drawHand(hands.player1);
-            drawHand(hands.player2);
+            drawHand(hands.player1, 1);
+            drawHand(hands.player2, 2);
             updateParticles();
 
             requestAnimationFrame(gameLoop);
