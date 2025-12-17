@@ -562,6 +562,9 @@
         // パーティクル
         const particles = [];
 
+        // 速度増加スケジュール用フラグ
+        let speedIncreaseScheduled = false;
+
         // キャンバスサイズ設定
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -634,7 +637,7 @@
                     vy: -gameState.currentHandSpeed  // 上向き
                 };
                 enableButtons(1, false);
-                increaseSpeed();
+                scheduleSpeedIncrease();
             } else if (player === 2 && !hands.player2) {
                 hands.player2 = {
                     type,
@@ -644,7 +647,18 @@
                     vy: gameState.currentHandSpeed  // 下向き
                 };
                 enableButtons(2, false);
-                increaseSpeed();
+                scheduleSpeedIncrease();
+            }
+        }
+
+        // 速度増加をスケジュール（同一フレーム内で1回のみ）
+        function scheduleSpeedIncrease() {
+            if (!speedIncreaseScheduled) {
+                speedIncreaseScheduled = true;
+                requestAnimationFrame(() => {
+                    increaseSpeed();
+                    speedIncreaseScheduled = false;
+                });
             }
         }
 
