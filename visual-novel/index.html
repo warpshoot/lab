@@ -7,20 +7,27 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- 背景 -->
-    <div class="background"></div>
-
-    <!-- フェード用オーバーレイ -->
-    <div class="fade-overlay" id="fadeOverlay"></div>
-
-    <!-- テキストウィンドウ -->
-    <div class="text-window" id="textWindow">
-        <img class="face-icon" id="faceIcon" src="" alt="キャラクター">
-        <div class="text-area">
-            <div class="name-display" id="nameDisplay"></div>
-            <div class="text-content" id="textContent"></div>
+    <div id="app-container">
+        <!-- タイトル画面 -->
+        <div class="title-screen" id="titleScreen">
+            <div class="title-text">DESU™︎ ep. 0</div>
         </div>
-        <div class="continue-icon" id="continueIcon">▼</div>
+
+        <!-- 背景 -->
+        <div class="background"></div>
+
+        <!-- フェード用オーバーレイ -->
+        <div class="fade-overlay" id="fadeOverlay"></div>
+
+        <!-- テキストウィンドウ -->
+        <div class="text-window" id="textWindow">
+            <img class="face-icon" id="faceIcon" src="" alt="キャラクター">
+            <div class="text-area">
+                <div class="name-display" id="nameDisplay"></div>
+                <div class="text-content" id="textContent"></div>
+            </div>
+            <div class="continue-icon" id="continueIcon">▼</div>
+        </div>
     </div>
 
     <script src="script.js"></script>
