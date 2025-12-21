@@ -34,6 +34,13 @@
       "title": "RPS Battle",
       "description": "Real-time rock-paper-scissors battle game for 2 players",
       "device": "mobile"
+    },
+    {
+      "path": "./visual-novel/",
+      "icon": "📖",
+      "title": "Visual Novel",
+      "description": "Interactive visual novel with character dialogue and fade effects",
+      "device": "both"
     }
   ]
 }
