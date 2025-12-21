@@ -17,6 +17,7 @@ const dialogues = [
 
 // DOM要素
 const fadeOverlay = document.getElementById('fadeOverlay');
+const faceIcon = document.getElementById('faceIcon');
 const nameDisplay = document.getElementById('nameDisplay');
 const textContent = document.getElementById('textContent');
 const continueIcon = document.getElementById('continueIcon');
@@ -31,6 +32,12 @@ let canProceed = false;
 const speakerNames = {
     sakana: 'サカナ',
     death: 'デス'
+};
+
+// 顔アイコンのパス
+const faceIcons = {
+    sakana: 'images/sakana.jpg',
+    death: 'images/desu.jpg'
 };
 
 // 初期化
@@ -72,6 +79,10 @@ function showDialogue(index) {
     currentDialogueIndex = index;
     canProceed = false;
     continueIcon.classList.remove('show');
+
+    // 顔アイコン切り替え
+    faceIcon.src = faceIcons[dialogue.speaker];
+    faceIcon.alt = speakerNames[dialogue.speaker];
 
     // 名前表示
     nameDisplay.textContent = speakerNames[dialogue.speaker];
