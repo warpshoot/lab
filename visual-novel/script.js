@@ -55,7 +55,7 @@ function playTextSound(speaker) {
 
         // キャラクターごとに周波数を変える
         // サカナ：低めの音（600Hz）、デス：高めの音（1000Hz）
-        const frequency = speaker === 'sakana' ? 600 : 1000;
+        const frequency = speaker === 'sakana' ? 300 : 700;
         oscillator.frequency.value = frequency;
 
         gainNode.gain.value = 0.1; // 音量
