@@ -43,10 +43,17 @@ const faceIcons = {
     desu: 'images/desu.jpg'
 };
 
+// AudioContextを1つだけ作成（再利用）
+let audioContext = null;
+
 // テキスト表示音を再生
 function playTextSound(speaker) {
     try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // 初回のみAudioContextを作成
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
 
