@@ -63,14 +63,13 @@ body {
 /* テキストウィンドウ */
 .text-window {
     position: absolute;
-    bottom: 0;
+    bottom: env(safe-area-inset-bottom, 0);
     left: 0;
     width: 100%;
     height: 20%;
     background-color: rgba(0, 0, 0, 0.7);
     z-index: 5;
     padding: 20px 40px;
-    padding-bottom: calc(20px + env(safe-area-inset-bottom));
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -179,7 +178,6 @@ body {
     .text-window {
         height: 25%;
         padding: 15px 20px;
-        padding-bottom: calc(15px + env(safe-area-inset-bottom));
         gap: 15px;
     }
 
@@ -199,7 +197,7 @@ body {
 
     .continue-icon {
         font-size: 20px;
-        bottom: calc(10px + env(safe-area-inset-bottom));
+        bottom: 10px;
         right: 20px;
     }
 
