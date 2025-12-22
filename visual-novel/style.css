@@ -176,7 +176,7 @@ body {
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
     .text-window {
-        height: 25%;
+        height: 35%; /* 25%→35%に増やす */
         padding: 15px 20px;
         gap: 15px;
     }
