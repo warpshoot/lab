@@ -1,18 +1,18 @@
 // 台詞データ
 const dialogues = [
-    { speaker: 'sakana', text: 'ここ少し行った先が現場' },
+    { speaker: 'sakana', text: 'そうそう/nこの先が次の現場だ' },
     { speaker: 'death', text: 'うん' },
-    { speaker: 'sakana', text: '今度はグロくないといいな' },
+    { speaker: 'sakana', text: '今度はグロいやつじゃないといいな' },
     { speaker: 'death', text: 'うん' },
     { speaker: 'sakana', text: '…' },
     { speaker: 'death', text: '…' },
-    { speaker: 'sakana', text: '…ところで、それ、下なにか履いてる？' },
+    { speaker: 'sakana', text: '…ところで/nそれ、下なにか履いてる？' },
     { speaker: 'death', text: '…いや' },
     { speaker: 'sakana', text: 'そうか…' },
     { speaker: 'death', text: 'なんで？' },
-    { speaker: 'sakana', text: 'いや… 風邪ひくなよ' },
-    { speaker: 'death', text: '大丈夫　ありがと' },
-    { speaker: 'sakana', text: 'ん… あ、ここだ' }
+    { speaker: 'sakana', text: 'いや…/n風邪ひくなよ' },
+    { speaker: 'death', text: '大丈夫/nありがと' },
+    { speaker: 'sakana', text: 'ん…/nあ、ここだ' }
 ];
 
 // DOM要素
