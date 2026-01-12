@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ボードゲームタイマー</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caudex:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Caudex', serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s, color 0.3s;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body.dark {
+            background-color: #000;
+            color: #fff;
+        }
+
+        body.light {
+            background-color: #fff;
+            color: #000;
+        }
+
+        #timer-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        #timer-container.paused {
+            cursor: default;
+        }
+
+        #timer-svg {
+            transform: rotate(-90deg);
+        }
+
+        #timer-display {
+            position: absolute;
+            font-weight: 700;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        #controls {
+            position: fixed;
+            bottom: 30px;
+            display: flex;
+            gap: 20px;
+            z-index: 10;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            font-family: 'Caudex', serif;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 10px 15px;
+            transition: opacity 0.2s;
+        }
+
+        body.dark .control-btn {
+            color: #fff;
+        }
+
+        body.light .control-btn {
+            color: #000;
+        }
+
+        .control-btn:hover {
+            opacity: 0.7;
+        }
+
+        .control-btn:active {
+            opacity: 0.5;
+        }
+
+        #settings-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        #settings-overlay.active {
+            display: flex;
+        }
+
+        body.dark #settings-overlay {
+            background-color: rgba(0, 0, 0, 0.9);
+        }
+
+        body.light #settings-overlay {
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+
+        #settings-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            padding: 40px;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .setting-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .setting-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .preset-buttons, .theme-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .preset-btn, .theme-btn {
+            font-family: 'Caudex', serif;
+            font-size: 16px;
+            padding: 15px;
+            cursor: pointer;
+            border: 2px solid;
+            background: none;
+            transition: all 0.2s;
+        }
+
+        body.dark .preset-btn,
+        body.dark .theme-btn {
+            color: #fff;
+            border-color: #fff;
+        }
+
+        body.light .preset-btn,
+        body.light .theme-btn {
+            color: #000;
+            border-color: #000;
+        }
+
+        .preset-btn:hover,
+        .theme-btn:hover {
+            opacity: 0.7;
+        }
+
+        .preset-btn.active,
+        .theme-btn.active {
+            font-weight: 700;
+        }
+
+        body.dark .preset-btn.active,
+        body.dark .theme-btn.active {
+            background-color: #fff;
+            color: #000;
+        }
+
+        body.light .preset-btn.active,
+        body.light .theme-btn.active {
+            background-color: #000;
+            color: #fff;
+        }
+
+        #close-settings {
+            margin-top: 20px;
+            padding: 15px;
+            font-family: 'Caudex', serif;
+            font-size: 16px;
+            cursor: pointer;
+            border: 2px solid;
+            background: none;
+        }
+
+        body.dark #close-settings {
+            color: #fff;
+            border-color: #fff;
+        }
+
+        body.light #close-settings {
+            color: #000;
+            border-color: #000;
+        }
+
+        #close-settings:hover {
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body class="dark">
+    <div id="timer-container">
+        <svg id="timer-svg">
+            <circle id="timer-circle-bg" fill="none" stroke-width="8" opacity="0.2"></circle>
+            <circle id="timer-circle" fill="none" stroke-width="8" stroke-linecap="round"></circle>
+        </svg>
+        <div id="timer-display">30</div>
+    </div>
+
+    <div id="controls">
+        <button id="pause-btn" class="control-btn">一時停止</button>
+        <button id="reset-btn" class="control-btn">リセット</button>
+        <button id="settings-btn" class="control-btn">設定</button>
+    </div>
+
+    <div id="settings-overlay">
+        <div id="settings-panel">
+            <div class="setting-section">
+                <div class="setting-title">時間設定（秒）</div>
+                <div class="preset-buttons">
+                    <button class="preset-btn" data-seconds="15">15</button>
+                    <button class="preset-btn" data-seconds="30">30</button>
+                    <button class="preset-btn" data-seconds="45">45</button>
+                    <button class="preset-btn" data-seconds="60">60</button>
+                    <button class="preset-btn" data-seconds="90">90</button>
+                    <button class="preset-btn" data-seconds="120">120</button>
+                </div>
+            </div>
+            <div class="setting-section">
+                <div class="setting-title">テーマ</div>
+                <div class="theme-buttons">
+                    <button class="theme-btn" data-theme="dark">Dark</button>
+                    <button class="theme-btn" data-theme="light">Light</button>
+                </div>
+            </div>
+            <button id="close-settings">閉じる</button>
+        </div>
+    </div>
+
+    <script>
+        // Settings
+        let timerDuration = parseInt(localStorage.getItem('timerDuration')) || 30;
+        let currentTheme = localStorage.getItem('theme') || 'dark';
+        let timeLeft = timerDuration;
+        let isPaused = false;
+        let timerInterval = null;
+        let wakeLock = null;
+        let audioContext = null;
+
+        // Elements
+        const body = document.body;
+        const timerContainer = document.getElementById('timer-container');
+        const timerDisplay = document.getElementById('timer-display');
+        const timerSvg = document.getElementById('timer-svg');
+        const timerCircleBg = document.getElementById('timer-circle-bg');
+        const timerCircle = document.getElementById('timer-circle');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsOverlay = document.getElementById('settings-overlay');
+        const closeSettingsBtn = document.getElementById('close-settings');
+        const presetButtons = document.querySelectorAll('.preset-btn');
+        const themeButtons = document.querySelectorAll('.theme-btn');
+
+        // Initialize
+        function init() {
+            body.className = currentTheme;
+            updateCircleSize();
+            updateCircleProgress();
+            updateActiveButtons();
+            requestWakeLock();
+
+            window.addEventListener('resize', updateCircleSize);
+        }
+
+        // Update circle size based on viewport
+        function updateCircleSize() {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const shortSide = Math.min(vw, vh);
+            const circleSize = shortSide * 0.9;
+            const radius = (circleSize - 16) / 2;
+
+            timerSvg.setAttribute('width', circleSize);
+            timerSvg.setAttribute('height', circleSize);
+
+            timerCircleBg.setAttribute('cx', circleSize / 2);
+            timerCircleBg.setAttribute('cy', circleSize / 2);
+            timerCircleBg.setAttribute('r', radius);
+
+            timerCircle.setAttribute('cx', circleSize / 2);
+            timerCircle.setAttribute('cy', circleSize / 2);
+            timerCircle.setAttribute('r', radius);
+
+            const circumference = 2 * Math.PI * radius;
+            timerCircle.style.strokeDasharray = circumference;
+
+            const currentColor = currentTheme === 'dark' ? '#fff' : '#000';
+            timerCircleBg.setAttribute('stroke', currentColor);
+            timerCircle.setAttribute('stroke', currentColor);
+
+            timerDisplay.style.fontSize = (shortSide * 0.3) + 'px';
+
+            updateCircleProgress();
+        }
+
+        // Update circle progress
+        function updateCircleProgress() {
+            const radius = parseFloat(timerCircle.getAttribute('r'));
+            const circumference = 2 * Math.PI * radius;
+            const progress = timeLeft / timerDuration;
+            const offset = circumference * (1 - progress);
+
+            timerCircle.style.strokeDashoffset = offset;
+            timerDisplay.textContent = timeLeft;
+        }
+
+        // Timer functions
+        function startTimer() {
+            if (timerInterval) return;
+
+            timerInterval = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateCircleProgress();
+
+                    // Play alert sounds
+                    if (timeLeft === 10) {
+                        playBeep(440, 100);
+                    } else if (timeLeft <= 5 && timeLeft >= 1) {
+                        playBeep(440, 100);
+                    } else if (timeLeft === 0) {
+                        playBeep(440, 500);
+                        pauseTimer();
+                    }
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            isPaused = true;
+            timerContainer.classList.add('paused');
+            pauseBtn.textContent = '再開';
+        }
+
+        function resumeTimer() {
+            isPaused = false;
+            timerContainer.classList.remove('paused');
+            pauseBtn.textContent = '一時停止';
+            startTimer();
+        }
+
+        function resetTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            timeLeft = timerDuration;
+            isPaused = false;
+            timerContainer.classList.remove('paused');
+            pauseBtn.textContent = '一時停止';
+            updateCircleProgress();
+        }
+
+        function restartTimer() {
+            resetTimer();
+            startTimer();
+        }
+
+        // Audio functions
+        function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playBeep(frequency, duration) {
+            initAudioContext();
+
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration / 1000);
+        }
+
+        // Wake Lock API
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock released');
+                    });
+                }
+            } catch (err) {
+                console.error('Wake Lock error:', err);
+            }
+        }
+
+        // Event listeners
+        timerContainer.addEventListener('click', () => {
+            if (!isPaused && !settingsOverlay.classList.contains('active')) {
+                restartTimer();
+            }
+        });
+
+        pauseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (isPaused) {
+                resumeTimer();
+            } else {
+                pauseTimer();
+            }
+        });
+
+        resetBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetTimer();
+        });
+
+        settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            settingsOverlay.classList.add('active');
+        });
+
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsOverlay.classList.remove('active');
+        });
+
+        settingsOverlay.addEventListener('click', (e) => {
+            if (e.target === settingsOverlay) {
+                settingsOverlay.classList.remove('active');
+            }
+        });
+
+        presetButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                timerDuration = parseInt(btn.dataset.seconds);
+                localStorage.setItem('timerDuration', timerDuration);
+                resetTimer();
+                updateActiveButtons();
+            });
+        });
+
+        themeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentTheme = btn.dataset.theme;
+                localStorage.setItem('theme', currentTheme);
+                body.className = currentTheme;
+                updateCircleSize();
+                updateActiveButtons();
+            });
+        });
+
+        function updateActiveButtons() {
+            presetButtons.forEach(btn => {
+                if (parseInt(btn.dataset.seconds) === timerDuration) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            themeButtons.forEach(btn => {
+                if (btn.dataset.theme === currentTheme) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Handle visibility change
+        document.addEventListener('visibilitychange', async () => {
+            if (!document.hidden && wakeLock === null) {
+                await requestWakeLock();
+            }
+        });
+
+        // Start
+        init();
+    </script>
+</body>
+</html>
