@@ -379,7 +379,8 @@
             const radius = parseFloat(timerCircle.getAttribute('r'));
             const circumference = 2 * Math.PI * radius;
             const progress = timeLeft / timerDuration;
-            const offset = circumference * progress;
+            // Start with full circle (offset=0), shrink clockwise by using negative offset
+            const offset = -circumference * (1 - progress);
 
             timerCircle.style.strokeDashoffset = offset;
             timerDisplay.textContent = timeLeft;
