@@ -34,6 +34,13 @@
       "title": "RPS Battle",
       "description": "Real-time rock-paper-scissors battle game for 2 players",
       "device": "mobile"
+    },
+    {
+      "path": "./board-game-timer/",
+      "icon": "⏱️",
+      "title": "Board Game Timer",
+      "description": "Turn-based countdown timer for board games with alert sounds",
+      "device": "mobile"
     }
   ]
 }
