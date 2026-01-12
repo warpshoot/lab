@@ -39,20 +39,43 @@
             color: #000;
         }
 
-        body.inverted {
-            filter: invert(1);
+        body.dark.inverted {
+            background-color: #fff;
+            color: #000;
         }
 
-        body.flash {
-            animation: flashInvert 0.15s ease-out;
+        body.light.inverted {
+            background-color: #000;
+            color: #fff;
         }
 
-        @keyframes flashInvert {
+        body.dark.flash {
+            animation: flashDark 0.15s ease-out;
+        }
+
+        body.light.flash {
+            animation: flashLight 0.15s ease-out;
+        }
+
+        @keyframes flashDark {
             0%, 100% {
-                filter: invert(0);
+                background-color: #000;
+                color: #fff;
             }
             50% {
-                filter: invert(1);
+                background-color: #fff;
+                color: #000;
+            }
+        }
+
+        @keyframes flashLight {
+            0%, 100% {
+                background-color: #fff;
+                color: #000;
+            }
+            50% {
+                background-color: #000;
+                color: #fff;
             }
         }
 
@@ -329,13 +352,26 @@
             const circumference = 2 * Math.PI * radius;
             timerCircle.style.strokeDasharray = circumference;
 
-            const currentColor = currentTheme === 'dark' ? '#fff' : '#000';
-            timerCircleBg.setAttribute('stroke', currentColor);
-            timerCircle.setAttribute('stroke', currentColor);
+            updateCircleColor();
 
             timerDisplay.style.fontSize = (shortSide * 0.3) + 'px';
 
             updateCircleProgress();
+        }
+
+        // Update circle color based on theme and inverted state
+        function updateCircleColor() {
+            const isInverted = body.classList.contains('inverted');
+            let currentColor;
+
+            if (currentTheme === 'dark') {
+                currentColor = isInverted ? '#000' : '#fff';
+            } else {
+                currentColor = isInverted ? '#fff' : '#000';
+            }
+
+            timerCircleBg.setAttribute('stroke', currentColor);
+            timerCircle.setAttribute('stroke', currentColor);
         }
 
         // Update circle progress
@@ -367,6 +403,7 @@
                         playBeep(440, 500);
                         pauseTimer();
                         body.classList.add('inverted');
+                        updateCircleColor();
                     }
                 }
             }, 1000);
@@ -399,11 +436,13 @@
             timerContainer.classList.remove('paused');
             pauseBtn.textContent = 'Pause';
             body.classList.remove('inverted');
+            updateCircleColor();
             updateCircleProgress();
         }
 
         function restartTimer() {
             body.classList.remove('inverted');
+            updateCircleColor();
             resetTimer();
             startTimer();
         }
