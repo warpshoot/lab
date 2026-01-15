@@ -1033,7 +1033,6 @@
                 const cosA = Math.cos(angle);
                 const sinA = Math.sin(angle);
 
-                ctx.lineWidth = lineWidth;
                 const diagonal = Math.sqrt(width * width + height * height);
 
                 // Create a temporary canvas to draw the full pattern
@@ -1041,6 +1040,13 @@
                 tempCanvas.width = width;
                 tempCanvas.height = height;
                 const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.imageSmoothingEnabled = false;
+
+                // Fill with white background
+                tempCtx.fillStyle = '#ffffff';
+                tempCtx.fillRect(0, 0, width, height);
+
+                // Draw black lines
                 tempCtx.lineWidth = lineWidth;
                 tempCtx.strokeStyle = '#000000';
 
@@ -1062,7 +1068,8 @@
                         const idx = y * width + x;
                         if (toneLevelMap[idx] === level) {
                             const dataIdx = idx * 4;
-                            if (tempData[dataIdx] === 0) { // Black pixel in pattern
+                            // Check if pixel is black (not white)
+                            if (tempData[dataIdx] < 128) {
                                 ctx.fillRect(x, y, 1, 1);
                             }
                         }
