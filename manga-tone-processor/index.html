@@ -285,6 +285,31 @@
 
         <div class="controls" id="controls">
             <div class="control-section">
+                <h3>出力解像度</h3>
+                <div class="control-group">
+                    <label class="control-label">長辺のサイズ（トーン密度を安定させます）</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="radio" name="resolution" value="1200" style="cursor: pointer;">
+                            <span>1200px</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="radio" name="resolution" value="1600" checked style="cursor: pointer;">
+                            <span>1600px</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="radio" name="resolution" value="2000" style="cursor: pointer;">
+                            <span>2000px</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="radio" name="resolution" value="original" style="cursor: pointer;">
+                            <span>オリジナル</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
                 <h3>レベル補正</h3>
                 <div class="control-group">
                     <label class="control-label">黒点 (入力の最暗部)</label>
@@ -351,6 +376,7 @@
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const controls = document.getElementById('controls');
+        const resolutionRadios = document.querySelectorAll('input[name="resolution"]');
         const blackPoint = document.getElementById('blackPoint');
         const whitePoint = document.getElementById('whitePoint');
         const blackPointValue = document.getElementById('blackPointValue');
@@ -367,7 +393,8 @@
         const outputCanvas = document.getElementById('outputCanvas');
         const ctx = outputCanvas.getContext('2d');
 
-        let originalImage = null;
+        let sourceImage = null;  // Original uploaded image
+        let processedImage = null;  // Resized image for processing
         let processingTimeout = null;
 
         // Upload area click handler
@@ -400,29 +427,84 @@
             }
         });
 
+        // Resolution change handler
+        resolutionRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (sourceImage) {
+                    resizeAndProcess();
+                }
+            });
+        });
+
         // Load image
         function loadImage(file) {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-                    originalImage = img;
+                    sourceImage = img;
                     uploadArea.classList.add('has-image');
                     controls.classList.add('active');
                     outputCanvas.classList.add('active');
                     downloadBtn.disabled = false;
-                    processMangaTone();
+                    resizeAndProcess();
                 };
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
 
+        // Resize image based on resolution setting and process
+        function resizeAndProcess() {
+            const selectedResolution = document.querySelector('input[name="resolution"]:checked').value;
+
+            if (selectedResolution === 'original') {
+                processedImage = sourceImage;
+                processMangaTone();
+                return;
+            }
+
+            const maxSize = parseInt(selectedResolution);
+            const srcWidth = sourceImage.width;
+            const srcHeight = sourceImage.height;
+            const maxDimension = Math.max(srcWidth, srcHeight);
+
+            // Calculate new dimensions
+            let newWidth, newHeight;
+            if (maxDimension <= maxSize) {
+                // Image is smaller than target, use original size
+                newWidth = srcWidth;
+                newHeight = srcHeight;
+            } else {
+                // Resize to fit within maxSize
+                const scale = maxSize / maxDimension;
+                newWidth = Math.round(srcWidth * scale);
+                newHeight = Math.round(srcHeight * scale);
+            }
+
+            // Create temporary canvas for resizing
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = newWidth;
+            tempCanvas.height = newHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Draw resized image
+            tempCtx.drawImage(sourceImage, 0, 0, newWidth, newHeight);
+
+            // Convert canvas to image
+            const resizedImg = new Image();
+            resizedImg.onload = () => {
+                processedImage = resizedImg;
+                processMangaTone();
+            };
+            resizedImg.src = tempCanvas.toDataURL();
+        }
+
         // Slider value display and processing trigger
         function setupSlider(slider, valueDisplay, callback) {
             slider.addEventListener('input', (e) => {
                 valueDisplay.textContent = e.target.value;
-                if (originalImage) {
+                if (processedImage) {
                     // Debounce processing
                     clearTimeout(processingTimeout);
                     processingTimeout = setTimeout(() => {
@@ -457,19 +539,19 @@
 
         // Main processing function
         function processMangaTone() {
-            const width = originalImage.width;
-            const height = originalImage.height;
+            const width = processedImage.width;
+            const height = processedImage.height;
 
             // Set canvas size
             outputCanvas.width = width;
             outputCanvas.height = height;
 
-            // Draw original image to temporary canvas for processing
+            // Draw processed image to temporary canvas for processing
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = width;
             tempCanvas.height = height;
             const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.drawImage(originalImage, 0, 0);
+            tempCtx.drawImage(processedImage, 0, 0);
 
             // Get image data
             const imageData = tempCtx.getImageData(0, 0, width, height);
