@@ -266,9 +266,9 @@
         <div class="info-box">
             <h3>処理内容</h3>
             <ul>
-                <li>画像を4階調に分割: 白(0%) / 薄(20%) / 中(50%) / ベタ(100%)</li>
-                <li>白/薄/中はアミ点トーン(60線・45度)で表現</li>
-                <li>ベタは塗りつぶし</li>
+                <li>画像を4階調に分割: 白 / 粗いトーン / 細かいトーン / 黒ベタ</li>
+                <li>トーン領域を円形ドットパターンで置き換え（45度回転）</li>
+                <li>粗いトーン: 大きめの間隔、細かいトーン: 小さめの間隔</li>
                 <li>レベル補正で明暗を調整可能</li>
             </ul>
         </div>
@@ -413,22 +413,13 @@
             link.click();
         });
 
-        // Bayer matrix 8x8 for dithering
-        const bayerMatrix8x8 = [
-            [0, 32, 8, 40, 2, 34, 10, 42],
-            [48, 16, 56, 24, 50, 18, 58, 26],
-            [12, 44, 4, 36, 14, 46, 6, 38],
-            [60, 28, 52, 20, 62, 30, 54, 22],
-            [3, 35, 11, 43, 1, 33, 9, 41],
-            [51, 19, 59, 27, 49, 17, 57, 25],
-            [15, 47, 7, 39, 13, 45, 5, 37],
-            [63, 31, 55, 23, 61, 29, 53, 21]
-        ];
-
-        // Normalize Bayer matrix to 0-1 range
-        const normalizedBayer = bayerMatrix8x8.map(row =>
-            row.map(val => (val + 0.5) / 64)
-        );
+        // Tone level constants
+        const TONE_LEVELS = {
+            WHITE: 0,      // 白 - no pattern
+            COARSE: 1,     // 粗いトーン - large spacing
+            FINE: 2,       // 細かいトーン - small spacing
+            BLACK: 3       // 黒ベタ - solid black
+        };
 
         // Main processing function
         function processMangaTone() {
@@ -466,91 +457,110 @@
                 grayData[i / 4] = adjusted;
             }
 
-            // Create output image data
-            const outputData = ctx.createImageData(width, height);
-            const output = outputData.data;
+            // Create tone level map
+            const toneLevelMap = new Uint8Array(width * height);
+            for (let i = 0; i < grayData.length; i++) {
+                const brightness = grayData[i] / 255;
 
-            // Process each pixel
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const idx = y * width + x;
-                    const gray = grayData[idx];
-                    const brightness = gray / 255; // 0 (dark) to 1 (bright)
-
-                    // Determine tone level
-                    let toneLevel;
-                    if (brightness >= 0.875) { // Very bright -> White (0%)
-                        toneLevel = 0;
-                    } else if (brightness >= 0.625) { // Bright -> Light (20%)
-                        toneLevel = 1;
-                    } else if (brightness >= 0.375) { // Medium -> Medium (50%)
-                        toneLevel = 2;
-                    } else { // Dark -> Solid black (100%)
-                        toneLevel = 3;
-                    }
-
-                    let pixelValue = 255; // Default white
-
-                    // Apply halftone pattern based on tone level
-                    if (toneLevel === 3) {
-                        // Solid black (Beta)
-                        pixelValue = 0;
-                    } else if (toneLevel > 0) {
-                        // Apply halftone pattern with rotation
-                        const halftoneValue = getHalftoneValue(x, y, toneLevel);
-                        pixelValue = halftoneValue;
-                    }
-
-                    // Set pixel in output
-                    const outIdx = idx * 4;
-                    output[outIdx] = pixelValue;
-                    output[outIdx + 1] = pixelValue;
-                    output[outIdx + 2] = pixelValue;
-                    output[outIdx + 3] = 255; // Full opacity
+                // Determine tone level based on brightness
+                if (brightness >= 0.75) {
+                    toneLevelMap[i] = TONE_LEVELS.WHITE;
+                } else if (brightness >= 0.5) {
+                    toneLevelMap[i] = TONE_LEVELS.COARSE;
+                } else if (brightness >= 0.25) {
+                    toneLevelMap[i] = TONE_LEVELS.FINE;
+                } else {
+                    toneLevelMap[i] = TONE_LEVELS.BLACK;
                 }
             }
 
-            ctx.putImageData(outputData, 0, 0);
-        }
+            // Fill with white background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
 
-        // Get halftone value with 45-degree rotation
-        function getHalftoneValue(x, y, toneLevel) {
-            // 60 line screen ≈ frequency of 5 pixels (adjusted for visibility)
-            const frequency = 5;
-
-            // 45-degree rotation
-            const cos45 = 0.7071067811865476;
-            const sin45 = 0.7071067811865476;
-            const rotX = x * cos45 - y * sin45;
-            const rotY = x * sin45 + y * cos45;
-
-            // Calculate grid position
-            const gridX = Math.floor(rotX / frequency) % 8;
-            const gridY = Math.floor(rotY / frequency) % 8;
-
-            // Get position within cell
-            const cellX = Math.floor((rotX % frequency) / frequency * 8);
-            const cellY = Math.floor((rotY % frequency) / frequency * 8);
-
-            // Ensure indices are within bounds
-            const bayerX = (cellX + 8) % 8;
-            const bayerY = (cellY + 8) % 8;
-
-            // Get threshold from Bayer matrix
-            const threshold = normalizedBayer[bayerY][bayerX];
-
-            // Determine dot density based on tone level
-            let density;
-            if (toneLevel === 1) { // Light 20%
-                density = 0.2;
-            } else if (toneLevel === 2) { // Medium 50%
-                density = 0.5;
-            } else {
-                density = 0;
+            // Draw solid black areas
+            ctx.fillStyle = '#000000';
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = y * width + x;
+                    if (toneLevelMap[idx] === TONE_LEVELS.BLACK) {
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                }
             }
 
-            // Apply ordered dithering
-            return threshold < density ? 0 : 255;
+            // Draw halftone patterns
+            drawHalftonePattern(ctx, width, height, toneLevelMap, TONE_LEVELS.COARSE);
+            drawHalftonePattern(ctx, width, height, toneLevelMap, TONE_LEVELS.FINE);
+        }
+
+        // Draw halftone pattern for specific tone level
+        function drawHalftonePattern(ctx, width, height, toneLevelMap, toneLevel) {
+            // Pattern parameters
+            let spacing, dotSize;
+            if (toneLevel === TONE_LEVELS.COARSE) {
+                spacing = 12;  // 粗いトーン - larger spacing
+                dotSize = 4;
+            } else if (toneLevel === TONE_LEVELS.FINE) {
+                spacing = 6;   // 細かいトーン - smaller spacing
+                dotSize = 2;
+            } else {
+                return;
+            }
+
+            // 45-degree rotation
+            const angle = Math.PI / 4; // 45 degrees
+            const cos45 = Math.cos(angle);
+            const sin45 = Math.sin(angle);
+
+            ctx.fillStyle = '#000000';
+
+            // Calculate the bounds we need to cover after rotation
+            const diagonal = Math.sqrt(width * width + height * height);
+            const startPos = -diagonal;
+            const endPos = diagonal;
+
+            // Draw dots in a rotated grid
+            for (let gy = startPos; gy < endPos; gy += spacing) {
+                for (let gx = startPos; gx < endPos; gx += spacing) {
+                    // Rotate point back to original coordinates
+                    const x = Math.round(gx * cos45 - gy * sin45 + width / 2);
+                    const y = Math.round(gx * sin45 + gy * cos45 + height / 2);
+
+                    // Check if point is within image bounds
+                    if (x < 0 || x >= width || y < 0 || y >= height) continue;
+
+                    // Check if this pixel should have this tone level
+                    const idx = y * width + x;
+                    if (toneLevelMap[idx] !== toneLevel) continue;
+
+                    // Check surrounding area to see if we should draw a dot here
+                    let shouldDraw = false;
+                    const checkRadius = Math.floor(spacing / 2);
+
+                    for (let dy = -checkRadius; dy <= checkRadius; dy++) {
+                        for (let dx = -checkRadius; dx <= checkRadius; dx++) {
+                            const checkX = x + dx;
+                            const checkY = y + dy;
+
+                            if (checkX >= 0 && checkX < width && checkY >= 0 && checkY < height) {
+                                const checkIdx = checkY * width + checkX;
+                                if (toneLevelMap[checkIdx] === toneLevel) {
+                                    shouldDraw = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (shouldDraw) break;
+                    }
+
+                    if (shouldDraw) {
+                        ctx.beginPath();
+                        ctx.arc(x, y, dotSize / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
         }
     </script>
 </body>
