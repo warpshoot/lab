@@ -48,6 +48,13 @@
       "title": "Manga Tone Processor",
       "description": "Convert images to manga-style halftone backgrounds with adjustable levels",
       "device": "both"
+    },
+    {
+      "path": "./trajectory-sequencer/",
+      "icon": "🎵",
+      "title": "Trajectory Sequencer",
+      "description": "Draw lines on 4 tracks to create music - interactive sound sequencer",
+      "device": "both"
     }
   ]
 }
