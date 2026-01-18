@@ -596,12 +596,13 @@
             initAudio();
 
             state.isPlaying = true;
+            state.playbackPosition = 0;
             state.lastTime = performance.now();
             state.lastPlaybackX = -10;
 
             playbackLine.style.display = 'block';
 
-            animate();
+            state.animationId = requestAnimationFrame(animate);
         }
 
         function stop() {
@@ -620,6 +621,12 @@
 
         function animate(currentTime) {
             if (!state.isPlaying) return;
+
+            // Handle first frame
+            if (!currentTime) {
+                state.animationId = requestAnimationFrame(animate);
+                return;
+            }
 
             const deltaTime = currentTime - state.lastTime;
             state.lastTime = currentTime;
