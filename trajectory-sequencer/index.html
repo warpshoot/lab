@@ -322,7 +322,8 @@
             audioContext: null,
             lastPlaybackX: -10,
             canvasSnapshot: null,
-            activeFlashes: []
+            activeFlashes: [],
+            lastNotePlayedAt: -10
         };
 
         // Color to actual RGB values for drawing
@@ -607,6 +608,7 @@
             state.playbackPosition = 0;
             state.lastTime = performance.now();
             state.lastPlaybackX = -10;
+            state.lastNotePlayedAt = -10;
 
             playbackLine.style.display = 'block';
 
@@ -653,6 +655,7 @@
             if (state.playbackPosition >= canvas.width) {
                 state.playbackPosition = 0;
                 state.lastPlaybackX = -10;
+                state.lastNotePlayedAt = -10;
                 state.activeFlashes = [];
             }
 
@@ -693,22 +696,19 @@
             // Only check new positions (skip if we've already checked this x)
             if (x <= state.lastPlaybackX || x >= canvas.width) return;
 
-            // Reduce note density: only play every 8 pixels for more musical result
-            if (x % 8 !== 0) {
-                state.lastPlaybackX = x;
-                return;
-            }
-
             // Get pixel data from the original snapshot (not the current canvas with flashes)
             if (!state.canvasSnapshot) return;
 
-            const playedNotes = new Map(); // Track notes by color to avoid duplicates
             const snapshotData = state.canvasSnapshot.data;
             const width = state.canvasSnapshot.width;
 
+            // Check if there are any drawn pixels at this x position
+            let hasDrawing = false;
+            const detectedNotes = [];
+
             // Group y positions into buckets to avoid too many notes at once
             const yBuckets = new Map();
-            const bucketSize = 20; // pixels
+            const bucketSize = 30; // pixels - group nearby notes
 
             for (let y = 0; y < canvas.height; y++) {
                 // Calculate index in the snapshot data for pixel at (x, y)
@@ -723,18 +723,27 @@
                     // Determine color and timbre
                     const colorInfo = getColorFromRGB(r, g, b);
                     if (colorInfo) {
+                        hasDrawing = true;
                         const frequency = yToFrequency(y, canvas.height);
                         const bucket = Math.floor(y / bucketSize);
                         const key = `${colorInfo.timbre}_${bucket}`;
 
                         // Only play one note per bucket per color
                         if (!yBuckets.has(key)) {
-                            playNote(frequency, colorInfo.timbre);
-                            flashIntersection(x, y, colorInfo.color);
+                            detectedNotes.push({ frequency, timbre: colorInfo.timbre, y, color: colorInfo.color });
                             yBuckets.set(key, true);
                         }
                     }
                 }
+            }
+
+            // Play notes only if enough distance from last note (reduce density)
+            if (hasDrawing && detectedNotes.length > 0 && (x - state.lastNotePlayedAt >= 4)) {
+                detectedNotes.forEach(note => {
+                    playNote(note.frequency, note.timbre);
+                    flashIntersection(x, note.y, note.color);
+                });
+                state.lastNotePlayedAt = x;
             }
 
             state.lastPlaybackX = x;
