@@ -319,7 +319,9 @@
             animationId: null,
             lastTime: 0,
             audioContext: null,
-            lastPlaybackX: -10
+            lastPlaybackX: -10,
+            canvasSnapshot: null,
+            activeFlashes: []
         };
 
         // Color to actual RGB values for drawing
@@ -595,6 +597,10 @@
             // Initialize audio context on user interaction
             initAudio();
 
+            // Save canvas state before playback
+            state.canvasSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            state.activeFlashes = [];
+
             state.isPlaying = true;
             state.playbackPosition = 0;
             state.lastTime = performance.now();
@@ -613,6 +619,12 @@
             if (state.animationId) {
                 cancelAnimationFrame(state.animationId);
                 state.animationId = null;
+            }
+
+            // Restore canvas to remove flash effects
+            if (state.canvasSnapshot) {
+                ctx.putImageData(state.canvasSnapshot, 0, 0);
+                state.canvasSnapshot = null;
             }
 
             playbackLine.style.display = 'none';
@@ -639,6 +651,30 @@
             if (state.playbackPosition >= canvas.width) {
                 state.playbackPosition = 0;
                 state.lastPlaybackX = -10;
+                state.activeFlashes = [];
+            }
+
+            // Restore original canvas and redraw flashes
+            if (state.canvasSnapshot) {
+                ctx.putImageData(state.canvasSnapshot, 0, 0);
+
+                // Redraw active flashes
+                state.activeFlashes.forEach(flash => {
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.fillStyle = flash.color;
+                    ctx.globalAlpha = flash.alpha;
+                    ctx.beginPath();
+                    ctx.arc(flash.x, flash.y, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                // Fade out flashes
+                state.activeFlashes = state.activeFlashes.map(flash => ({
+                    ...flash,
+                    alpha: flash.alpha * 0.9
+                })).filter(flash => flash.alpha > 0.05);
             }
 
             // Update playback line position
@@ -698,48 +734,13 @@
         }
 
         function flashIntersection(x, y, color) {
-            ctx.save();
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.shadowColor = COLOR_MAP[color];
-            ctx.shadowBlur = 15;
-            ctx.beginPath();
-            ctx.arc(x, y, 6, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-
-            // Fade out effect
-            setTimeout(() => {
-                ctx.clearRect(x - 10, y - 10, 20, 20);
-
-                // Redraw grid
-                ctx.save();
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
-                ctx.lineWidth = 1;
-
-                const w = canvas.width;
-                const h = canvas.height;
-
-                for (let i = 1; i < 16; i++) {
-                    const gx = (w / 16) * i;
-                    if (gx >= x - 10 && gx <= x + 10) {
-                        ctx.beginPath();
-                        ctx.moveTo(gx, Math.max(0, y - 10));
-                        ctx.lineTo(gx, Math.min(h, y + 10));
-                        ctx.stroke();
-                    }
-                }
-
-                for (let i = 1; i < 12; i++) {
-                    const gy = (h / 12) * i;
-                    if (gy >= y - 10 && gy <= y + 10) {
-                        ctx.beginPath();
-                        ctx.moveTo(Math.max(0, x - 10), gy);
-                        ctx.lineTo(Math.min(w, x + 10), gy);
-                        ctx.stroke();
-                    }
-                }
-                ctx.restore();
-            }, 100);
+            // Add flash to active flashes array
+            state.activeFlashes.push({
+                x: x,
+                y: y,
+                color: COLOR_MAP[color],
+                alpha: 0.8
+            });
         }
 
         // ==================== Start Application ====================
