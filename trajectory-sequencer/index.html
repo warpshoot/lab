@@ -273,6 +273,18 @@
                 <button id="eraserBtn" class="tool-btn">🧹 消しゴム</button>
             </div>
 
+            <div class="control-group">
+                <label class="speed-label">音階:</label>
+                <select id="scaleSelect">
+                    <option value="pentatonic">ペンタトニック (失敗なし)</option>
+                    <option value="major">メジャー (明るい)</option>
+                    <option value="minor">マイナー (暗い)</option>
+                    <option value="blues">ブルース (渋い)</option>
+                    <option value="wholetone">全音階 (浮遊感)</option>
+                    <option value="chromatic">半音階 (全音)</option>
+                </select>
+            </div>
+
             <button id="clearAllBtn" class="danger">🗑️ クリア</button>
         </div>
 
@@ -304,7 +316,7 @@
         <div class="instructions">
             💡 使い方: 色を選んで線を描き、再生ボタンを押すと音が鳴ります。<br>
             縦の位置で音程が変わり、上が高音、下が低音です。色によって音色が変わります。<br>
-            🎼 ペンタトニックスケール + リズムの自動整列で、適当に描いても音楽になります！
+            🎼 音階を選んで雰囲気を変えられます。リズムは自動整列で、適当に描いても音楽になります！
         </div>
     </div>
 
@@ -342,12 +354,43 @@
         // Canvas and context
         let canvas, ctx, playbackLine;
 
-        // C Major Pentatonic Scale: More musical, no bad notes
-        // C4, D4, E4, G4, A4, C5, D5, E5, G5, A5, C6
-        const SCALE = [
-            261.63, 293.66, 329.63, 392.00, 440.00,
-            523.25, 587.33, 659.25, 783.99, 880.00, 1046.50
-        ];
+        // Musical Scales - different options for different moods
+        const SCALES = {
+            pentatonic: [
+                // C Major Pentatonic: No bad notes, always harmonious
+                261.63, 293.66, 329.63, 392.00, 440.00,
+                523.25, 587.33, 659.25, 783.99, 880.00, 1046.50
+            ],
+            major: [
+                // C Major: Classic, bright and happy
+                261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88,
+                523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77, 1046.50
+            ],
+            minor: [
+                // C Natural Minor: Darker, more emotional
+                261.63, 293.66, 311.13, 349.23, 392.00, 415.30, 466.16,
+                523.25, 587.33, 622.25, 698.46, 783.99, 830.61, 932.33, 1046.50
+            ],
+            blues: [
+                // C Blues Scale: Soulful and groovy
+                261.63, 311.13, 349.23, 369.99, 392.00, 466.16,
+                523.25, 622.25, 698.46, 739.99, 783.99, 932.33, 1046.50
+            ],
+            wholetone: [
+                // C Whole Tone: Dreamy, floating feeling
+                261.63, 293.66, 329.63, 369.99, 415.30, 466.16,
+                523.25, 587.33, 659.25, 739.99, 830.61, 932.33, 1046.50
+            ],
+            chromatic: [
+                // Chromatic: All notes available
+                261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00,
+                415.30, 440.00, 466.16, 493.88, 523.25, 554.37, 587.33, 622.25,
+                659.25, 698.46, 739.99, 783.99, 830.61, 880.00, 932.33, 987.77, 1046.50
+            ]
+        };
+
+        // Current active scale
+        let currentScale = SCALES.pentatonic;
 
         // ==================== Audio Setup ====================
         async function initAudio() {
@@ -371,8 +414,8 @@
         }
 
         function yToFrequency(y, canvasHeight) {
-            const index = Math.floor((1 - y / canvasHeight) * SCALE.length);
-            return SCALE[Math.max(0, Math.min(SCALE.length - 1, index))];
+            const index = Math.floor((1 - y / canvasHeight) * currentScale.length);
+            return currentScale[Math.max(0, Math.min(currentScale.length - 1, index))];
         }
 
         async function playNote(frequency, timbre, duration = 0.25) {
@@ -461,6 +504,13 @@
             speedSlider.addEventListener('input', (e) => {
                 state.speed = parseFloat(e.target.value);
                 speedValue.textContent = state.speed.toFixed(1);
+            });
+
+            // Scale selector
+            const scaleSelect = document.getElementById('scaleSelect');
+            scaleSelect.addEventListener('change', (e) => {
+                currentScale = SCALES[e.target.value];
+                console.log('Scale changed to:', e.target.value);
             });
 
             // Tool buttons
