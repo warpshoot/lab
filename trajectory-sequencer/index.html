@@ -342,13 +342,13 @@
         ];
 
         // ==================== Audio Setup ====================
-        function initAudio() {
+        async function initAudio() {
             if (!state.audioContext) {
                 state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             }
             // Resume context if suspended (required by modern browsers)
             if (state.audioContext.state === 'suspended') {
-                state.audioContext.resume();
+                await state.audioContext.resume();
             }
         }
 
@@ -591,11 +591,11 @@
         }
 
         // ==================== Playback ====================
-        function play() {
+        async function play() {
             if (state.isPlaying) return;
 
             // Initialize audio context on user interaction
-            initAudio();
+            await initAudio();
 
             // Save canvas state before playback
             state.canvasSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -691,18 +691,20 @@
             // Only check new positions (skip if we've already checked this x)
             if (x <= state.lastPlaybackX || x >= canvas.width) return;
 
-            // Get pixel data at this x position
-            const imageData = ctx.getImageData(x, 0, 1, canvas.height);
-            const data = imageData.data;
+            // Get pixel data from the original snapshot (not the current canvas with flashes)
+            if (!state.canvasSnapshot) return;
 
             const playedNotes = new Map(); // Track notes by color to avoid duplicates
+            const snapshotData = state.canvasSnapshot.data;
+            const width = state.canvasSnapshot.width;
 
             for (let y = 0; y < canvas.height; y++) {
-                const i = y * 4;
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
-                const a = data[i + 3];
+                // Calculate index in the snapshot data for pixel at (x, y)
+                const i = (y * width + x) * 4;
+                const r = snapshotData[i];
+                const g = snapshotData[i + 1];
+                const b = snapshotData[i + 2];
+                const a = snapshotData[i + 3];
 
                 // Only detect fully opaque pixels (drawn lines, not grid or artifacts)
                 if (a > 200) {
