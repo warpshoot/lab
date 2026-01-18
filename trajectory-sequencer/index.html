@@ -123,66 +123,59 @@
             color: #4a5568;
         }
 
-        .tracks-container {
+        .color-palette {
             display: flex;
-            flex-direction: column;
             gap: 10px;
+            align-items: center;
         }
 
-        .track {
+        .color-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .color-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .color-btn.active {
+            border-color: #2d3748;
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #2d3748;
+            transform: scale(1.15);
+        }
+
+        .color-btn.red { background: linear-gradient(135deg, #fc5c65, #fd7984); }
+        .color-btn.blue { background: linear-gradient(135deg, #45aaf2, #4b7bec); }
+        .color-btn.green { background: linear-gradient(135deg, #26de81, #20bf6b); }
+        .color-btn.yellow { background: linear-gradient(135deg, #fed330, #f7b731); }
+
+        .color-info {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: #718096;
+            white-space: nowrap;
+        }
+
+        .canvas-container {
             background: white;
             border-radius: 12px;
-            padding: 15px;
+            padding: 20px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .track-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .track-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .track-label {
-            font-weight: 600;
-            font-size: 14px;
-            color: #2d3748;
-        }
-
-        select {
-            padding: 6px 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 6px;
-            font-size: 14px;
-            cursor: pointer;
-            background: white;
-            color: #2d3748;
-        }
-
-        select:focus {
-            outline: none;
-            border-color: #4299e1;
-        }
-
-        .track-controls {
-            display: flex;
-            gap: 8px;
-        }
-
-        .clear-btn {
-            padding: 6px 16px;
-            font-size: 12px;
-            background: #ed8936;
-        }
-
-        .clear-btn:hover {
-            background: #dd6b20;
         }
 
         .canvas-wrapper {
@@ -190,6 +183,7 @@
             border-radius: 8px;
             overflow: hidden;
             box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
         }
 
         canvas {
@@ -206,17 +200,13 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 2px;
+            width: 3px;
             height: 100%;
-            background: rgba(255, 0, 0, 0.6);
+            background: rgba(255, 0, 0, 0.7);
             pointer-events: none;
-            box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+            display: none;
         }
-
-        .track-1 .canvas-wrapper { background: linear-gradient(to bottom, #fef5e7, #fdebd0); }
-        .track-2 .canvas-wrapper { background: linear-gradient(to bottom, #e8f8f5, #d1f2eb); }
-        .track-3 .canvas-wrapper { background: linear-gradient(to bottom, #ebf5fb, #d6eaf8); }
-        .track-4 .canvas-wrapper { background: linear-gradient(to bottom, #f4ecf7, #e8daef); }
 
         @media (max-width: 800px) {
             .container {
@@ -244,6 +234,11 @@
             input[type="range"] {
                 flex: 1;
             }
+
+            .color-btn {
+                width: 40px;
+                height: 40px;
+            }
         }
 
         .instructions {
@@ -260,7 +255,7 @@
 <body>
     <div class="container">
         <h1>🎵 軌跡描画型シーケンサー</h1>
-        <p class="subtitle">Draw lines to create music - 線を描いて音楽を作ろう</p>
+        <p class="subtitle">Draw colorful lines to create music - 色で線を描いて音楽を作ろう</p>
 
         <div class="controls">
             <div class="control-group">
@@ -278,98 +273,37 @@
                 <button id="eraserBtn" class="tool-btn">🧹 消しゴム</button>
             </div>
 
-            <button id="clearAllBtn" class="danger">🗑️ 全クリア</button>
+            <button id="clearAllBtn" class="danger">🗑️ クリア</button>
         </div>
 
-        <div class="tracks-container">
-            <div class="track track-1" data-track="0">
-                <div class="track-header">
-                    <div class="track-info">
-                        <span class="track-label">Track 1</span>
-                        <select class="timbre-select">
-                            <option value="square">Square (矩形波)</option>
-                            <option value="triangle">Triangle (三角波)</option>
-                            <option value="sawtooth">Sawtooth (ノコギリ波)</option>
-                            <option value="sine">Sine (正弦波)</option>
-                        </select>
-                    </div>
-                    <div class="track-controls">
-                        <button class="clear-btn">クリア</button>
-                    </div>
-                </div>
-                <div class="canvas-wrapper">
-                    <canvas width="1200" height="120"></canvas>
-                    <div class="playback-line" style="display: none;"></div>
-                </div>
+        <div class="controls">
+            <div class="color-palette">
+                <span class="color-label">ペンの色:</span>
+                <button class="color-btn red active" data-color="red" data-timbre="square">
+                    <span class="color-info">Square</span>
+                </button>
+                <button class="color-btn blue" data-color="blue" data-timbre="triangle">
+                    <span class="color-info">Triangle</span>
+                </button>
+                <button class="color-btn green" data-color="green" data-timbre="sawtooth">
+                    <span class="color-info">Sawtooth</span>
+                </button>
+                <button class="color-btn yellow" data-color="yellow" data-timbre="sine">
+                    <span class="color-info">Sine</span>
+                </button>
             </div>
+        </div>
 
-            <div class="track track-2" data-track="1">
-                <div class="track-header">
-                    <div class="track-info">
-                        <span class="track-label">Track 2</span>
-                        <select class="timbre-select">
-                            <option value="square">Square (矩形波)</option>
-                            <option value="triangle" selected>Triangle (三角波)</option>
-                            <option value="sawtooth">Sawtooth (ノコギリ波)</option>
-                            <option value="sine">Sine (正弦波)</option>
-                        </select>
-                    </div>
-                    <div class="track-controls">
-                        <button class="clear-btn">クリア</button>
-                    </div>
-                </div>
-                <div class="canvas-wrapper">
-                    <canvas width="1200" height="120"></canvas>
-                    <div class="playback-line" style="display: none;"></div>
-                </div>
-            </div>
-
-            <div class="track track-3" data-track="2">
-                <div class="track-header">
-                    <div class="track-info">
-                        <span class="track-label">Track 3</span>
-                        <select class="timbre-select">
-                            <option value="square">Square (矩形波)</option>
-                            <option value="triangle">Triangle (三角波)</option>
-                            <option value="sawtooth" selected>Sawtooth (ノコギリ波)</option>
-                            <option value="sine">Sine (正弦波)</option>
-                        </select>
-                    </div>
-                    <div class="track-controls">
-                        <button class="clear-btn">クリア</button>
-                    </div>
-                </div>
-                <div class="canvas-wrapper">
-                    <canvas width="1200" height="120"></canvas>
-                    <div class="playback-line" style="display: none;"></div>
-                </div>
-            </div>
-
-            <div class="track track-4" data-track="3">
-                <div class="track-header">
-                    <div class="track-info">
-                        <span class="track-label">Track 4</span>
-                        <select class="timbre-select">
-                            <option value="square">Square (矩形波)</option>
-                            <option value="triangle">Triangle (三角波)</option>
-                            <option value="sawtooth">Sawtooth (ノコギリ波)</option>
-                            <option value="sine" selected>Sine (正弦波)</option>
-                        </select>
-                    </div>
-                    <div class="track-controls">
-                        <button class="clear-btn">クリア</button>
-                    </div>
-                </div>
-                <div class="canvas-wrapper">
-                    <canvas width="1200" height="120"></canvas>
-                    <div class="playback-line" style="display: none;"></div>
-                </div>
+        <div class="canvas-container">
+            <div class="canvas-wrapper">
+                <canvas id="mainCanvas" width="1200" height="400"></canvas>
+                <div class="playback-line" id="playbackLine"></div>
             </div>
         </div>
 
         <div class="instructions">
-            💡 使い方: ペンモードで線を描き、再生ボタンを押すと音が鳴ります。<br>
-            縦の位置で音程が変わり、上が高音、下が低音です。複数のトラックで和音も作れます。
+            💡 使い方: 色を選んで線を描き、再生ボタンを押すと音が鳴ります。<br>
+            縦の位置で音程が変わり、上が高音、下が低音です。色によって音色が変わります。
         </div>
     </div>
 
@@ -379,31 +313,52 @@
             isPlaying: false,
             playbackPosition: 0,
             speed: 1.0,
-            tool: 'pen', // 'pen' or 'eraser'
-            tracks: [],
+            tool: 'pen',
+            currentColor: 'red',
+            currentTimbre: 'square',
             animationId: null,
             lastTime: 0,
-            audioContext: null
+            audioContext: null,
+            lastPlaybackX: -10
         };
+
+        // Color to actual RGB values for drawing
+        const COLOR_MAP = {
+            red: '#fc5c65',
+            blue: '#45aaf2',
+            green: '#26de81',
+            yellow: '#fed330'
+        };
+
+        // Canvas and context
+        let canvas, ctx, playbackLine;
+
+        // C Major Scale: C4 to C5 (extended range)
+        const SCALE = [
+            261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00,
+            415.30, 440.00, 466.16, 493.88, 523.25
+        ];
 
         // ==================== Audio Setup ====================
         function initAudio() {
             if (!state.audioContext) {
                 state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             }
+            // Resume context if suspended (required by modern browsers)
+            if (state.audioContext.state === 'suspended') {
+                state.audioContext.resume();
+            }
         }
-
-        // C Major Scale: C4 to C5
-        const SCALE = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
 
         function yToFrequency(y, canvasHeight) {
-            const index = Math.floor((1 - y / canvasHeight) * 8);
-            return SCALE[Math.max(0, Math.min(7, index))];
+            const index = Math.floor((1 - y / canvasHeight) * SCALE.length);
+            return SCALE[Math.max(0, Math.min(SCALE.length - 1, index))];
         }
 
-        function playNote(frequency, timbre, duration = 0.1) {
-            initAudio();
+        function playNote(frequency, timbre, duration = 0.15) {
             const ctx = state.audioContext;
+            if (!ctx) return;
+
             const now = ctx.currentTime;
 
             const oscillator = ctx.createOscillator();
@@ -426,195 +381,44 @@
             oscillator.stop(now + duration);
         }
 
-        // ==================== Track Class ====================
-        class Track {
-            constructor(element, index) {
-                this.element = element;
-                this.index = index;
-                this.canvas = element.querySelector('canvas');
-                this.ctx = this.canvas.getContext('2d');
-                this.playbackLine = element.querySelector('.playback-line');
-                this.timbreSelect = element.querySelector('.timbre-select');
-                this.clearBtn = element.querySelector('.clear-btn');
-
-                this.paths = []; // Array of path arrays
-                this.currentPath = null;
-                this.isDrawing = false;
-                this.lastX = 0;
-                this.lastPlaybackX = -10;
-
-                this.setupCanvas();
-                this.setupEvents();
-            }
-
-            setupCanvas() {
-                this.drawGrid();
-            }
-
-            drawGrid() {
-                const w = this.canvas.width;
-                const h = this.canvas.height;
-
-                this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-                this.ctx.lineWidth = 1;
-
-                // Vertical lines (8 divisions)
-                for (let i = 1; i < 8; i++) {
-                    const x = (w / 8) * i;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(x, 0);
-                    this.ctx.lineTo(x, h);
-                    this.ctx.stroke();
-                }
-
-                // Horizontal lines (8 divisions)
-                for (let i = 1; i < 8; i++) {
-                    const y = (h / 8) * i;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(0, y);
-                    this.ctx.lineTo(w, y);
-                    this.ctx.stroke();
-                }
-            }
-
-            setupEvents() {
-                // Mouse events
-                this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
-                this.canvas.addEventListener('mousemove', (e) => this.draw(e));
-                this.canvas.addEventListener('mouseup', () => this.stopDrawing());
-                this.canvas.addEventListener('mouseleave', () => this.stopDrawing());
-
-                // Touch events
-                this.canvas.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    this.startDrawing(e.touches[0]);
-                });
-                this.canvas.addEventListener('touchmove', (e) => {
-                    e.preventDefault();
-                    this.draw(e.touches[0]);
-                });
-                this.canvas.addEventListener('touchend', () => this.stopDrawing());
-
-                // Clear button
-                this.clearBtn.addEventListener('click', () => this.clear());
-            }
-
-            getCoordinates(e) {
-                const rect = this.canvas.getBoundingClientRect();
-                const scaleX = this.canvas.width / rect.width;
-                const scaleY = this.canvas.height / rect.height;
-
-                return {
-                    x: (e.clientX - rect.left) * scaleX,
-                    y: (e.clientY - rect.top) * scaleY
-                };
-            }
-
-            startDrawing(e) {
-                this.isDrawing = true;
-                const pos = this.getCoordinates(e);
-                this.lastX = pos.x;
-                this.currentPath = [pos];
-            }
-
-            draw(e) {
-                if (!this.isDrawing) return;
-
-                const pos = this.getCoordinates(e);
-                this.currentPath.push(pos);
-
-                if (state.tool === 'pen') {
-                    this.drawLine(this.lastX, this.currentPath[this.currentPath.length - 2].y, pos.x, pos.y);
-                } else if (state.tool === 'eraser') {
-                    this.erase(pos.x, pos.y);
-                }
-
-                this.lastX = pos.x;
-            }
-
-            stopDrawing() {
-                if (this.isDrawing && state.tool === 'pen' && this.currentPath.length > 0) {
-                    this.paths.push(this.currentPath);
-                }
-                this.isDrawing = false;
-                this.currentPath = null;
-            }
-
-            drawLine(x1, y1, x2, y2) {
-                this.ctx.strokeStyle = this.getTrackColor();
-                this.ctx.lineWidth = 3;
-                this.ctx.lineCap = 'round';
-                this.ctx.lineJoin = 'round';
-
-                this.ctx.beginPath();
-                this.ctx.moveTo(x1, y1);
-                this.ctx.lineTo(x2, y2);
-                this.ctx.stroke();
-            }
-
-            erase(x, y) {
-                const eraserSize = 20;
-                this.ctx.clearRect(x - eraserSize / 2, y - eraserSize / 2, eraserSize, eraserSize);
-                this.drawGrid(); // Redraw grid in cleared area
-            }
-
-            getTrackColor() {
-                const colors = ['#d68910', '#148f77', '#1f618d', '#7d3c98'];
-                return colors[this.index];
-            }
-
-            clear() {
-                this.paths = [];
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                this.drawGrid();
-            }
-
-            checkIntersection(x) {
-                const imageData = this.ctx.getImageData(x, 0, 1, this.canvas.height);
-                const data = imageData.data;
-                const intersections = [];
-
-                for (let y = 0; y < this.canvas.height; y++) {
-                    const i = y * 4;
-                    const alpha = data[i + 3];
-
-                    // If there's a drawn pixel (not transparent)
-                    if (alpha > 128) {
-                        intersections.push(y);
-                    }
-                }
-
-                return intersections;
-            }
-
-            updatePlaybackLine(x) {
-                const percentage = (x / this.canvas.width) * 100;
-                this.playbackLine.style.left = percentage + '%';
-            }
-
-            showPlaybackLine() {
-                this.playbackLine.style.display = 'block';
-            }
-
-            hidePlaybackLine() {
-                this.playbackLine.style.display = 'none';
-            }
-
-            getTimbre() {
-                return this.timbreSelect.value;
-            }
-        }
-
-        // ==================== Initialization ====================
+        // ==================== Drawing Setup ====================
         function init() {
-            const trackElements = document.querySelectorAll('.track');
-            trackElements.forEach((el, i) => {
-                state.tracks.push(new Track(el, i));
-            });
+            canvas = document.getElementById('mainCanvas');
+            ctx = canvas.getContext('2d', { willReadFrequently: true });
+            playbackLine = document.getElementById('playbackLine');
 
+            drawGrid();
             setupControls();
+            setupDrawing();
         }
 
+        function drawGrid() {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+            ctx.lineWidth = 1;
+
+            // Vertical lines (16 divisions)
+            for (let i = 1; i < 16; i++) {
+                const x = (w / 16) * i;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+
+            // Horizontal lines (12 divisions - for 13 notes)
+            for (let i = 1; i < 12; i++) {
+                const y = (h / 12) * i;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+        }
+
+        // ==================== Controls ====================
         function setupControls() {
             // Play/Stop
             document.getElementById('playBtn').addEventListener('click', play);
@@ -634,6 +438,16 @@
 
             // Clear all
             document.getElementById('clearAllBtn').addEventListener('click', clearAll);
+
+            // Color palette
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.currentColor = btn.dataset.color;
+                    state.currentTimbre = btn.dataset.timbre;
+                });
+            });
         }
 
         function setTool(tool) {
@@ -645,36 +459,147 @@
             if (tool === 'pen') {
                 penBtn.classList.add('active');
                 eraserBtn.classList.remove('active');
-                state.tracks.forEach(track => {
-                    track.canvas.classList.remove('eraser');
-                });
+                canvas.classList.remove('eraser');
             } else {
                 eraserBtn.classList.add('active');
                 penBtn.classList.remove('active');
-                state.tracks.forEach(track => {
-                    track.canvas.classList.add('eraser');
-                });
+                canvas.classList.add('eraser');
             }
         }
 
         function clearAll() {
-            if (confirm('全てのトラックをクリアしますか？')) {
-                state.tracks.forEach(track => track.clear());
+            if (confirm('キャンバスをクリアしますか？')) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawGrid();
             }
+        }
+
+        // ==================== Drawing ====================
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        function setupDrawing() {
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+
+            // Touch events
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousedown', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                canvas.dispatchEvent(mouseEvent);
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                canvas.dispatchEvent(mouseEvent);
+            });
+
+            canvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                const mouseEvent = new MouseEvent('mouseup', {});
+                canvas.dispatchEvent(mouseEvent);
+            });
+        }
+
+        function getCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const pos = getCoordinates(e);
+            lastX = pos.x;
+            lastY = pos.y;
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+
+            const pos = getCoordinates(e);
+
+            if (state.tool === 'pen') {
+                ctx.strokeStyle = COLOR_MAP[state.currentColor];
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            } else if (state.tool === 'eraser') {
+                const eraserSize = 30;
+                ctx.clearRect(pos.x - eraserSize / 2, pos.y - eraserSize / 2, eraserSize, eraserSize);
+                // Redraw grid in erased area
+                ctx.save();
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+                ctx.lineWidth = 1;
+
+                const w = canvas.width;
+                const h = canvas.height;
+
+                for (let i = 1; i < 16; i++) {
+                    const x = (w / 16) * i;
+                    if (x >= pos.x - eraserSize / 2 && x <= pos.x + eraserSize / 2) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, Math.max(0, pos.y - eraserSize / 2));
+                        ctx.lineTo(x, Math.min(h, pos.y + eraserSize / 2));
+                        ctx.stroke();
+                    }
+                }
+
+                for (let i = 1; i < 12; i++) {
+                    const y = (h / 12) * i;
+                    if (y >= pos.y - eraserSize / 2 && y <= pos.y + eraserSize / 2) {
+                        ctx.beginPath();
+                        ctx.moveTo(Math.max(0, pos.x - eraserSize / 2), y);
+                        ctx.lineTo(Math.min(w, pos.x + eraserSize / 2), y);
+                        ctx.stroke();
+                    }
+                }
+                ctx.restore();
+            }
+
+            lastX = pos.x;
+            lastY = pos.y;
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
         }
 
         // ==================== Playback ====================
         function play() {
             if (state.isPlaying) return;
 
+            // Initialize audio context on user interaction
             initAudio();
+
             state.isPlaying = true;
             state.lastTime = performance.now();
+            state.lastPlaybackX = -10;
 
-            state.tracks.forEach(track => {
-                track.showPlaybackLine();
-                track.lastPlaybackX = -10;
-            });
+            playbackLine.style.display = 'block';
 
             animate();
         }
@@ -682,16 +607,15 @@
         function stop() {
             state.isPlaying = false;
             state.playbackPosition = 0;
+            state.lastPlaybackX = -10;
 
             if (state.animationId) {
                 cancelAnimationFrame(state.animationId);
                 state.animationId = null;
             }
 
-            state.tracks.forEach(track => {
-                track.hidePlaybackLine();
-                track.updatePlaybackLine(0);
-            });
+            playbackLine.style.display = 'none';
+            playbackLine.style.left = '0%';
         }
 
         function animate(currentTime) {
@@ -700,70 +624,114 @@
             const deltaTime = currentTime - state.lastTime;
             state.lastTime = currentTime;
 
-            // Move playback position (60fps baseline, 1200px in 4 seconds at 1x speed)
-            const baseSpeed = 1200 / (4 * 1000); // pixels per ms
+            // Move playback position (1200px in 5 seconds at 1x speed)
+            const baseSpeed = 1200 / (5 * 1000); // pixels per ms
             state.playbackPosition += deltaTime * baseSpeed * state.speed;
 
             // Loop when reaching the end
-            if (state.playbackPosition >= 1200) {
+            if (state.playbackPosition >= canvas.width) {
                 state.playbackPosition = 0;
-                state.tracks.forEach(track => track.lastPlaybackX = -10);
+                state.lastPlaybackX = -10;
             }
 
-            // Update all tracks
-            state.tracks.forEach(track => {
-                track.updatePlaybackLine(state.playbackPosition);
-                checkAndPlayNotes(track, Math.floor(state.playbackPosition));
-            });
+            // Update playback line position
+            const percentage = (state.playbackPosition / canvas.width) * 100;
+            playbackLine.style.left = percentage + '%';
+
+            // Check for intersections and play notes
+            checkAndPlayNotes(Math.floor(state.playbackPosition));
 
             state.animationId = requestAnimationFrame(animate);
         }
 
-        function checkAndPlayNotes(track, x) {
-            // Only check new positions
-            if (x <= track.lastPlaybackX) return;
+        function checkAndPlayNotes(x) {
+            // Only check new positions (skip if we've already checked this x)
+            if (x <= state.lastPlaybackX || x >= canvas.width) return;
 
-            const intersections = track.checkIntersection(x);
+            // Get pixel data at this x position
+            const imageData = ctx.getImageData(x, 0, 1, canvas.height);
+            const data = imageData.data;
 
-            if (intersections.length > 0) {
-                // Play note for each intersection point
-                intersections.forEach(y => {
-                    const frequency = yToFrequency(y, track.canvas.height);
-                    const timbre = track.getTimbre();
-                    playNote(frequency, timbre);
+            const playedNotes = new Map(); // Track notes by color to avoid duplicates
 
-                    // Visual feedback
-                    flashIntersection(track, x, y);
-                });
+            for (let y = 0; y < canvas.height; y++) {
+                const i = y * 4;
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const a = data[i + 3];
+
+                // If there's a drawn pixel (not transparent)
+                if (a > 128) {
+                    // Determine color and timbre
+                    const colorInfo = getColorFromRGB(r, g, b);
+                    if (colorInfo) {
+                        const frequency = yToFrequency(y, canvas.height);
+                        const key = `${colorInfo.timbre}_${Math.round(frequency)}`;
+
+                        if (!playedNotes.has(key)) {
+                            playNote(frequency, colorInfo.timbre);
+                            flashIntersection(x, y, colorInfo.color);
+                            playedNotes.set(key, true);
+                        }
+                    }
+                }
             }
 
-            track.lastPlaybackX = x;
+            state.lastPlaybackX = x;
         }
 
-        function flashIntersection(track, x, y) {
-            const ctx = track.ctx;
+        function getColorFromRGB(r, g, b) {
+            // Match RGB to our color palette
+            if (r > 200 && g < 150 && b < 150) return { color: 'red', timbre: 'square' };
+            if (r < 150 && g > 150 && b > 200) return { color: 'blue', timbre: 'triangle' };
+            if (r < 150 && g > 200 && b < 200) return { color: 'green', timbre: 'sawtooth' };
+            if (r > 200 && g > 200 && b < 150) return { color: 'yellow', timbre: 'sine' };
+            return null;
+        }
+
+        function flashIntersection(x, y, color) {
             ctx.save();
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.shadowColor = COLOR_MAP[color];
+            ctx.shadowBlur = 15;
             ctx.beginPath();
-            ctx.arc(x, y, 8, 0, Math.PI * 2);
+            ctx.arc(x, y, 6, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
 
             // Fade out effect
             setTimeout(() => {
-                track.ctx.clearRect(x - 10, y - 10, 20, 20);
-                track.drawGrid();
+                ctx.clearRect(x - 10, y - 10, 20, 20);
 
-                // Redraw paths in that area
-                track.paths.forEach(path => {
-                    for (let i = 1; i < path.length; i++) {
-                        const p1 = path[i - 1];
-                        const p2 = path[i];
-                        if ((p1.x >= x - 10 && p1.x <= x + 10) || (p2.x >= x - 10 && p2.x <= x + 10)) {
-                            track.drawLine(p1.x, p1.y, p2.x, p2.y);
-                        }
+                // Redraw grid
+                ctx.save();
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+                ctx.lineWidth = 1;
+
+                const w = canvas.width;
+                const h = canvas.height;
+
+                for (let i = 1; i < 16; i++) {
+                    const gx = (w / 16) * i;
+                    if (gx >= x - 10 && gx <= x + 10) {
+                        ctx.beginPath();
+                        ctx.moveTo(gx, Math.max(0, y - 10));
+                        ctx.lineTo(gx, Math.min(h, y + 10));
+                        ctx.stroke();
                     }
-                });
+                }
+
+                for (let i = 1; i < 12; i++) {
+                    const gy = (h / 12) * i;
+                    if (gy >= y - 10 && gy <= y + 10) {
+                        ctx.beginPath();
+                        ctx.moveTo(Math.max(0, x - 10), gy);
+                        ctx.lineTo(Math.min(w, x + 10), gy);
+                        ctx.stroke();
+                    }
+                }
+                ctx.restore();
             }, 100);
         }
 

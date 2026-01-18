@@ -53,7 +53,7 @@
       "path": "./trajectory-sequencer/",
       "icon": "🎵",
       "title": "Trajectory Sequencer",
-      "description": "Draw lines on 4 tracks to create music - interactive sound sequencer",
+      "description": "Draw colorful lines to create music - each color plays different sounds",
       "device": "both"
     }
   ]
