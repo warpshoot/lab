@@ -296,6 +296,13 @@
                 <button id="stopBtn">■ 停止</button>
             </div>
 
+            <div class="control-group">
+                <label style="display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 600; color: #4a5568; cursor: pointer;">
+                    <input type="checkbox" id="pingPongCheck" style="cursor: pointer;">
+                    <span>往復再生</span>
+                </label>
+            </div>
+
             <div class="slider-group">
                 <label class="speed-label">速度: <span id="speedValue">1.0</span>x</label>
                 <input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1">
@@ -422,7 +429,9 @@
                 blue: 'triangle',
                 green: 'sawtooth',
                 yellow: 'sine'
-            }
+            },
+            playbackDirection: 1, // 1 = right, -1 = left
+            pingPongMode: false // true = ping-pong, false = loop
         };
 
         // Musical quantization grid (16th notes at 120 BPM)
@@ -676,6 +685,12 @@
             document.getElementById('playBtn').addEventListener('click', play);
             document.getElementById('stopBtn').addEventListener('click', stop);
 
+            // Ping-pong mode checkbox
+            const pingPongCheck = document.getElementById('pingPongCheck');
+            pingPongCheck.addEventListener('change', (e) => {
+                state.pingPongMode = e.target.checked;
+            });
+
             // Speed slider
             const speedSlider = document.getElementById('speedSlider');
             const speedValue = document.getElementById('speedValue');
@@ -788,11 +803,6 @@
 
             ctx.putImageData(imageData, 0, 0);
             drawGrid();
-
-            // Update snapshot if playing
-            if (state.isPlaying) {
-                state.canvasSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            }
         }
 
         // ==================== Drawing ====================
@@ -908,10 +918,6 @@
         function stopDrawing() {
             if (isDrawing) {
                 isDrawing = false;
-                // Update snapshot if playing (enables real-time drawing)
-                if (state.isPlaying) {
-                    state.canvasSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                }
             }
         }
 
@@ -940,6 +946,7 @@
 
             state.isPlaying = true;
             state.playbackPosition = 0;
+            state.playbackDirection = 1; // Start going right
             state.lastTime = performance.now();
             state.lastPlaybackX = -10;
 
@@ -982,14 +989,30 @@
 
             // Move playback position (1200px in 5 seconds at 1x speed)
             const baseSpeed = 1200 / (5 * 1000); // pixels per ms
-            state.playbackPosition += deltaTime * baseSpeed * state.speed;
+            state.playbackPosition += deltaTime * baseSpeed * state.speed * state.playbackDirection;
 
-            // Loop when reaching the end
-            if (state.playbackPosition >= canvas.width) {
-                state.playbackPosition = 0;
-                state.lastPlaybackX = -10;
-                state.activeFlashes = [];
-                state.playedGrids.clear();
+            // Handle boundary conditions
+            if (state.pingPongMode) {
+                // Ping-pong mode: reverse direction at boundaries
+                if (state.playbackPosition >= canvas.width) {
+                    state.playbackPosition = canvas.width - 1;
+                    state.playbackDirection = -1; // Go left
+                    state.lastPlaybackX = canvas.width + 10;
+                    state.playedGrids.clear();
+                } else if (state.playbackPosition <= 0) {
+                    state.playbackPosition = 0;
+                    state.playbackDirection = 1; // Go right
+                    state.lastPlaybackX = -10;
+                    state.playedGrids.clear();
+                }
+            } else {
+                // Loop mode: jump back to start
+                if (state.playbackPosition >= canvas.width) {
+                    state.playbackPosition = 0;
+                    state.lastPlaybackX = -10;
+                    state.activeFlashes = [];
+                    state.playedGrids.clear();
+                }
             }
 
             // Restore original canvas and redraw flashes
@@ -1027,7 +1050,13 @@
 
         function checkAndPlayNotes(x) {
             // Only check new positions (skip if we've already checked this x)
-            if (x <= state.lastPlaybackX || x >= canvas.width) return;
+            if (state.playbackDirection === 1) {
+                // Moving right: skip if x hasn't advanced
+                if (x <= state.lastPlaybackX || x >= canvas.width) return;
+            } else {
+                // Moving left: skip if x hasn't decreased
+                if (x >= state.lastPlaybackX || x < 0) return;
+            }
 
             // Quantize to nearest grid position (16th note)
             const gridPosition = Math.round(x / GRID_SIZE) * GRID_SIZE;
