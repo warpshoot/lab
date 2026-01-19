@@ -404,7 +404,8 @@
         <div class="instructions">
             💡 使い方: 色を選んで線を描き、再生ボタンを押すと音が鳴ります。<br>
             縦の位置で音程が変わり、上が高音、下が低音です。色によって音色が変わります。<br>
-            🎼 音階を選んで雰囲気を変えられます。リズムは自動整列で、適当に描いても音楽になります！
+            🎼 音階を選んで雰囲気を変えられます。リズムは自動整列で、適当に描いても音楽になります！<br>
+            🎧 <strong>DJモード:</strong> 再生中にキャンバスをドラッグすると、ピッチベンド＆フィルターが効きます！上下に動かして音を操作しよう！
         </div>
     </div>
 
@@ -431,7 +432,15 @@
                 yellow: 'sine'
             },
             playbackDirection: 1, // 1 = right, -1 = left
-            pingPongMode: false // true = ping-pong, false = loop
+            pingPongMode: false, // true = ping-pong, false = loop
+            // DJ Mode (real-time effects)
+            djMode: {
+                active: false,
+                startY: 0,
+                pitchBend: 1.0,        // 0.5 ~ 2.0 (±1 octave)
+                filterEnabled: false,
+                filterCutoff: 20000    // 200 ~ 20000 Hz
+            }
         };
 
         // Musical quantization grid (16th notes at 120 BPM)
@@ -531,13 +540,16 @@
 
             const now = ctx.currentTime;
 
+            // Apply DJ Mode pitch bend
+            const djFrequency = frequency * state.djMode.pitchBend;
+
             // Basic waveforms
             if (['square', 'triangle', 'sawtooth', 'sine'].includes(timbre)) {
                 const oscillator = ctx.createOscillator();
                 const gainNode = ctx.createGain();
 
                 oscillator.type = timbre;
-                oscillator.frequency.setValueAtTime(frequency, now);
+                oscillator.frequency.setValueAtTime(djFrequency, now);
 
                 // ADSR Envelope - softer and more musical
                 gainNode.gain.setValueAtTime(0, now);
@@ -546,8 +558,20 @@
                 gainNode.gain.setValueAtTime(0.12, now + duration - 0.15); // Sustain
                 gainNode.gain.linearRampToValueAtTime(0, now + duration); // Release
 
-                oscillator.connect(gainNode);
-                gainNode.connect(ctx.destination);
+                // Apply DJ Mode filter if active
+                if (state.djMode.filterEnabled) {
+                    const filter = ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(state.djMode.filterCutoff, now);
+                    filter.Q.setValueAtTime(1, now);
+
+                    oscillator.connect(filter);
+                    filter.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                } else {
+                    oscillator.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                }
 
                 oscillator.start(now);
                 oscillator.stop(now + duration);
@@ -562,15 +586,27 @@
                     const gain = ctx.createGain();
 
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(frequency * harmonic, now);
+                    osc.frequency.setValueAtTime(djFrequency * harmonic, now);
 
                     // Piano-like envelope: quick attack, slower decay
                     gain.gain.setValueAtTime(0, now);
                     gain.gain.linearRampToValueAtTime(gains[index], now + 0.005);
                     gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
+                    // Apply DJ Mode filter if active
+                    if (state.djMode.filterEnabled) {
+                        const filter = ctx.createBiquadFilter();
+                        filter.type = 'lowpass';
+                        filter.frequency.setValueAtTime(state.djMode.filterCutoff, now);
+                        filter.Q.setValueAtTime(1, now);
+
+                        osc.connect(filter);
+                        filter.connect(gain);
+                        gain.connect(ctx.destination);
+                    } else {
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                    }
 
                     osc.start(now);
                     osc.stop(now + duration);
@@ -582,15 +618,27 @@
                 const gain = ctx.createGain();
 
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(frequency, now);
+                osc.frequency.setValueAtTime(djFrequency, now);
 
                 // Bell envelope: quick attack, long decay
                 gain.gain.setValueAtTime(0, now);
                 gain.gain.linearRampToValueAtTime(0.3, now + 0.01);
                 gain.gain.exponentialRampToValueAtTime(0.001, now + duration * 2);
 
-                osc.connect(gain);
-                gain.connect(ctx.destination);
+                // Apply DJ Mode filter if active
+                if (state.djMode.filterEnabled) {
+                    const filter = ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(state.djMode.filterCutoff, now);
+                    filter.Q.setValueAtTime(1, now);
+
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(ctx.destination);
+                } else {
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                }
 
                 osc.start(now);
                 osc.stop(now + duration * 2);
@@ -599,10 +647,11 @@
             else if (timbre === 'bass') {
                 const osc = ctx.createOscillator();
                 const filter = ctx.createBiquadFilter();
+                const djFilter = state.djMode.filterEnabled ? ctx.createBiquadFilter() : null;
                 const gain = ctx.createGain();
 
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(frequency, now);
+                osc.frequency.setValueAtTime(djFrequency, now);
 
                 filter.type = 'lowpass';
                 filter.frequency.setValueAtTime(800, now);
@@ -613,8 +662,18 @@
                 gain.gain.linearRampToValueAtTime(0.15, now + 0.05);
                 gain.gain.linearRampToValueAtTime(0, now + duration);
 
+                // Connect: osc -> bass filter -> (optional DJ filter) -> gain -> destination
                 osc.connect(filter);
-                filter.connect(gain);
+                if (djFilter) {
+                    djFilter.type = 'lowpass';
+                    djFilter.frequency.setValueAtTime(state.djMode.filterCutoff, now);
+                    djFilter.Q.setValueAtTime(1, now);
+
+                    filter.connect(djFilter);
+                    djFilter.connect(gain);
+                } else {
+                    filter.connect(gain);
+                }
                 gain.connect(ctx.destination);
 
                 osc.start(now);
@@ -626,7 +685,7 @@
                 const gain = ctx.createGain();
 
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(frequency, now);
+                osc.frequency.setValueAtTime(djFrequency, now);
 
                 // Strings envelope: slow attack, sustained
                 gain.gain.setValueAtTime(0, now);
@@ -634,8 +693,20 @@
                 gain.gain.setValueAtTime(0.15, now + duration - 0.1);
                 gain.gain.linearRampToValueAtTime(0, now + duration);
 
-                osc.connect(gain);
-                gain.connect(ctx.destination);
+                // Apply DJ Mode filter if active
+                if (state.djMode.filterEnabled) {
+                    const filter = ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(state.djMode.filterCutoff, now);
+                    filter.Q.setValueAtTime(1, now);
+
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(ctx.destination);
+                } else {
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                }
 
                 osc.start(now);
                 osc.stop(now + duration);
@@ -857,16 +928,47 @@
         }
 
         function startDrawing(e) {
-            isDrawing = true;
             const pos = getCoordinates(e);
+
+            // DJ Mode: During playback, start DJ control instead of drawing
+            if (state.isPlaying) {
+                state.djMode.active = true;
+                state.djMode.startY = pos.y;
+                state.djMode.pitchBend = 1.0;
+                state.djMode.filterEnabled = false;
+                state.djMode.filterCutoff = 20000;
+                return;
+            }
+
+            // Normal drawing mode
+            isDrawing = true;
             lastX = pos.x;
             lastY = pos.y;
         }
 
         function draw(e) {
-            if (!isDrawing) return;
-
             const pos = getCoordinates(e);
+
+            // DJ Mode: Update effects based on Y distance from start
+            if (state.djMode.active) {
+                const deltaY = state.djMode.startY - pos.y; // Inverted: up = positive
+
+                // Pitch bend: ±200px = ±1 octave (0.5x ~ 2.0x)
+                const pitchSemitones = (deltaY / 200) * 12; // ±12 semitones
+                state.djMode.pitchBend = Math.pow(2, pitchSemitones / 12);
+                state.djMode.pitchBend = Math.max(0.5, Math.min(2.0, state.djMode.pitchBend));
+
+                // Filter: up = bright (20kHz), down = muffled (200Hz)
+                state.djMode.filterEnabled = true;
+                const filterRange = 20000 - 200;
+                state.djMode.filterCutoff = 10000 + (deltaY / 200) * 9800;
+                state.djMode.filterCutoff = Math.max(200, Math.min(20000, state.djMode.filterCutoff));
+
+                return;
+            }
+
+            // Normal drawing mode
+            if (!isDrawing) return;
 
             if (state.tool === 'pen') {
                 ctx.strokeStyle = COLOR_MAP[state.currentColor];
@@ -916,6 +1018,15 @@
         }
 
         function stopDrawing() {
+            // Reset DJ Mode
+            if (state.djMode.active) {
+                state.djMode.active = false;
+                state.djMode.pitchBend = 1.0;
+                state.djMode.filterEnabled = false;
+                state.djMode.filterCutoff = 20000;
+            }
+
+            // Reset drawing mode
             if (isDrawing) {
                 isDrawing = false;
             }
