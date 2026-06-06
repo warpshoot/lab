@@ -55,6 +55,13 @@
       "title": "Trajectory Sequencer",
       "description": "Draw colorful lines to create music - each color plays different sounds",
       "device": "both"
+    },
+    {
+      "path": "./dm-mock/",
+      "icon": "💬",
+      "title": "DM Mock",
+      "description": "Instagram風DMのモック画面を作成・スクショ保存できるツール",
+      "device": "mobile"
     }
   ]
 }
