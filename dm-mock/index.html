@@ -7,16 +7,16 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   :root{
-    --bg:#ffffff; --header-border:#efefef; --text:#000000; --sub:#8e8e8e;
-    --in-bubble:#efefef; --in-text:#000000;
-    --out-bubble:#3797f0; --out-text:#ffffff;
-    --bar:#ffffff; --icon:#000000;
+    --bg:#ffffff; --header-border:#ededed; --text:#111111; --sub:#8a8f96;
+    --in-bubble:#eceef0; --in-text:#111111;
+    --out-bubble:#4ca771; --out-text:#ffffff;
+    --bar:#ffffff; --icon:#1a1a1a;
   }
   body.dark{
-    --bg:#000000; --header-border:#262626; --text:#ffffff; --sub:#a8a8a8;
-    --in-bubble:#262626; --in-text:#ffffff;
-    --out-bubble:#3797f0; --out-text:#ffffff;
-    --bar:#000000; --icon:#ffffff;
+    --bg:#10141a; --header-border:#262c34; --text:#f2f3f5; --sub:#9aa0a8;
+    --in-bubble:#222932; --in-text:#f2f3f5;
+    --out-bubble:#4ca771; --out-text:#ffffff;
+    --bar:#10141a; --icon:#f2f3f5;
   }
   html,body{ height:100%; }
   body{
@@ -45,7 +45,7 @@
   .back{ width:24px; height:24px; color:var(--icon); flex-shrink:0; cursor:pointer; }
   .avatar{
     width:38px; height:38px; border-radius:50%;
-    background:linear-gradient(135deg,#f58529,#dd2a7b,#8134af);
+    background:linear-gradient(135deg,#4ca771,#2f7d52);
     flex-shrink:0; overflow:hidden; background-size:cover; background-position:center;
     display:flex; align-items:center; justify-content:center; font-weight:600; color:#fff; font-size:16px;
   }
@@ -189,10 +189,10 @@
   </div>
 
   <div class="tabbar" id="tabbar">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9.5z"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-4v-6H8v6H4a1 1 0 0 1-1-1V10.5z"/></svg>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="8" r="4"/><path d="M4 21c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 9.5 9.5 0 0 1-4-.9L3 21l1.9-5.5a9.5 9.5 0 0 1-.9-4A8.38 8.38 0 0 1 12.5 3 8.38 8.38 0 0 1 21 11.5z"/></svg>
   </div>
 
@@ -227,16 +227,16 @@
   const chat=document.getElementById('chat');
   const avatar=document.getElementById('avatar');
   const input=document.getElementById('input');
-  let avatarColor='linear-gradient(135deg,#f58529,#dd2a7b,#8134af)';
+  let avatarColor='linear-gradient(135deg,#4ca771,#2f7d52)';
   let avatarImg=null;
   let dir='out';
   const palette=[
-    'linear-gradient(135deg,#f58529,#dd2a7b,#8134af)',
-    'linear-gradient(135deg,#3797f0,#1d62b8)',
-    'linear-gradient(135deg,#7ed957,#2e7d32)',
-    'linear-gradient(135deg,#ff8a5c,#e0457b)',
+    'linear-gradient(135deg,#4ca771,#2f7d52)',
+    'linear-gradient(135deg,#5aa0e0,#3a6ea5)',
+    'linear-gradient(135deg,#e0915a,#c9603b)',
     'linear-gradient(135deg,#b06ef7,#5e35b1)',
-    'linear-gradient(135deg,#8d99ae,#2b2d42)'
+    'linear-gradient(135deg,#e06a90,#b03d63)',
+    'linear-gradient(135deg,#8d99ae,#43485a)'
   ];
   function nowTime(){ const d=new Date(); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'); }
 
@@ -338,11 +338,23 @@
     const composer=document.getElementById('composer'); const fab=document.getElementById('fab'); const toolbar=document.getElementById('toolbar');
     const cDisp=composer.style.display;
     composer.style.display='none'; fab.style.display='none'; toolbar.classList.remove('open');
-    const darkBg=document.body.classList.contains('dark')?'#000':'#fff';
+    const darkBg=document.body.classList.contains('dark')?'#10141a':'#fff';
     html2canvas(document.getElementById('phone'),{backgroundColor:darkBg,scale:2}).then(c=>{
-      const a=document.createElement('a'); a.download='dm-mock.png'; a.href=c.toDataURL(); a.click();
-      if(!uiHidden){ document.querySelectorAll('.del').forEach(d=>d.style.display=''); composer.style.display=cDisp||'flex'; }
-      fab.style.display='';
+      const restore=()=>{
+        if(!uiHidden){ document.querySelectorAll('.del').forEach(d=>d.style.display=''); composer.style.display=cDisp||'flex'; }
+        fab.style.display='';
+      };
+      c.toBlob(async (blob)=>{
+        const file=new File([blob],'message.png',{type:'image/png'});
+        if(navigator.canShare && navigator.canShare({files:[file]})){
+          try{ await navigator.share({files:[file]}); }
+          catch(e){ /* キャンセル時は何もしない */ }
+          restore(); return;
+        }
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a'); a.download='message.png'; a.href=url; a.click();
+        URL.revokeObjectURL(url); restore();
+      },'image/png');
     });
   }
 </script>
