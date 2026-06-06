@@ -156,7 +156,7 @@
     <button onclick="hideUI()">🙈 UIを隠す</button>
   </div>
 
-  <div class="statusbar">
+  <div class="statusbar" id="statusbarEl">
     <span id="sbTime">22:57</span>
     <span class="sb-right">
       <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
@@ -165,7 +165,7 @@
     </span>
   </div>
 
-  <div class="header">
+  <div class="header" id="headerEl">
     <svg class="back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     <div class="avatar" id="avatar">え</div>
     <span class="h-name" id="contactName">えむ</span>
@@ -279,15 +279,13 @@
     uiHidden=true;
     document.getElementById('composer').style.display='none';
     document.getElementById('toolbar').classList.remove('open');
-    document.getElementById('fab').textContent='👁';
-    document.getElementById('fab').onclick=showUI;
+    document.getElementById('fab').style.display='none';
     document.querySelectorAll('.del').forEach(d=>d.style.display='none');
   }
   function showUI(){
     uiHidden=false;
     document.getElementById('composer').style.display='flex';
-    document.getElementById('fab').textContent='⚙';
-    document.getElementById('fab').onclick=toggleToolbar;
+    document.getElementById('fab').style.display='';
     document.querySelectorAll('.del').forEach(d=>d.style.display='');
   }
 
@@ -326,6 +324,16 @@
     avatar.textContent=(setName.value.trim()[0]||'?'); document.getElementById('fileName').textContent='';
   }
   document.getElementById('timeToggle').addEventListener('change',function(){ chat.classList.toggle('hide-time',!this.checked); });
+  // Long-press on status bar or header to toggle UI
+  let _pt=null,_px=0,_py=0;
+  ['statusbarEl','headerEl'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.addEventListener('pointerdown',e=>{_px=e.clientX;_py=e.clientY;_pt=setTimeout(()=>{if(navigator.vibrate)navigator.vibrate(20);uiHidden?showUI():hideUI();},600);});
+    el.addEventListener('pointerup',()=>clearTimeout(_pt));
+    el.addEventListener('pointermove',e=>{if(Math.hypot(e.clientX-_px,e.clientY-_py)>10)clearTimeout(_pt);});
+    el.addEventListener('pointercancel',()=>clearTimeout(_pt));
+  });
+
   document.getElementById('checkToggle').addEventListener('change',function(){
     const show=this.checked;
     document.querySelectorAll('.out .time').forEach(m=>{

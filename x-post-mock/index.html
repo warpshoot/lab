@@ -197,7 +197,7 @@ body {
   </div>
 
   <!-- Top navigation -->
-  <div class="topnav">
+  <div class="topnav" id="topnavEl">
     <div class="nav-btn">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     </div>
@@ -460,18 +460,26 @@ let uiHidden = false;
 function hideUI() {
   uiHidden = true;
   document.getElementById('toolbar').classList.remove('open');
-  document.getElementById('fab').textContent = '👁';
-  document.getElementById('fab').onclick = showUI;
+  document.getElementById('fab').style.display = 'none';
   document.getElementById('replyBarEl').style.display = 'none';
   document.getElementById('postBody').contentEditable = 'false';
 }
 function showUI() {
   uiHidden = false;
-  document.getElementById('fab').textContent = '⚙';
-  document.getElementById('fab').onclick = toggleToolbar;
+  document.getElementById('fab').style.display = '';
   document.getElementById('replyBarEl').style.display = '';
   document.getElementById('postBody').contentEditable = 'true';
 }
+
+// Long-press on status bar or top nav to toggle UI
+let _pt=null,_px=0,_py=0;
+['statusbarEl','topnavEl'].forEach(id=>{
+  const el=document.getElementById(id);
+  el.addEventListener('pointerdown',e=>{_px=e.clientX;_py=e.clientY;_pt=setTimeout(()=>{if(navigator.vibrate)navigator.vibrate(20);uiHidden?showUI():hideUI();},600);});
+  el.addEventListener('pointerup',()=>clearTimeout(_pt));
+  el.addEventListener('pointermove',e=>{if(Math.hypot(e.clientX-_px,e.clientY-_py)>10)clearTimeout(_pt);});
+  el.addEventListener('pointercancel',()=>clearTimeout(_pt));
+});
 
 function openPanel() {
   document.getElementById('toolbar').classList.remove('open');
