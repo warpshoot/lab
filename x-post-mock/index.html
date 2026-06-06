@@ -62,11 +62,6 @@ body {
 .author-mid { flex:1; min-width:0; }
 .author-name { font-size:15px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .author-handle { font-size:14px; color:var(--sub); margin-top:1px; }
-.xcombadge {
-  display:flex; align-items:center; gap:3px; color:var(--sub);
-  font-size:13px; font-weight:500; flex-shrink:0; padding-top:2px; user-select:none;
-}
-.xcombadge svg { width:14px; height:14px; }
 
 /* Post body */
 .post-body {
@@ -218,10 +213,6 @@ body {
           <div class="author-name" id="displayName">となり街の園田さん</div>
           <div class="author-handle" id="displayHandle">@motokanoirane</div>
         </div>
-        <div class="xcombadge" id="xcombadgeEl">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.261 5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-          X.com
-        </div>
       </div>
 
       <!-- Post body -->
@@ -330,11 +321,6 @@ body {
         <label>アクションバー</label>
         <span class="switch"><input type="checkbox" id="actionToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
       </div>
-      <div class="toggle-row">
-        <label>X.com バッジ</label>
-        <span class="switch"><input type="checkbox" id="xcombadgeToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
-      </div>
-
       <div class="panel-btns"><button class="done-btn" onclick="closePanel()">完了</button></div>
     </div>
   </div>
@@ -446,10 +432,6 @@ document.getElementById('sbToggle').addEventListener('change', function() {
 document.getElementById('actionToggle').addEventListener('change', function() {
   document.getElementById('actionBarEl').style.display = this.checked ? '' : 'none';
 });
-document.getElementById('xcombadgeToggle').addEventListener('change', function() {
-  document.getElementById('xcombadgeEl').style.display = this.checked ? '' : 'none';
-});
-
 function toggleToolbar() { document.getElementById('toolbar').classList.toggle('open'); }
 function toggleDark() {
   document.body.classList.toggle('dark');
