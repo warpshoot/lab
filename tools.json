@@ -36,6 +36,11 @@
       "description": "Instagram風DMのモック画面を作成・スクショ保存"
     },
     {
+      "path": "./x-post-mock/",
+      "title": "Post Mock",
+      "description": "架空SNSの投稿モック画面を作成・スクショ保存"
+    },
+    {
       "path": "./draw/",
       "title": "Draw",
       "description": "Multi-layer drawing app with AI assist and brush tools"
