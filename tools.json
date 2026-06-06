@@ -1,67 +1,144 @@
 {
   "tools": [
     {
-      "path": "./parallax-demo/",
-      "icon": "🌊",
-      "title": "Parallax Demo",
-      "description": "Interactive parallax scrolling demonstration with smooth animations",
-      "device": "desktop"
+      "path": "./ai-draw/",
+      "title": "AI Draw",
+      "description": "Renders drawings from JSON data with export"
     },
     {
-      "path": "./color-inspiration/",
-      "icon": "🎨",
-      "title": "Color Inspiration",
-      "description": "Generate beautiful color palettes with various harmony modes",
-      "device": "both"
-    },
-    {
-      "path": "./pattern-grid/",
-      "icon": "◧",
-      "title": "Pattern Grid",
-      "description": "Create geometric patterns with triangles and arcs",
-      "device": "both"
-    },
-    {
-      "path": "./dual-battle/",
-      "icon": "🏒",
-      "title": "Air Hockey",
-      "description": "2-player air hockey on one screen",
-      "device": "mobile"
-    },
-    {
-      "path": "./rps-battle/",
-      "icon": "✊✌️✋",
-      "title": "RPS Battle",
-      "description": "Real-time rock-paper-scissors battle game for 2 players",
-      "device": "mobile"
+      "path": "./beat-visual/",
+      "title": "Beat Visual",
+      "description": "Visualizes beat compositions with playback controls"
     },
     {
       "path": "./board-game-timer/",
-      "icon": "⏱️",
       "title": "Board Game Timer",
-      "description": "Turn-based countdown timer for board games with alert sounds",
-      "device": "mobile"
+      "description": "Turn-based countdown timer for board games"
     },
     {
-      "path": "./manga-tone-processor/",
-      "icon": "📰",
-      "title": "Manga Tone Processor",
-      "description": "Convert images to manga-style halftone backgrounds with adjustable levels",
-      "device": "both"
+      "path": "./color-inspiration/",
+      "title": "Color Inspiration",
+      "description": "Generate color palettes with various harmony modes"
     },
     {
-      "path": "./trajectory-sequencer/",
-      "icon": "🎵",
-      "title": "Trajectory Sequencer",
-      "description": "Draw colorful lines to create music - each color plays different sounds",
-      "device": "both"
+      "path": "./depthblur/",
+      "title": "Depth Blur",
+      "description": "Applies depth-of-field blur effect to images"
+    },
+    {
+      "path": "./dj/",
+      "title": "DJ",
+      "description": "DJ deck for mixing and crossfading projects"
     },
     {
       "path": "./dm-mock/",
-      "icon": "💬",
       "title": "DM Mock",
-      "description": "Instagram風DMのモック画面を作成・スクショ保存できるツール",
-      "device": "mobile"
+      "description": "Instagram風DMのモック画面を作成・スクショ保存"
+    },
+    {
+      "path": "./draw/",
+      "title": "Draw",
+      "description": "Multi-layer drawing app with AI assist and brush tools"
+    },
+    {
+      "path": "./dual-battle/",
+      "title": "Air Hockey",
+      "description": "2-player air hockey on one screen"
+    },
+    {
+      "path": "./emojie/",
+      "title": "Emojie",
+      "description": "Emoji composition with transform and layering"
+    },
+    {
+      "path": "./lowpoly/",
+      "title": "Low Poly",
+      "description": "3D low-poly modeling with select, extrude, and paint"
+    },
+    {
+      "path": "./manga-tone-processor/",
+      "title": "Manga Tone Processor",
+      "description": "Convert images to manga-style halftone backgrounds"
+    },
+    {
+      "path": "./noise/",
+      "title": "Noise",
+      "description": "Image to animated GIF via procedural noise"
+    },
+    {
+      "path": "./normalmap/",
+      "title": "Normal Map",
+      "description": "Generate normal maps and apply dynamic lighting to images"
+    },
+    {
+      "path": "./nuri/",
+      "title": "Nuri",
+      "description": "Thick-paint drawing with canvas presets"
+    },
+    {
+      "path": "./paint/",
+      "title": "Paint",
+      "description": "Drawing app with pen, fill, and noise tools"
+    },
+    {
+      "path": "./parallax-demo/",
+      "title": "Parallax Demo",
+      "description": "Interactive parallax scrolling with smooth animations"
+    },
+    {
+      "path": "./pattern/",
+      "title": "Pattern",
+      "description": "Geometric shapes with symmetry and grid visualization"
+    },
+    {
+      "path": "./pattern-grid/",
+      "title": "Pattern Grid",
+      "description": "Create geometric patterns with triangles and arcs"
+    },
+    {
+      "path": "./pxl-ultra/",
+      "title": "PXL Ultra",
+      "description": "Pixel art with dithering, palettes, and edge detection"
+    },
+    {
+      "path": "./rakugakki/",
+      "title": "Rakugakki",
+      "description": "Musical sketch app with color-based voice synthesis"
+    },
+    {
+      "path": "./rps-battle/",
+      "title": "RPS Battle",
+      "description": "Real-time rock-paper-scissors battle for 2 players"
+    },
+    {
+      "path": "./sketch/",
+      "title": "Sketch",
+      "description": "Sketching with sketch/eraser tools and GIF export"
+    },
+    {
+      "path": "./snipe/",
+      "title": "Snipe",
+      "description": "Mobile camera scope with person detection overlay"
+    },
+    {
+      "path": "./tone/",
+      "title": "Tone",
+      "description": "Image to drawing via tone mapping and edge detection"
+    },
+    {
+      "path": "./trajectory-sequencer/",
+      "title": "Trajectory Sequencer",
+      "description": "Draw lines to create music — each color plays different sounds"
+    },
+    {
+      "path": "./voicepad/",
+      "title": "Voice Pad",
+      "description": "16-pad text-to-speech sampler with customizable parameters"
+    },
+    {
+      "path": "./voicesynth/",
+      "title": "Voice Synth",
+      "description": "Voice synthesizer with pitch, formant, and effects"
     }
   ]
 }
