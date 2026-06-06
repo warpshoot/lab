@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DM Mock</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root{
+    --bg:#ffffff; --header-border:#efefef; --text:#000000; --sub:#8e8e8e;
+    --in-bubble:#efefef; --in-text:#000000;
+    --out-bubble:#3797f0; --out-text:#ffffff;
+    --bar:#ffffff; --icon:#000000;
+  }
+  body.dark{
+    --bg:#000000; --header-border:#262626; --text:#ffffff; --sub:#a8a8a8;
+    --in-bubble:#262626; --in-text:#ffffff;
+    --out-bubble:#3797f0; --out-text:#ffffff;
+    --bar:#000000; --icon:#ffffff;
+  }
+  html,body{ height:100%; }
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue","Hiragino Sans","Yu Gothic UI",sans-serif;
+    background:#444; display:flex; justify-content:center; color:var(--text); transition:background .2s;
+  }
+  .phone{
+    width:100%; max-width:420px; height:100vh; max-height:920px;
+    background:var(--bg); display:flex; flex-direction:column;
+    position:relative; overflow:hidden; transition:background .2s;
+  }
+  .statusbar{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 24px 4px; font-size:15px; font-weight:600; flex-shrink:0; color:var(--text);
+  }
+  .sb-right{ display:flex; align-items:center; gap:5px; color:var(--text); }
+  .sb-right svg{ display:block; }
+  .bat-wrap{ display:flex; align-items:center; gap:1px; }
+  .bat-body{ width:22px; height:11px; border:1px solid var(--text); border-radius:3px; padding:1px; display:flex; }
+  .bat-fill{ height:100%; width:30%; background:var(--text); border-radius:1px; }
+  .bat-cap{ width:1.5px; height:4px; background:var(--text); border-radius:0 1px 1px 0; }
+  .header{
+    display:flex; align-items:center; gap:12px;
+    padding:6px 14px 10px; border-bottom:1px solid var(--header-border); flex-shrink:0;
+  }
+  .back{ width:24px; height:24px; color:var(--icon); flex-shrink:0; cursor:pointer; }
+  .avatar{
+    width:38px; height:38px; border-radius:50%;
+    background:linear-gradient(135deg,#f58529,#dd2a7b,#8134af);
+    flex-shrink:0; overflow:hidden; background-size:cover; background-position:center;
+    display:flex; align-items:center; justify-content:center; font-weight:600; color:#fff; font-size:16px;
+  }
+  .h-name{ flex:1; font-size:17px; font-weight:600; }
+  .h-icons{ display:flex; gap:20px; color:var(--icon); }
+  .h-icons svg{ width:24px; height:24px; }
+  .chat{ flex:1; min-height:0; overflow-y:auto; padding:14px 14px 8px; display:flex; flex-direction:column; gap:2px; }
+  .day{ text-align:center; font-size:12px; color:var(--sub); margin:14px 0 8px; font-weight:600; }
+  .row{ display:flex; max-width:75%; margin-bottom:2px; }
+  .row.out{ align-self:flex-end; justify-content:flex-end; }
+  .row.in{ align-self:flex-start; }
+  .row.gap{ margin-top:10px; }
+  .bubble{
+    position:relative; padding:9px 14px; font-size:15.5px; line-height:1.4;
+    word-break:break-word; white-space:pre-wrap; cursor:text; outline:none; min-width:30px;
+  }
+  .out .bubble{ background:var(--out-bubble); color:var(--out-text); border-radius:20px; }
+  .in .bubble{ background:var(--in-bubble); color:var(--in-text); border-radius:20px; }
+  .time{ font-size:11px; color:var(--sub); align-self:flex-end; margin:0 4px 3px; white-space:nowrap; user-select:none; }
+  .out .time{ order:-1; }
+  .check{ color:var(--out-bubble); }
+  .hide-time .time{ display:none; }
+  .del{
+    position:absolute; top:-6px; width:19px; height:19px; border-radius:50%;
+    background:#ed4956; color:#fff; font-size:12px; line-height:19px; text-align:center;
+    cursor:pointer; opacity:0; transition:opacity .15s; border:2px solid var(--bg); z-index:2;
+  }
+  .out .del{ left:-6px; } .in .del{ right:-6px; }
+  .row:hover .del{ opacity:1; }
+  @media (hover:none){ .del{ opacity:.85; } }
+  .composer{ flex-shrink:0; padding:8px 12px; display:flex; flex-direction:column; gap:7px; background:var(--bar); }
+  .dir-row{ display:flex; gap:6px; }
+  .dir-btn{
+    flex:1; padding:6px; border:1px solid var(--header-border); background:transparent;
+    color:var(--sub); border-radius:18px; font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .dir-btn.active.in{ background:var(--in-bubble); color:var(--text); }
+  .dir-btn.active.out{ background:var(--out-bubble); color:#fff; border-color:var(--out-bubble); }
+  .input-row{
+    display:flex; gap:6px; align-items:center;
+    border:1px solid var(--header-border); border-radius:22px; padding:4px 6px 4px 16px;
+  }
+  .input-row textarea{
+    flex:1; resize:none; background:transparent; border:none; color:var(--text);
+    font-size:15px; outline:none; line-height:1.4; max-height:140px; font-family:inherit; padding:6px 0;
+  }
+  .input-row textarea::placeholder{ color:var(--sub); }
+  .br-btn{
+    width:34px; height:34px; border-radius:50%; border:1px solid var(--header-border);
+    background:transparent; color:var(--sub); font-size:15px; cursor:pointer; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .send-btn{
+    width:34px; height:34px; border-radius:50%; border:none; background:var(--out-bubble);
+    color:#fff; font-size:16px; cursor:pointer; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .tabbar{
+    flex-shrink:0; display:flex; justify-content:space-around; align-items:center;
+    padding:12px 0 22px; border-top:1px solid var(--header-border); color:var(--icon);
+  }
+  .tabbar svg{ width:25px; height:25px; }
+  /* 折りたたみ操作バー */
+  .fab{
+    position:absolute; top:8px; right:10px; z-index:30;
+    width:34px; height:34px; border-radius:50%; border:none; cursor:pointer;
+    background:rgba(120,120,120,.85); color:#fff; font-size:16px;
+  }
+  .toolbar{
+    position:absolute; top:48px; right:10px; z-index:30;
+    display:none; flex-direction:column; gap:6px;
+  }
+  .toolbar.open{ display:flex; }
+  .toolbar button{
+    border:none; border-radius:8px; padding:8px 12px; font-size:12px; font-weight:600;
+    cursor:pointer; background:rgba(120,120,120,.92); color:#fff; white-space:nowrap; text-align:left;
+  }
+  .overlay{ position:absolute; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:40; padding:18px; }
+  .overlay.open{ display:flex; }
+  .panel{ width:100%; background:var(--bg); border-radius:14px; padding:18px; display:flex; flex-direction:column; gap:15px; max-height:90%; overflow-y:auto; border:1px solid var(--header-border); }
+  .panel h3{ font-size:16px; }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size:13px; color:var(--sub); }
+  .field input[type=text]{ background:transparent; border:1px solid var(--header-border); border-radius:8px; padding:9px 11px; color:var(--text); font-size:15px; outline:none; }
+  .colors{ display:flex; gap:8px; flex-wrap:wrap; }
+  .swatch{ width:34px; height:34px; border-radius:50%; cursor:pointer; border:2px solid transparent; }
+  .swatch.sel{ border-color:var(--out-bubble); }
+  .toggle-row{ display:flex; align-items:center; justify-content:space-between; }
+  .switch{ position:relative; width:46px; height:26px; flex-shrink:0; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .slider{ position:absolute; inset:0; background:#c7c7c7; border-radius:26px; transition:.2s; cursor:pointer; }
+  .slider:before{ content:""; position:absolute; height:20px; width:20px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
+  .switch input:checked + .slider{ background:var(--out-bubble); }
+  .switch input:checked + .slider:before{ transform:translateX(20px); }
+  .panel-btns{ display:flex; gap:8px; margin-top:4px; }
+  .panel-btns button{ flex:1; padding:11px; border:none; border-radius:9px; font-size:14px; font-weight:600; cursor:pointer; color:#fff; }
+  .upload-btn{ background:#8e8e8e; } .done-btn{ background:var(--out-bubble); }
+  .file-name{ font-size:12px; color:var(--sub); }
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+  <button class="fab" id="fab" onclick="toggleToolbar()">⚙</button>
+  <div class="toolbar" id="toolbar">
+    <button onclick="toggleDark()" id="darkBtn">🌙 ダーク</button>
+    <button onclick="openPanel()">⚙ 設定</button>
+    <button onclick="capture()">📷 画像保存</button>
+    <button onclick="hideUI()">🙈 UIを隠す</button>
+  </div>
+
+  <div class="statusbar">
+    <span id="sbTime">22:57</span>
+    <span class="sb-right">
+      <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+      <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><path d="M8.5 2.2c2.6 0 5 1 6.8 2.7l1.2-1.3C14.4 1.5 11.6.3 8.5.3S2.6 1.5.5 3.6l1.2 1.3C3.5 3.2 5.9 2.2 8.5 2.2z"/><path d="M8.5 5.6c1.6 0 3.1.6 4.2 1.7l1.2-1.3C12.5 4.6 10.6 3.8 8.5 3.8S4.5 4.6 3.1 6l1.2 1.3c1.1-1.1 2.6-1.7 4.2-1.7z"/><path d="M8.5 9c.7 0 1.4.3 1.9.8l-1.9 2-1.9-2c.5-.5 1.2-.8 1.9-.8z"/></svg>
+      <span class="bat-wrap"><span class="bat-body"><span class="bat-fill" id="batFill"></span></span><span class="bat-cap"></span></span>
+    </span>
+  </div>
+
+  <div class="header">
+    <svg class="back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    <div class="avatar" id="avatar">え</div>
+    <span class="h-name" id="contactName">えむ</span>
+    <div class="h-icons">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+    </div>
+  </div>
+
+  <div class="chat" id="chat"></div>
+
+  <div class="composer" id="composer">
+    <div class="dir-row">
+      <button class="dir-btn in" id="dirIn" onclick="setDir('in')">相手から（受信）</button>
+      <button class="dir-btn out active" id="dirOut" onclick="setDir('out')">自分から（送信）</button>
+    </div>
+    <div class="input-row">
+      <textarea id="input" rows="1" placeholder="メッセージ"></textarea>
+      <button class="send-btn" onclick="send()">➤</button>
+    </div>
+  </div>
+
+  <div class="tabbar" id="tabbar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9.5z"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 9.5 9.5 0 0 1-4-.9L3 21l1.9-5.5a9.5 9.5 0 0 1-.9-4A8.38 8.38 0 0 1 12.5 3 8.38 8.38 0 0 1 21 11.5z"/></svg>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="panel">
+      <h3>設定</h3>
+      <div class="field"><label>相手の名前</label><input type="text" id="setName" value="えむ"></div>
+      <div class="field"><label>ステータスバーの時刻</label><input type="text" id="setSbTime" value="22:57"></div>
+      <div class="field"><label>アイコンの色</label><div class="colors" id="colorRow"></div></div>
+      <div class="field">
+        <label>アイコン画像</label>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+        <div class="panel-btns">
+          <button class="upload-btn" onclick="document.getElementById('fileInput').click()">画像を選ぶ</button>
+          <button class="upload-btn" onclick="clearImg()">画像を消す</button>
+        </div>
+        <span class="file-name" id="fileName"></span>
+      </div>
+      <div class="toggle-row"><label>各メッセージの時刻を表示</label>
+        <span class="switch"><input type="checkbox" id="timeToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
+      </div>
+      <div class="toggle-row"><label>既読チェック（送信側）</label>
+        <span class="switch"><input type="checkbox" id="checkToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
+      </div>
+      <div class="panel-btns"><button class="done-btn" onclick="closePanel()">完了</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+  const chat=document.getElementById('chat');
+  const avatar=document.getElementById('avatar');
+  const input=document.getElementById('input');
+  let avatarColor='linear-gradient(135deg,#f58529,#dd2a7b,#8134af)';
+  let avatarImg=null;
+  let dir='out';
+  const palette=[
+    'linear-gradient(135deg,#f58529,#dd2a7b,#8134af)',
+    'linear-gradient(135deg,#3797f0,#1d62b8)',
+    'linear-gradient(135deg,#7ed957,#2e7d32)',
+    'linear-gradient(135deg,#ff8a5c,#e0457b)',
+    'linear-gradient(135deg,#b06ef7,#5e35b1)',
+    'linear-gradient(135deg,#8d99ae,#2b2d42)'
+  ];
+  function nowTime(){ const d=new Date(); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'); }
+
+  function makeRow(side,text,time){
+    const row=document.createElement('div'); row.className='row '+side;
+    const bubble=document.createElement('div'); bubble.className='bubble'; bubble.contentEditable='true'; bubble.textContent=text;
+    const tm=document.createElement('span'); tm.className='time'; tm.contentEditable='false';
+    const showCheck=document.getElementById('checkToggle').checked;
+    tm.innerHTML=(time||nowTime())+(side==='out'&&showCheck?' <span class="check">✓</span>':'');
+    const del=document.createElement('span'); del.className='del'; del.textContent='×';
+    del.onclick=(e)=>{e.stopPropagation(); row.remove();};
+    row.appendChild(bubble); row.appendChild(tm); row.appendChild(del);
+    return row;
+  }
+  function setDir(d){
+    dir=d;
+    document.getElementById('dirIn').classList.toggle('active',d==='in');
+    document.getElementById('dirOut').classList.toggle('active',d==='out');
+    input.focus();
+  }
+  function send(){
+    const t=input.value.replace(/\s+$/,''); if(!t.trim()) return;
+    const row=makeRow(dir,t,nowTime());
+    const last=chat.lastElementChild;
+    if(last && !last.classList.contains(dir) && !last.classList.contains('day')) row.classList.add('gap');
+    chat.appendChild(row); chat.scrollTop=chat.scrollHeight;
+    input.value=''; autoGrow(); input.focus();
+  }
+  input.addEventListener('keydown',e=>{ /* Enterは改行に任せる */ });
+  function autoGrow(){ input.style.height='auto'; input.style.height=Math.min(input.scrollHeight,140)+'px'; chat.scrollTop=chat.scrollHeight; }
+  input.addEventListener('input',autoGrow);
+
+  function toggleToolbar(){ document.getElementById('toolbar').classList.toggle('open'); }
+  function toggleDark(){
+    document.body.classList.toggle('dark');
+    document.getElementById('darkBtn').textContent=document.body.classList.contains('dark')?'☀ ライト':'🌙 ダーク';
+  }
+  let uiHidden=false;
+  function hideUI(){
+    uiHidden=true;
+    document.getElementById('composer').style.display='none';
+    document.getElementById('toolbar').classList.remove('open');
+    document.getElementById('fab').textContent='👁';
+    document.getElementById('fab').onclick=showUI;
+    document.querySelectorAll('.del').forEach(d=>d.style.display='none');
+  }
+  function showUI(){
+    uiHidden=false;
+    document.getElementById('composer').style.display='flex';
+    document.getElementById('fab').textContent='⚙';
+    document.getElementById('fab').onclick=toggleToolbar;
+    document.querySelectorAll('.del').forEach(d=>d.style.display='');
+  }
+
+  function openPanel(){ document.getElementById('overlay').classList.add('open'); }
+  function closePanel(){ document.getElementById('overlay').classList.remove('open'); }
+  const setName=document.getElementById('setName');
+  setName.addEventListener('input',()=>{
+    const v=setName.value||'?';
+    document.getElementById('contactName').textContent=v;
+    if(!avatarImg) avatar.textContent=(v.trim()[0]||'?');
+  });
+  document.getElementById('setSbTime').addEventListener('input',function(){ document.getElementById('sbTime').textContent=this.value; });
+  const colorRow=document.getElementById('colorRow');
+  palette.forEach((g,i)=>{
+    const s=document.createElement('div'); s.className='swatch'+(i===0?' sel':''); s.style.background=g;
+    s.onclick=()=>{
+      avatarColor=g; avatarImg=null;
+      avatar.style.backgroundImage=g; avatar.textContent=(setName.value.trim()[0]||'?');
+      document.getElementById('fileName').textContent='';
+      document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('sel')); s.classList.add('sel');
+    };
+    colorRow.appendChild(s);
+  });
+  document.getElementById('fileInput').addEventListener('change',function(e){
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      avatarImg=ev.target.result; avatar.style.backgroundImage='url('+avatarImg+')'; avatar.textContent='';
+      document.getElementById('fileName').textContent=f.name;
+      document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('sel'));
+    };
+    r.readAsDataURL(f);
+  });
+  function clearImg(){
+    avatarImg=null; avatar.style.backgroundImage=avatarColor;
+    avatar.textContent=(setName.value.trim()[0]||'?'); document.getElementById('fileName').textContent='';
+  }
+  document.getElementById('timeToggle').addEventListener('change',function(){ chat.classList.toggle('hide-time',!this.checked); });
+  document.getElementById('checkToggle').addEventListener('change',function(){
+    const show=this.checked;
+    document.querySelectorAll('.out .time').forEach(m=>{
+      const t=m.textContent.replace('✓','').trim();
+      m.innerHTML=t+(show?' <span class="check">✓</span>':'');
+    });
+  });
+  function capture(){
+    document.querySelectorAll('.del').forEach(d=>d.style.display='none');
+    const composer=document.getElementById('composer'); const fab=document.getElementById('fab'); const toolbar=document.getElementById('toolbar');
+    const cDisp=composer.style.display;
+    composer.style.display='none'; fab.style.display='none'; toolbar.classList.remove('open');
+    const darkBg=document.body.classList.contains('dark')?'#000':'#fff';
+    html2canvas(document.getElementById('phone'),{backgroundColor:darkBg,scale:2}).then(c=>{
+      const a=document.createElement('a'); a.download='dm-mock.png'; a.href=c.toDataURL(); a.click();
+      if(!uiHidden){ document.querySelectorAll('.del').forEach(d=>d.style.display=''); composer.style.display=cDisp||'flex'; }
+      fab.style.display='';
+    });
+  }
+</script>
+</body>
+</html>
