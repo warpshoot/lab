@@ -77,6 +77,10 @@
   .typing-dot:nth-child(2){ animation-delay:.2s; }
   .typing-dot:nth-child(3){ animation-delay:.4s; }
   @keyframes tdot{ 0%,60%,100%{ transform:translateY(0); opacity:.4; } 30%{ transform:translateY(-5px); opacity:1; } }
+  @keyframes bubbleInL{ 0%{ opacity:0; transform:translateX(-12px) translateY(10px) scale(0.88); } 65%{ opacity:1; transform:translateX(2px) translateY(-2px) scale(1.01); } 100%{ opacity:1; transform:none; } }
+  @keyframes bubbleInR{ 0%{ opacity:0; transform:translateX(12px) translateY(10px) scale(0.88); } 65%{ opacity:1; transform:translateX(-2px) translateY(-2px) scale(1.01); } 100%{ opacity:1; transform:none; } }
+  .row.in.new-msg{ animation:bubbleInL .38s cubic-bezier(.22,1,.36,1) both; }
+  .row.out.new-msg{ animation:bubbleInR .38s cubic-bezier(.22,1,.36,1) both; }
   .del{
     position:absolute; top:-6px; width:19px; height:19px; border-radius:50%;
     background:#ed4956; color:#fff; font-size:12px; line-height:19px; text-align:center;
@@ -166,6 +170,7 @@
     <button onclick="toggleDark()" id="darkBtn">🌙 ダーク</button>
     <button onclick="openPanel()">⚙ 設定</button>
     <button onclick="capture()">📷 画像保存</button>
+    <button onclick="replayLastMsg()">▶ 最後を再生</button>
     <button onclick="hideUI()">🙈 UIを隠す</button>
   </div>
 
@@ -351,7 +356,7 @@
     const bubble=document.createElement('div'); bubble.className='bubble';
     bubble.style.cssText='display:flex;align-items:center;gap:5px;padding:10px 16px;';
     for(let i=0;i<3;i++){ const d=document.createElement('span'); d.className='typing-dot'; bubble.appendChild(d); }
-    typingRow.appendChild(bubble); chat.appendChild(typingRow); chat.scrollTop=chat.scrollHeight;
+    typingRow.appendChild(bubble); chat.appendChild(typingRow); typingRow.classList.add('new-msg'); chat.scrollTop=chat.scrollHeight;
     btn.classList.add('active');
   }
   function send(){
@@ -361,6 +366,7 @@
     const last=typingRow ? typingRow.previousElementSibling : chat.lastElementChild;
     if(last && !last.classList.contains(dir) && !last.classList.contains('day')) row.classList.add('gap');
     if(typingRow) chat.insertBefore(row,typingRow); else chat.appendChild(row);
+    row.classList.add('new-msg');
     chat.scrollTop=chat.scrollHeight;
     input.value=''; autoGrow(); input.focus();
     updateStatusBarTime();
@@ -369,6 +375,15 @@
   function autoGrow(){ input.style.height='auto'; input.style.height=Math.min(input.scrollHeight,140)+'px'; chat.scrollTop=chat.scrollHeight; }
   input.addEventListener('input',autoGrow);
 
+  function replayLastMsg(){
+    const rows=[...chat.children].filter(el=>el.classList.contains('row')&&el!==typingRow);
+    if(!rows.length) return;
+    const last=rows[rows.length-1];
+    last.classList.remove('new-msg');
+    void last.offsetWidth;
+    last.classList.add('new-msg');
+    chat.scrollTop=chat.scrollHeight;
+  }
   function toggleToolbar(){ document.getElementById('toolbar').classList.toggle('open'); }
   function toggleDark(){
     document.body.classList.toggle('dark');
