@@ -68,8 +68,15 @@
   .out .time{ order:-1; }
   .time-val{ outline:none; cursor:text; border-radius:3px; padding:1px 2px; }
   .time-val:focus{ background:rgba(128,128,128,.15); }
-  .check{ color:var(--out-bubble); user-select:none; }
+  .check{ color:var(--out-bubble); user-select:none; cursor:pointer; }
+  .check.unread{ color:var(--sub) !important; }
   .hide-time .time{ display:none; }
+  .typing-toggle{ background:transparent; border:1px dashed var(--header-border); border-radius:14px; padding:5px 12px; color:var(--sub); font-size:12px; font-weight:600; cursor:pointer; text-align:left; transition:.15s; }
+  .typing-toggle.active{ border-color:var(--out-bubble); color:var(--out-bubble); border-style:solid; }
+  .typing-dot{ width:7px; height:7px; border-radius:50%; background:var(--sub); display:inline-block; animation:tdot 1.2s infinite; }
+  .typing-dot:nth-child(2){ animation-delay:.2s; }
+  .typing-dot:nth-child(3){ animation-delay:.4s; }
+  @keyframes tdot{ 0%,60%,100%{ transform:translateY(0); opacity:.4; } 30%{ transform:translateY(-5px); opacity:1; } }
   .del{
     position:absolute; top:-6px; width:19px; height:19px; border-radius:50%;
     background:#ed4956; color:#fff; font-size:12px; line-height:19px; text-align:center;
@@ -189,6 +196,7 @@
       <button class="dir-btn in" id="dirIn" onclick="setDir('in')">相手から（受信）</button>
       <button class="dir-btn out active" id="dirOut" onclick="setDir('out')">自分から（送信）</button>
     </div>
+    <button id="typingBtn" class="typing-toggle" onclick="toggleTyping()">💬 入力中を表示</button>
     <div class="input-row">
       <textarea id="input" rows="1" placeholder="メッセージ"></textarea>
       <button class="send-btn" onclick="send()">➤</button>
@@ -315,8 +323,12 @@
     // time-val内でのEnterキー・改行を防ぐ
     tv.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); tv.blur(); } });
     tm.appendChild(tv);
-    if(side==='out' && document.getElementById('checkToggle').checked){
-      const ck=document.createElement('span'); ck.className='check'; ck.textContent='✓'; tm.appendChild(ck);
+    if(side==='out'){
+      const ck=document.createElement('span'); ck.className='check'; ck.textContent='✓';
+      if(!document.getElementById('checkToggle').checked) ck.style.display='none';
+      ck.title='タップで既読/未読切替';
+      ck.addEventListener('click',e=>{ e.stopPropagation(); ck.classList.toggle('unread'); });
+      tm.appendChild(ck);
     }
 
     const del=document.createElement('span'); del.className='del'; del.textContent='×';
@@ -331,13 +343,25 @@
     document.getElementById('dirOut').classList.toggle('active',d==='out');
     input.focus();
   }
+  let typingRow=null;
+  function toggleTyping(){
+    const btn=document.getElementById('typingBtn');
+    if(typingRow){ typingRow.remove(); typingRow=null; btn.classList.remove('active'); return; }
+    typingRow=document.createElement('div'); typingRow.className='row in';
+    const bubble=document.createElement('div'); bubble.className='bubble';
+    bubble.style.cssText='display:flex;align-items:center;gap:5px;padding:10px 16px;';
+    for(let i=0;i<3;i++){ const d=document.createElement('span'); d.className='typing-dot'; bubble.appendChild(d); }
+    typingRow.appendChild(bubble); chat.appendChild(typingRow); chat.scrollTop=chat.scrollHeight;
+    btn.classList.add('active');
+  }
   function send(){
     const t=input.value.replace(/\s+$/,''); if(!t.trim()) return;
     const time=advanceMockTime();
     const row=makeRow(dir,t,time);
-    const last=chat.lastElementChild;
+    const last=typingRow ? typingRow.previousElementSibling : chat.lastElementChild;
     if(last && !last.classList.contains(dir) && !last.classList.contains('day')) row.classList.add('gap');
-    chat.appendChild(row); chat.scrollTop=chat.scrollHeight;
+    if(typingRow) chat.insertBefore(row,typingRow); else chat.appendChild(row);
+    chat.scrollTop=chat.scrollHeight;
     input.value=''; autoGrow(); input.focus();
     updateStatusBarTime();
   }
@@ -433,11 +457,7 @@
 
   document.getElementById('checkToggle').addEventListener('change',function(){
     const show=this.checked;
-    document.querySelectorAll('.row.out .time').forEach(tm=>{
-      let ck=tm.querySelector('.check');
-      if(show && !ck){ ck=document.createElement('span'); ck.className='check'; ck.textContent='✓'; tm.appendChild(ck); }
-      else if(!show && ck){ ck.remove(); }
-    });
+    document.querySelectorAll('.row.out .check').forEach(ck=>{ ck.style.display=show?'':'none'; });
   });
 
   function capture(){
