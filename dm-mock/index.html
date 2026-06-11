@@ -199,7 +199,7 @@
       <h3>設定</h3>
       <div class="field"><label>相手の名前</label><input type="text" id="setName" value="USER"></div>
       <div class="field"><label>テーマカラー（送信バブル）</label><div class="colors" id="themeRow"></div></div>
-      <div class="field"><label>ステータスバーの時刻</label><input type="text" id="setSbTime" value="22:57"></div>
+      <div class="field"><label>最初のメッセージの時刻</label><input type="text" id="setFirstTime" value="22:30" placeholder="HH:MM"></div>
       <div class="field"><label>アイコンの色</label><div class="colors" id="colorRow"></div></div>
       <div class="field">
         <label>アイコン画像</label>
@@ -230,10 +230,12 @@
   let avatarImg=null;
   let dir='out';
 
-  // モック時刻（現在時刻を起点に3〜5分ずつ進める）
-  let mockMinutes=(()=>{ const d=new Date(); return d.getHours()*60+d.getMinutes(); })();
+  // モック時刻（設定された初手時刻を起点に3〜5分ずつ進める）
+  function parseTimeInput(v){ const p=v.split(':').map(Number); return (p.length===2&&!isNaN(p[0])&&!isNaN(p[1]))? p[0]*60+p[1] : 22*60+30; }
+  let mockMinutes=22*60+30;
   function formatMockTime(m){ const h=Math.floor(m/60)%24; const min=m%60; return h.toString().padStart(2,'0')+':'+min.toString().padStart(2,'0'); }
   function advanceMockTime(){ mockMinutes+=Math.floor(Math.random()*3)+3; return formatMockTime(mockMinutes); }
+  function updateStatusBarTime(){ const offset=Math.floor(Math.random()*5)+1; document.getElementById('sbTime').textContent=formatMockTime(mockMinutes+offset); }
 
   // テーマカラー
   const themeColors=[
@@ -299,6 +301,7 @@
     if(last && !last.classList.contains(dir) && !last.classList.contains('day')) row.classList.add('gap');
     chat.appendChild(row); chat.scrollTop=chat.scrollHeight;
     input.value=''; autoGrow(); input.focus();
+    updateStatusBarTime();
   }
   input.addEventListener('keydown',e=>{ /* Enterは改行に任せる */ });
   function autoGrow(){ input.style.height='auto'; input.style.height=Math.min(input.scrollHeight,140)+'px'; chat.scrollTop=chat.scrollHeight; }
@@ -335,7 +338,7 @@
     document.getElementById('contactName').textContent=v;
     if(!avatarImg) avatar.textContent=(v.trim()[0]||'?');
   });
-  document.getElementById('setSbTime').addEventListener('input',function(){ document.getElementById('sbTime').textContent=this.value; });
+  document.getElementById('setFirstTime').addEventListener('input',function(){ mockMinutes=parseTimeInput(this.value); updateStatusBarTime(); });
 
   const colorRow=document.getElementById('colorRow');
   palette.forEach((g,i)=>{
@@ -374,6 +377,8 @@
     el.addEventListener('pointermove',e=>{if(Math.hypot(e.clientX-_px,e.clientY-_py)>10)clearTimeout(_pt);});
     el.addEventListener('pointercancel',()=>clearTimeout(_pt));
   });
+
+  updateStatusBarTime();
 
   document.getElementById('checkToggle').addEventListener('change',function(){
     const show=this.checked;
