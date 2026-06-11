@@ -170,7 +170,7 @@
     <button onclick="toggleDark()" id="darkBtn">🌙 ダーク</button>
     <button onclick="openPanel()">⚙ 設定</button>
     <button onclick="capture()">📷 画像保存</button>
-    <button onclick="replayLastMsg()">▶ 最後を再生</button>
+    <button onclick="replayWithHide()">▶ 隠して再生</button>
     <button onclick="hideUI()">🙈 UIを隠す</button>
   </div>
 
@@ -178,7 +178,12 @@
     <span id="sbTime" contenteditable="true" spellcheck="false">22:30</span>
     <span class="sb-right">
       <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect id="sig1" x="0" y="8" width="3" height="4" rx="1"/><rect id="sig2" x="5" y="5" width="3" height="7" rx="1"/><rect id="sig3" x="10" y="2.5" width="3" height="9.5" rx="1"/><rect id="sig4" x="15" y="0" width="3" height="12" rx="1"/></svg>
-      <svg id="wifiSvg" width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><path id="wf1" d="M8.5 2.2c2.6 0 5 1 6.8 2.7l1.2-1.3C14.4 1.5 11.6.3 8.5.3S2.6 1.5.5 3.6l1.2 1.3C3.5 3.2 5.9 2.2 8.5 2.2z"/><path id="wf2" d="M8.5 5.6c1.6 0 3.1.6 4.2 1.7l1.2-1.3C12.5 4.6 10.6 3.8 8.5 3.8S4.5 4.6 3.1 6l1.2 1.3c1.1-1.1 2.6-1.7 4.2-1.7z"/><path id="wf3" d="M8.5 9c.7 0 1.4.3 1.9.8l-1.9 2-1.9-2c.5-.5 1.2-.8 1.9-.8z"/></svg>
+      <svg id="wifiSvg" width="17" height="12" viewBox="0 0 17 12" fill="none" stroke="currentColor" stroke-linecap="round" overflow="visible">
+        <path id="wf1" stroke-width="1.4" d="M0.7,5.2 A11,11 0 0 0 16.3,5.2"/>
+        <path id="wf2" stroke-width="1.4" d="M3.6,8.0 A7,7 0 0 0 13.4,8.0"/>
+        <path id="wf3" stroke-width="1.4" d="M6.0,10.5 A3.5,3.5 0 0 0 11.0,10.5"/>
+        <circle id="wfdot" cx="8.5" cy="12.2" r="0.85" fill="currentColor" stroke="none"/>
+      </svg>
       <span id="batPct" contenteditable="true" spellcheck="false">30</span>
       <span class="bat-wrap"><span class="bat-body"><span class="bat-fill" id="batFill"></span></span><span class="bat-cap"></span></span>
     </span>
@@ -375,6 +380,10 @@
   function autoGrow(){ input.style.height='auto'; input.style.height=Math.min(input.scrollHeight,140)+'px'; chat.scrollTop=chat.scrollHeight; }
   input.addEventListener('input',autoGrow);
 
+  function replayWithHide(){
+    hideUI();
+    setTimeout(replayLastMsg, 300);
+  }
   function replayLastMsg(){
     const rows=[...chat.children].filter(el=>el.classList.contains('row')&&el!==typingRow);
     if(!rows.length) return;
