@@ -64,9 +64,11 @@
   }
   .out .bubble{ background:var(--out-bubble); color:var(--out-text); border-radius:20px; }
   .in .bubble{ background:var(--in-bubble); color:var(--in-text); border-radius:20px; }
-  .time{ font-size:11px; color:var(--sub); align-self:flex-end; margin:0 4px 3px; white-space:nowrap; user-select:none; }
+  .time{ font-size:11px; color:var(--sub); align-self:flex-end; margin:0 4px 3px; white-space:nowrap; display:flex; align-items:center; gap:2px; }
   .out .time{ order:-1; }
-  .check{ color:var(--out-bubble); }
+  .time-val{ outline:none; cursor:text; border-radius:3px; padding:1px 2px; }
+  .time-val:focus{ background:rgba(128,128,128,.15); }
+  .check{ color:var(--out-bubble); user-select:none; }
   .hide-time .time{ display:none; }
   .del{
     position:absolute; top:-6px; width:19px; height:19px; border-radius:50%;
@@ -93,11 +95,6 @@
     font-size:15px; outline:none; line-height:1.4; max-height:140px; font-family:inherit; padding:6px 0;
   }
   .input-row textarea::placeholder{ color:var(--sub); }
-  .br-btn{
-    width:34px; height:34px; border-radius:50%; border:1px solid var(--header-border);
-    background:transparent; color:var(--sub); font-size:15px; cursor:pointer; flex-shrink:0;
-    display:flex; align-items:center; justify-content:center;
-  }
   .send-btn{
     width:34px; height:34px; border-radius:50%; border:none; background:var(--out-bubble);
     color:#fff; font-size:16px; cursor:pointer; flex-shrink:0;
@@ -108,7 +105,6 @@
     padding:12px 0 22px; border-top:1px solid var(--header-border); color:var(--icon);
   }
   .tabbar svg{ width:25px; height:25px; }
-  /* 折りたたみ操作バー */
   .fab{
     position:absolute; top:8px; right:10px; z-index:30;
     width:34px; height:34px; border-radius:50%; border:none; cursor:pointer;
@@ -131,8 +127,10 @@
   .field label{ font-size:13px; color:var(--sub); }
   .field input[type=text]{ background:transparent; border:1px solid var(--header-border); border-radius:8px; padding:9px 11px; color:var(--text); font-size:15px; outline:none; }
   .colors{ display:flex; gap:8px; flex-wrap:wrap; }
-  .swatch{ width:34px; height:34px; border-radius:50%; cursor:pointer; border:2px solid transparent; }
+  .swatch{ width:34px; height:34px; border-radius:50%; cursor:pointer; border:2px solid transparent; flex-shrink:0; }
   .swatch.sel{ border-color:var(--out-bubble); }
+  .theme-swatch{ width:34px; height:34px; border-radius:50%; cursor:pointer; outline:2px solid transparent; outline-offset:2px; flex-shrink:0; }
+  .theme-swatch.sel{ outline-color:var(--text); }
   .toggle-row{ display:flex; align-items:center; justify-content:space-between; }
   .switch{ position:relative; width:46px; height:26px; flex-shrink:0; }
   .switch input{ opacity:0; width:0; height:0; }
@@ -167,8 +165,8 @@
 
   <div class="header" id="headerEl">
     <svg class="back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    <div class="avatar" id="avatar">え</div>
-    <span class="h-name" id="contactName">えむ</span>
+    <div class="avatar" id="avatar">U</div>
+    <span class="h-name" id="contactName">USER</span>
     <div class="h-icons">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
@@ -199,7 +197,8 @@
   <div class="overlay" id="overlay">
     <div class="panel">
       <h3>設定</h3>
-      <div class="field"><label>相手の名前</label><input type="text" id="setName" value="えむ"></div>
+      <div class="field"><label>相手の名前</label><input type="text" id="setName" value="USER"></div>
+      <div class="field"><label>テーマカラー（送信バブル）</label><div class="colors" id="themeRow"></div></div>
       <div class="field"><label>ステータスバーの時刻</label><input type="text" id="setSbTime" value="22:57"></div>
       <div class="field"><label>アイコンの色</label><div class="colors" id="colorRow"></div></div>
       <div class="field">
@@ -230,6 +229,34 @@
   let avatarColor='linear-gradient(135deg,#4ca771,#2f7d52)';
   let avatarImg=null;
   let dir='out';
+
+  // モック時刻（現在時刻を起点に3〜5分ずつ進める）
+  let mockMinutes=(()=>{ const d=new Date(); return d.getHours()*60+d.getMinutes(); })();
+  function formatMockTime(m){ const h=Math.floor(m/60)%24; const min=m%60; return h.toString().padStart(2,'0')+':'+min.toString().padStart(2,'0'); }
+  function advanceMockTime(){ mockMinutes+=Math.floor(Math.random()*3)+3; return formatMockTime(mockMinutes); }
+
+  // テーマカラー
+  const themeColors=[
+    '#4ca771','#3797f0','#17c1b7','#7c4dff','#e05f8a','#e8923a'
+  ];
+  let currentTheme=themeColors[0];
+  function applyTheme(color){
+    currentTheme=color;
+    document.documentElement.style.setProperty('--out-bubble',color);
+    if(document.body.classList.contains('dark'))
+      document.body.style.setProperty('--out-bubble',color);
+  }
+  const themeRow=document.getElementById('themeRow');
+  themeColors.forEach((c,i)=>{
+    const s=document.createElement('div'); s.className='theme-swatch'+(i===0?' sel':''); s.style.background=c;
+    s.onclick=()=>{
+      applyTheme(c);
+      document.querySelectorAll('.theme-swatch').forEach(x=>x.classList.remove('sel')); s.classList.add('sel');
+    };
+    themeRow.appendChild(s);
+  });
+
+  // アバターカラーパレット
   const palette=[
     'linear-gradient(135deg,#4ca771,#2f7d52)',
     'linear-gradient(135deg,#5aa0e0,#3a6ea5)',
@@ -238,19 +265,26 @@
     'linear-gradient(135deg,#e06a90,#b03d63)',
     'linear-gradient(135deg,#8d99ae,#43485a)'
   ];
-  function nowTime(){ const d=new Date(); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'); }
 
   function makeRow(side,text,time){
     const row=document.createElement('div'); row.className='row '+side;
     const bubble=document.createElement('div'); bubble.className='bubble'; bubble.contentEditable='true'; bubble.textContent=text;
-    const tm=document.createElement('span'); tm.className='time'; tm.contentEditable='false';
-    const showCheck=document.getElementById('checkToggle').checked;
-    tm.innerHTML=(time||nowTime())+(side==='out'&&showCheck?' <span class="check">✓</span>':'');
+
+    const tm=document.createElement('span'); tm.className='time';
+    const tv=document.createElement('span'); tv.className='time-val'; tv.contentEditable='true'; tv.textContent=time;
+    // time-val内でのEnterキー・改行を防ぐ
+    tv.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); tv.blur(); } });
+    tm.appendChild(tv);
+    if(side==='out' && document.getElementById('checkToggle').checked){
+      const ck=document.createElement('span'); ck.className='check'; ck.textContent='✓'; tm.appendChild(ck);
+    }
+
     const del=document.createElement('span'); del.className='del'; del.textContent='×';
     del.onclick=(e)=>{e.stopPropagation(); row.remove();};
     row.appendChild(bubble); row.appendChild(tm); row.appendChild(del);
     return row;
   }
+
   function setDir(d){
     dir=d;
     document.getElementById('dirIn').classList.toggle('active',d==='in');
@@ -259,7 +293,8 @@
   }
   function send(){
     const t=input.value.replace(/\s+$/,''); if(!t.trim()) return;
-    const row=makeRow(dir,t,nowTime());
+    const time=advanceMockTime();
+    const row=makeRow(dir,t,time);
     const last=chat.lastElementChild;
     if(last && !last.classList.contains(dir) && !last.classList.contains('day')) row.classList.add('gap');
     chat.appendChild(row); chat.scrollTop=chat.scrollHeight;
@@ -273,6 +308,8 @@
   function toggleDark(){
     document.body.classList.toggle('dark');
     document.getElementById('darkBtn').textContent=document.body.classList.contains('dark')?'☀ ライト':'🌙 ダーク';
+    // ダーク切替後もテーマカラーを維持
+    document.documentElement.style.setProperty('--out-bubble',currentTheme);
   }
   let uiHidden=false;
   function hideUI(){
@@ -291,6 +328,7 @@
 
   function openPanel(){ document.getElementById('overlay').classList.add('open'); }
   function closePanel(){ document.getElementById('overlay').classList.remove('open'); }
+
   const setName=document.getElementById('setName');
   setName.addEventListener('input',()=>{
     const v=setName.value||'?';
@@ -298,6 +336,7 @@
     if(!avatarImg) avatar.textContent=(v.trim()[0]||'?');
   });
   document.getElementById('setSbTime').addEventListener('input',function(){ document.getElementById('sbTime').textContent=this.value; });
+
   const colorRow=document.getElementById('colorRow');
   palette.forEach((g,i)=>{
     const s=document.createElement('div'); s.className='swatch'+(i===0?' sel':''); s.style.background=g;
@@ -305,17 +344,18 @@
       avatarColor=g; avatarImg=null;
       avatar.style.backgroundImage=g; avatar.textContent=(setName.value.trim()[0]||'?');
       document.getElementById('fileName').textContent='';
-      document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('sel')); s.classList.add('sel');
+      document.querySelectorAll('#colorRow .swatch').forEach(x=>x.classList.remove('sel')); s.classList.add('sel');
     };
     colorRow.appendChild(s);
   });
+
   document.getElementById('fileInput').addEventListener('change',function(e){
     const f=e.target.files[0]; if(!f) return;
     const r=new FileReader();
     r.onload=ev=>{
       avatarImg=ev.target.result; avatar.style.backgroundImage='url('+avatarImg+')'; avatar.textContent='';
       document.getElementById('fileName').textContent=f.name;
-      document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('sel'));
+      document.querySelectorAll('#colorRow .swatch').forEach(x=>x.classList.remove('sel'));
     };
     r.readAsDataURL(f);
   });
@@ -323,6 +363,7 @@
     avatarImg=null; avatar.style.backgroundImage=avatarColor;
     avatar.textContent=(setName.value.trim()[0]||'?'); document.getElementById('fileName').textContent='';
   }
+
   document.getElementById('timeToggle').addEventListener('change',function(){ chat.classList.toggle('hide-time',!this.checked); });
   // Long-press on status bar or header to toggle UI
   let _pt=null,_px=0,_py=0;
@@ -336,11 +377,13 @@
 
   document.getElementById('checkToggle').addEventListener('change',function(){
     const show=this.checked;
-    document.querySelectorAll('.out .time').forEach(m=>{
-      const t=m.textContent.replace('✓','').trim();
-      m.innerHTML=t+(show?' <span class="check">✓</span>':'');
+    document.querySelectorAll('.row.out .time').forEach(tm=>{
+      let ck=tm.querySelector('.check');
+      if(show && !ck){ ck=document.createElement('span'); ck.className='check'; ck.textContent='✓'; tm.appendChild(ck); }
+      else if(!show && ck){ ck.remove(); }
     });
   });
+
   function capture(){
     document.querySelectorAll('.del').forEach(d=>d.style.display='none');
     const composer=document.getElementById('composer'); const fab=document.getElementById('fab'); const toolbar=document.getElementById('toolbar');
@@ -355,8 +398,7 @@
       c.toBlob(async (blob)=>{
         const file=new File([blob],'message.png',{type:'image/png'});
         if(navigator.canShare && navigator.canShare({files:[file]})){
-          try{ await navigator.share({files:[file]}); }
-          catch(e){ /* キャンセル時は何もしない */ }
+          try{ await navigator.share({files:[file]}); } catch(e){}
           restore(); return;
         }
         const url=URL.createObjectURL(blob);
