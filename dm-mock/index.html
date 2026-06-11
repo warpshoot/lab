@@ -385,10 +385,43 @@
     const last=rows[rows.length-1];
     const tv=last.querySelector('.time-val');
     if(tv) document.getElementById('sbTime').textContent=tv.textContent.trim();
+    const isIn=last.classList.contains('in');
+
+    // メッセージを隠す
     last.classList.remove('new-msg');
+    last.style.visibility='hidden';
     void last.offsetWidth;
-    last.classList.add('new-msg');
     chat.scrollTop=chat.scrollHeight;
+
+    if(isIn){
+      // 受信: タイピングインジケーター表示 → 消える → メッセージ出現
+      const hadTyping=!!typingRow;
+      let tmpTyping=null;
+      if(!hadTyping){
+        tmpTyping=document.createElement('div'); tmpTyping.className='row in';
+        const bbl=document.createElement('div'); bbl.className='bubble';
+        bbl.style.cssText='display:flex;align-items:center;gap:5px;padding:10px 16px;';
+        for(let i=0;i<3;i++){ const d=document.createElement('span'); d.className='typing-dot'; bbl.appendChild(d); }
+        tmpTyping.appendChild(bbl); chat.appendChild(tmpTyping);
+        tmpTyping.classList.add('new-msg');
+        chat.scrollTop=chat.scrollHeight;
+      }
+      setTimeout(()=>{
+        if(tmpTyping){ tmpTyping.remove(); tmpTyping=null; }
+        setTimeout(()=>{
+          last.style.visibility='';
+          last.classList.add('new-msg');
+          chat.scrollTop=chat.scrollHeight;
+        },150);
+      },1400);
+    } else {
+      // 送信: 間をおいてメッセージ出現
+      setTimeout(()=>{
+        last.style.visibility='';
+        last.classList.add('new-msg');
+        chat.scrollTop=chat.scrollHeight;
+      },400);
+    }
   }
   function toggleToolbar(){ document.getElementById('toolbar').classList.toggle('open'); }
   function toggleDark(){
