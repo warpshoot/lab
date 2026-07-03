@@ -105,6 +105,29 @@
   .result-msg{color:var(--sub);margin-top:6px}
   .qcount{font-size:12px;color:var(--sub);text-align:right;margin-bottom:4px}
 
+  /* flashcard (一問一答) */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px 20px;margin:14px 0;min-height:200px;display:flex;flex-direction:column;justify-content:center;text-align:center}
+  .card-field{font-size:12px;color:var(--sub);margin-bottom:12px;font-weight:700}
+  .card-q{font-size:19px;font-weight:700;line-height:1.6}
+  .card-a{font-size:26px;font-weight:800;color:var(--accent2);margin-top:18px;display:none}
+  .card.revealed .card-a{display:block;animation:fade .25s}
+  .card-hint{font-size:12px;color:var(--sub);margin-top:16px}
+  .grade-row{display:flex;gap:10px;margin:10px 0}
+  .grade-row .btn{flex:1;text-align:center;padding:13px}
+  .btn.ng{border-color:var(--bad);color:var(--bad)}
+  .btn.ok{border-color:var(--good);color:var(--good)}
+  .qa-stat{display:flex;justify-content:space-around;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;font-size:13px}
+  .qa-stat b{display:block;font-size:22px;font-weight:800}
+  .qa-stat .s-rem b{color:var(--accent)} .qa-stat .s-ok b{color:var(--good)} .qa-stat .s-ng b{color:var(--warn)}
+  /* 記述 */
+  .kj{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+  .kj-q{font-size:15px;font-weight:700;margin-bottom:6px}
+  .kj-q .num{color:var(--geo)}
+  .kj-field{font-size:11px;color:var(--sub);font-weight:700;margin-bottom:8px}
+  .kj-a{display:none;margin-top:12px;padding:12px 14px;background:var(--panel2);border-radius:9px;border-left:3px solid var(--good);font-size:14px;line-height:1.7}
+  .kj-a.show{display:block;animation:fade .25s}
+  .kj-a .lbl{color:var(--good);font-weight:700;font-size:12px;display:block;margin-bottom:4px}
+  .kj-point{color:var(--sub);font-size:13px;margin-top:8px}
   footer{text-align:center;color:var(--sub);font-size:12px;margin-top:30px}
   .reset{color:var(--sub);text-decoration:underline;cursor:pointer;font-size:12px}
 </style>
@@ -130,10 +153,20 @@
     <div class="tab" data-f="chem">化学</div>
     <div class="tab" data-f="bio">生物</div>
     <div class="tab" data-f="geo">地学</div>
+    <div class="tab" data-f="qa">一問一答</div>
+    <div class="tab" data-f="kijutsu">記述</div>
     <div class="tab" data-f="test">模試</div>
   </div>
 
   <div id="content"></div>
+
+  <section id="sec-qa">
+    <div id="qaArea"></div>
+  </section>
+
+  <section id="sec-kijutsu">
+    <div id="kijutsuArea"></div>
+  </section>
 
   <section id="sec-test">
     <div id="testArea"></div>
@@ -370,6 +403,41 @@ chem:{ name:"化学", color:"var(--chem)", units:[
      {q:"BTB溶液を加えると黄色になる水溶液は？",opts:["酸性","中性","アルカリ性","判別できない"],a:0,e:"BTBは酸性で黄、中性で緑、アルカリ性で青。"},
      {q:"酸とアルカリが打ち消し合い、水と塩ができる反応を何という？",opts:["電離","中和","酸化","還元"],a:1,e:"中和。H⁺＋OH⁻→H₂Oとなる。"},
      {q:"塩酸に水酸化ナトリウム水溶液を加えて中性にしたとき、水を蒸発させると得られる物質は？",opts:["塩化ナトリウム","水酸化ナトリウム","塩化水素","炭酸ナトリウム"],a:0,e:"中和でできる塩は塩化ナトリウム（食塩）。"}
+   ]},
+  {id:"c9", grade:"暗記", title:"化学式・化学反応式 暗記シート",
+   points:[
+     "<b>■ おぼえる化学式（物質を表す）</b>",
+     "単体（1種類の原子）：水素<span class='kw'>H₂</span>／酸素<span class='kw'>O₂</span>／窒素<span class='kw'>N₂</span>／炭素<span class='kw'>C</span>／銅<span class='kw'>Cu</span>／鉄<span class='kw'>Fe</span>／マグネシウム<span class='kw'>Mg</span>／亜鉛<span class='kw'>Zn</span>／銀<span class='kw'>Ag</span>／ナトリウム<span class='kw'>Na</span>",
+     "気体は原子2個で1分子（<span class='kw'>H₂・O₂・N₂</span>）。金属や炭素は分子をつくらず記号だけで表す（<span class='kw'>Cu・Fe・C</span>）。",
+     "化合物（2種類以上）：水<span class='kw'>H₂O</span>／二酸化炭素<span class='kw'>CO₂</span>／アンモニア<span class='kw'>NH₃</span>／塩化水素<span class='kw'>HCl</span>／塩化ナトリウム<span class='kw'>NaCl</span>",
+     "酸化物：酸化銅<span class='kw'>CuO</span>／酸化マグネシウム<span class='kw'>MgO</span>／酸化銀<span class='kw'>Ag₂O</span>／酸化鉄・硫化鉄<span class='kw'>FeS</span>",
+     "その他：水酸化ナトリウム<span class='kw'>NaOH</span>／塩化銅<span class='kw'>CuCl₂</span>／炭酸ナトリウム<span class='kw'>Na₂CO₃</span>／炭酸水素ナトリウム<span class='kw'>NaHCO₃</span>／炭酸カルシウム<span class='kw'>CaCO₃</span>",
+     "<b>■ おぼえるイオン（中3）</b>",
+     "陽イオン：水素<span class='kw'>H⁺</span>／ナトリウム<span class='kw'>Na⁺</span>／銅<span class='kw'>Cu²⁺</span>／亜鉛<span class='kw'>Zn²⁺</span>。「＋の電気を持つ＝電子を失った」と覚える。",
+     "陰イオン：塩化物<span class='kw'>Cl⁻</span>／水酸化物<span class='kw'>OH⁻</span>／硫酸<span class='kw'>SO₄²⁻</span>。数字（価数）は失った/受け取った電子の数。",
+     "<b>■ 化学反応式のつくり方（3ステップ）</b>",
+     "① 反応前（左）と反応後（右）の物質を化学式で書く → ② 矢印 → の左右で<span class='kw'>原子の数を合わせる</span> → ③ 分子の前に係数をつける（式の右下の数字は変えない）。",
+     "コツ：数が合わないときは<b>係数（前の大きい数）だけ</b>を調整する。O₂を勝手にO₃にしてはいけない。"
+   ],
+   formulas:[
+     "【水の電気分解】 2H₂O → 2H₂ + O₂ ｜水に電流を流すと分解。陰極に水素、陽極に酸素が2:1で発生。",
+     "【炭酸水素ナトリウムの熱分解】 2NaHCO₃ → Na₂CO₃ + H₂O + CO₂ ｜加熱で3つに分解。石灰水を白くにごらせる（CO₂）ことで確認。",
+     "【酸化銅の還元】 2CuO + C → 2Cu + CO₂ ｜炭素が酸素を奪う。CuOは還元されて銅に、Cは酸化されてCO₂に。",
+     "【銅の酸化】 2Cu + O₂ → 2CuO ｜加熱すると黒くなる。質量比 銅:酸素 = 4:1。",
+     "【マグネシウムの燃焼】 2Mg + O₂ → 2MgO ｜強い光を出して燃える。質量比 Mg:酸素 = 3:2。",
+     "【鉄と硫黄の化合】 Fe + S → FeS ｜結びつくと磁石につかない別物質（硫化鉄）になる。",
+     "【水素の燃焼】 2H₂ + O₂ → 2H₂O ｜ポンッと音を立てて燃え、水ができる。",
+     "【炭素の燃焼】 C + O₂ → CO₂ ｜有機物が燃えると二酸化炭素と水ができる。",
+     "【塩酸の中和】 HCl + NaOH → NaCl + H₂O ｜酸＋アルカリ→塩＋水。H⁺+OH⁻→H₂O が中和の本体。",
+     "【塩化銅の電離】 CuCl₂ → Cu²⁺ + 2Cl⁻ ｜水に溶けてイオンに分かれる。電気分解で陰極に銅・陽極に塩素。"
+   ],
+   quiz:[
+     {q:"水の電気分解 2H₂O → 2H₂ + □ の□に入る化学式は？",opts:["O","O₂","O₃","H₂O"],a:1,e:"酸素は分子O₂で発生する。陰極の水素と陽極の酸素は体積比2:1。"},
+     {q:"銅を加熱して酸化させる反応式 2Cu + O₂ → □ の□は？",opts:["CuO","2CuO","Cu₂O","2CuO₂"],a:1,e:"左辺の銅原子は2個、酸素原子も2個。右辺もCuO 2個ぶんで原子数が合う→2CuO。"},
+     {q:"化学反応式で原子の数を合わせるとき、変えてよいのはどれ？",opts:["化学式の右下の小さい数字","分子の前につける係数","矢印の向き","元素記号"],a:1,e:"係数（前の大きい数）だけで調整する。右下の数字を変えると別の物質になってしまう。"},
+     {q:"炭酸水素ナトリウムを加熱したときの反応式に含まれない物質は？",opts:["Na₂CO₃","H₂O","CO₂","O₂"],a:3,e:"2NaHCO₃→Na₂CO₃+H₂O+CO₂。酸素O₂は発生しない。"},
+     {q:"銅と酸素が結びつく質量比として正しいものは？",opts:["銅:酸素=1:1","銅:酸素=4:1","銅:酸素=3:2","銅:酸素=2:3"],a:1,e:"銅:酸素=4:1。マグネシウムは3:2なので混同に注意。"},
+     {q:"次のうち『単体』を表す化学式はどれ？",opts:["H₂O","CO₂","O₂","NaCl"],a:2,e:"O₂は酸素原子だけ＝単体。他は2種類以上の原子からなる化合物。"}
    ]},
 ]},
 
@@ -662,6 +730,8 @@ function bindEvents(){
       t.classList.add('active');
       const f=t.dataset.f;
       if(f==='test'){document.getElementById('sec-test').classList.add('active'); renderTestIntro();}
+      else if(f==='qa'){document.getElementById('sec-qa').classList.add('active'); if(!qaState)renderQAIntro();}
+      else if(f==='kijutsu'){document.getElementById('sec-kijutsu').classList.add('active'); renderKijutsu();}
       else document.getElementById('sec-'+f).classList.add('active');
       window.scrollTo({top:0,behavior:'smooth'});
     };
@@ -813,6 +883,198 @@ function gradeTest(){
   area.insertBefore(card, area.firstChild);
   document.getElementById('retryTest').onclick=renderTestIntro;
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ================= 一問一答（フラッシュカード） ================= */
+const QA={
+ phys:[
+  {q:"光が反射するとき、入射角と等しくなる角は？",a:"反射角"},
+  {q:"光が異なる物質の境界で曲がる現象は？",a:"屈折"},
+  {q:"1秒間の振動数を表す単位は？",a:"ヘルツ（Hz）"},
+  {q:"質量100gの物体にはたらく重力の大きさは約？",a:"約1N"},
+  {q:"面を垂直に押す力のはたらきぐあいを表す量は？",a:"圧力"},
+  {q:"電圧が電流に比例するという法則は？",a:"オームの法則"},
+  {q:"電力の単位は？",a:"ワット（W）"},
+  {q:"磁界の変化でコイルに電流が生じる現象は？",a:"電磁誘導"},
+  {q:"力がはたらかないとき運動を続けようとする性質は？",a:"慣性"},
+  {q:"仕事や熱、エネルギーの大きさを表す単位は？",a:"ジュール（J）"},
+  {q:"道具を使っても仕事の量は変わらないことを何という？",a:"仕事の原理"},
+  {q:"1秒間あたりの仕事の量を表す量は？",a:"仕事率"}
+ ],
+ chem:[
+  {q:"炭素をふくみ、燃やすと二酸化炭素と水ができる物質は？",a:"有機物"},
+  {q:"石灰水を白くにごらせる気体は？",a:"二酸化炭素"},
+  {q:"水に溶けにくい気体を水と置きかえて集める方法は？",a:"水上置換（法）"},
+  {q:"物質をつくる最小の粒子は？",a:"原子"},
+  {q:"1種類の原子だけからできている物質は？",a:"単体"},
+  {q:"物質が酸素と結びつく化学変化は？",a:"酸化"},
+  {q:"酸化物から酸素をとり除く化学変化は？",a:"還元"},
+  {q:"化学変化の前後で全体の質量が変わらない法則は？",a:"質量保存の法則"},
+  {q:"電解質が水中でイオンに分かれることを何という？",a:"電離"},
+  {q:"酸とアルカリがたがいの性質を打ち消し合う反応は？",a:"中和"},
+  {q:"BTB溶液が中性で示す色は？",a:"緑色"},
+  {q:"電子を失って＋の電気を帯びた粒子は？",a:"陽イオン"}
+ ],
+ bio:[
+  {q:"胚珠が子房に包まれている植物のなかまは？",a:"被子植物"},
+  {q:"葉緑体で光を受けて栄養分をつくるはたらきは？",a:"光合成"},
+  {q:"葉の気孔から水を水蒸気として放出するはたらきは？",a:"蒸散"},
+  {q:"背骨をもつ動物のなかまは？",a:"セキツイ動物"},
+  {q:"ホニュウ類のように子が母体内である程度育ってうまれる生まれ方は？",a:"胎生"},
+  {q:"だ液にふくまれ、デンプンを分解する消化酵素は？",a:"アミラーゼ"},
+  {q:"小腸の内側にあり、養分を吸収する小さな突起は？",a:"柔毛"},
+  {q:"酸素を運ぶ、ヘモグロビンをふくむ血液成分は？",a:"赤血球"},
+  {q:"刺激に対して無意識に起こる反応は？",a:"反射"},
+  {q:"生殖細胞ができるときの、染色体数が半分になる分裂は？",a:"減数分裂"},
+  {q:"顕性:潜性＝3:1になる遺伝の法則は？",a:"分離の法則"},
+  {q:"有機物を無機物に分解する、菌類・細菌類などの生物は？",a:"分解者"}
+ ],
+ geo:[
+  {q:"マグマが冷えて固まった岩石をまとめて何という？",a:"火成岩"},
+  {q:"地下深くでゆっくり冷えてできた等粒状組織の岩石は？",a:"深成岩"},
+  {q:"地震のはじめの小さなゆれを何という？",a:"初期微動"},
+  {q:"地震そのものの規模（エネルギー）を表すものは？",a:"マグニチュード"},
+  {q:"火山灰などが堆積して固まった岩石は？",a:"凝灰岩"},
+  {q:"地層が堆積した年代を推定できる化石は？",a:"示準化石"},
+  {q:"空気中の水蒸気が凝結し始める温度を何という？",a:"露点"},
+  {q:"寒気が暖気の下にもぐりこんで進む前線は？",a:"寒冷前線"},
+  {q:"冬に見られる特徴的な気圧配置は？",a:"西高東低"},
+  {q:"地球が1日に1回、地軸を中心に回転することは？",a:"自転"},
+  {q:"太陽のように自ら光り輝く天体は？",a:"恒星"},
+  {q:"地球より内側を公転し、真夜中には見えない惑星は？",a:"金星（内惑星）"}
+ ]
+};
+const QA_FIELDS={phys:"物理",chem:"化学",bio:"生物",geo:"地学"};
+let qaState=null;
+function renderQAIntro(){
+  const area=document.getElementById('qaArea');
+  area.innerHTML=`
+    <div class="test-intro">
+      <h2>🃏 一問一答</h2>
+      <p>重要用語をフラッシュカードで暗記しよう。問題を見て頭の中で答えてから「答えを見る」。覚えたカードは消え、まちがえたカードはくり返し出てきます。</p>
+      <div class="chips" id="qaFieldChips">
+        <div class="chip on" data-f="phys">物理</div>
+        <div class="chip on" data-f="chem">化学</div>
+        <div class="chip on" data-f="bio">生物</div>
+        <div class="chip on" data-f="geo">地学</div>
+      </div>
+      <div class="row"><button class="btn primary" id="startQA">スタート</button></div>
+    </div>`;
+  area.querySelectorAll('#qaFieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+  document.getElementById('startQA').onclick=startQA;
+}
+function startQA(){
+  const fields=[...document.querySelectorAll('#qaFieldChips .chip.on')].map(c=>c.dataset.f);
+  if(!fields.length){alert('分野を1つ以上選んでください');return;}
+  let deck=[];
+  fields.forEach(f=>QA[f].forEach(c=>deck.push({...c,field:QA_FIELDS[f]})));
+  deck=shuffle(deck);
+  qaState={deck,total:deck.length,idx:0,ok:0,ng:0,revealed:false};
+  renderQACard();
+}
+function renderQACard(){
+  const s=qaState, area=document.getElementById('qaArea');
+  if(s.deck.length===0){
+    area.innerHTML=`<div class="result-card">
+      <div class="result-score">🎉</div>
+      <div style="font-size:18px;font-weight:700;margin-top:6px">全${s.total}枚 コンプリート！</div>
+      <div class="result-msg">くり返して定着させよう。</div>
+      <div class="row" style="justify-content:center;margin-top:14px"><button class="btn primary" id="qaAgain">もう一度</button></div>
+    </div>`;
+    document.getElementById('qaAgain').onclick=renderQAIntro;
+    return;
+  }
+  const card=s.deck[0];
+  area.innerHTML=`
+    <div class="qa-stat">
+      <div class="s-rem">のこり<b>${s.deck.length}</b></div>
+      <div class="s-ok">覚えた<b>${s.ok}</b></div>
+      <div class="s-ng">要復習<b>${s.ng}</b></div>
+    </div>
+    <div class="card" id="qaCard">
+      <div class="card-field">${card.field}</div>
+      <div class="card-q">${card.q}</div>
+      <div class="card-a">${card.a}</div>
+      <div class="card-hint" id="qaHint">タップして答えを見る</div>
+    </div>
+    <div id="qaControls"></div>`;
+  const cardEl=document.getElementById('qaCard');
+  const reveal=()=>{
+    if(s.revealed)return; s.revealed=true;
+    cardEl.classList.add('revealed');
+    document.getElementById('qaHint').style.display='none';
+    document.getElementById('qaControls').innerHTML=`
+      <div class="grade-row">
+        <button class="btn ng" id="qaNG">× もう一度</button>
+        <button class="btn ok" id="qaOK">✓ 覚えた</button>
+      </div>`;
+    document.getElementById('qaOK').onclick=()=>gradeCard(true);
+    document.getElementById('qaNG').onclick=()=>gradeCard(false);
+  };
+  cardEl.onclick=reveal;
+}
+function gradeCard(ok){
+  const s=qaState;
+  const card=s.deck.shift();
+  s.revealed=false;
+  if(ok){s.ok++;}
+  else{s.ng++; s.deck.push(card);} // まちがえたら山の最後へ戻す
+  renderQACard();
+}
+
+/* ================= 記述対策 ================= */
+const KIJUTSU={
+ phys:[
+  {q:"豆電球を並列につないだ回路で、1つの豆電球が切れても他の豆電球がつき続けるのはなぜか。",a:"並列回路では豆電球ごとに独立した電流の通り道があり、1つが切れても他の道に電流が流れ続けるから。",p:"『電流の通り道が別々』がキーワード。"},
+  {q:"同じ大きさの力でも、力がはたらく面積を小さくすると圧力が大きくなるのはなぜか。",a:"圧力は力を面積で割った値であり、力が同じなら面積が小さいほど圧力は大きくなるから。",p:"圧力＝力÷面積 の関係を言葉で説明する。"},
+  {q:"斜面を下る台車の速さが、時間とともにしだいに大きくなるのはなぜか。",a:"斜面方向に一定の大きさの力（重力の分力）がはたらき続けるため、速さが一定の割合で増え続けるから。",p:"『一定の力がはたらき続ける』が要点。"}
+ ],
+ chem:[
+  {q:"炭酸水素ナトリウムを加熱するとき、試験管の口を底より少し下げておくのはなぜか。",a:"発生した水（液体）が加熱している部分に流れこみ、試験管が急に冷えて割れるのを防ぐため。",p:"『水が加熱部にもどると割れる』を書く。"},
+  {q:"酸化銅と炭素の粉末を混ぜて加熱すると銅ができる。この変化を「酸化」「還元」の語を使って説明せよ。",a:"炭素が酸化銅から酸素をうばって酸化され、酸化銅は酸素をうばわれて還元され、銅になるから。",p:"酸化と還元は同時に起こる、を必ず両方書く。"},
+  {q:"塩化銅水溶液を電気分解すると、陰極に銅が付着するのはなぜか。",a:"銅イオンCu²⁺は＋の電気をもち、−極である陰極に引かれて電子を受け取り、銅になるから。",p:"『陽イオンが陰極へ』＋『電子を受け取る』。"},
+  {q:"うすい塩酸に亜鉛を入れると発生する気体を集めるとき、水上置換法が適している理由を答えよ。",a:"発生する水素は水に溶けにくいため、水と置きかえて集めることができるから。",p:"気体の性質（水に溶けにくい）が理由になる。"}
+ ],
+ bio:[
+  {q:"よく日の当たる昼間、植物が二酸化炭素をほとんど出していないように見えるのはなぜか。",a:"呼吸で二酸化炭素を出しているが、それ以上に光合成で二酸化炭素を吸収しているため、見かけ上ほとんど出さないように見えるから。",p:"呼吸と光合成を『両方している』ことが前提。"},
+  {q:"小腸の内側の壁に多数のひだや柔毛があることの利点を答えよ。",a:"養分にふれる表面積が大きくなり、養分を効率よく吸収できるから。",p:"『表面積が大きくなる』は頻出フレーズ。"},
+  {q:"反射が、意識して行う反応よりも短い時間で起こるのはなぜか。",a:"反射では命令を出すのが脳ではなくせきずいであり、信号が伝わる経路が短いから。",p:"『せきずいで命令＝経路が短い』。"},
+  {q:"肺が多数の小さな肺胞からできていることの利点を答えよ。",a:"空気とふれる表面積が大きくなり、酸素と二酸化炭素の交換（ガス交換）を効率よく行えるから。",p:"小腸の柔毛と同じ『表面積』の論理。"}
+ ],
+ geo:[
+  {q:"深成岩をつくる鉱物の結晶が、火山岩にくらべて大きいのはなぜか。",a:"地下深くでマグマがゆっくり冷え固まり、鉱物の結晶が大きく成長する時間があったから。",p:"『ゆっくり冷える→大きく成長』。"},
+  {q:"初期微動継続時間が、震源から遠い地点ほど長くなるのはなぜか。",a:"P波はS波より速く伝わるため、震源から遠いほど両者の到達時刻の差が大きくなるから。",p:"P波・S波の速さのちがいを書く。"},
+  {q:"金星が真夜中には観測できないのはなぜか。",a:"金星は地球より内側を公転する内惑星で、つねに太陽と同じ方向にあるため、太陽が沈んでいる真夜中には見えないから。",p:"『内惑星＝太陽の近くにしかない』。"},
+  {q:"よく晴れた風のない夜に、明け方の気温が特に下がりやすいのはなぜか。",a:"雲がないと地表の熱が宇宙へ逃げやすく（放射冷却）、気温が下がりやすいから。",p:"放射冷却。雲がふとんの役割を果たさない。"}
+ ]
+};
+function renderKijutsu(){
+  const area=document.getElementById('kijutsuArea');
+  let html=`<div class="test-intro" style="padding:16px 18px">
+     <h2>✍️ 記述対策</h2>
+     <p style="margin:0">千葉県入試で差がつく「理由・説明」問題。まずノートに自分の言葉で書いてから模範解答を確認しよう。太字の<b>採点ポイント</b>が入っていれば正解に近い。</p>
+   </div>`;
+  Object.keys(KIJUTSU).forEach(f=>{
+    html+=`<div class="field-head"><span class="field-dot" style="background:var(--${f})"></span><h2 style="font-size:15px">${QA_FIELDS[f]}</h2></div>`;
+    KIJUTSU[f].forEach((k,i)=>{
+      html+=`<div class="kj">
+        <div class="kj-q"><span class="num">問${i+1}.</span> ${k.q}</div>
+        <button class="btn kj-btn" data-f="${f}" data-i="${i}">模範解答を見る</button>
+        <div class="kj-a" id="kj-${f}-${i}">
+          <span class="lbl">模範解答</span>${k.a}
+          <div class="kj-point">🔑 ${k.p}</div>
+        </div>
+      </div>`;
+    });
+  });
+  area.innerHTML=html;
+  area.querySelectorAll('.kj-btn').forEach(b=>{
+    b.onclick=()=>{
+      const box=document.getElementById(`kj-${b.dataset.f}-${b.dataset.i}`);
+      const open=box.classList.toggle('show');
+      b.textContent=open?'解答を隠す':'模範解答を見る';
+    };
+  });
 }
 
 /* ================= リセット ================= */
