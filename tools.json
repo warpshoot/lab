@@ -26,6 +26,11 @@
       "description": "千葉県公立高校入試 理科の要点整理と確認テスト"
     },
     {
+      "path": "./chiba-shakai/",
+      "title": "千葉県 社会対策",
+      "description": "千葉県公立高校入試 社会の要点整理・一問一答・年代並べかえ・記述対策・模試"
+    },
+    {
       "path": "./chiba-sugaku/",
       "title": "千葉県 数学対策",
       "description": "千葉県公立高校入試 数学の要点整理と確認テスト"
