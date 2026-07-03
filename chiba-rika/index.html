@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>千葉県公立高校 理科 対策</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3441;
+    --txt:#e6edf3; --sub:#8b98a9; --accent:#4fc3f7; --accent2:#66d9a8;
+    --warn:#ffb454; --bad:#ff6b6b; --good:#66d9a8;
+    --phys:#4fc3f7; --chem:#c792ea; --bio:#66d9a8; --geo:#ffb454;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Kaku Gothic ProN','Yu Gothic',Meiryo,sans-serif;
+    background:var(--bg); color:var(--txt); line-height:1.7; padding-bottom:80px;
+  }
+  a{color:inherit}
+  .wrap{max-width:860px;margin:0 auto;padding:0 18px}
+
+  header{
+    background:linear-gradient(135deg,#14263a,#0d1117);
+    border-bottom:1px solid var(--line); padding:26px 0 22px; margin-bottom:8px;
+  }
+  header h1{font-size:20px;font-weight:700;letter-spacing:.02em}
+  header p{color:var(--sub);font-size:13px;margin-top:4px}
+  .prog-wrap{margin-top:16px}
+  .prog-bar{height:8px;background:var(--panel2);border-radius:6px;overflow:hidden}
+  .prog-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .5s}
+  .prog-label{font-size:12px;color:var(--sub);margin-top:6px;display:flex;justify-content:space-between}
+
+  /* nav tabs */
+  .tabs{display:flex;gap:6px;position:sticky;top:0;background:var(--bg);padding:12px 0;z-index:20;flex-wrap:wrap}
+  .tab{
+    flex:1;min-width:70px;text-align:center;padding:9px 4px;border-radius:10px;
+    background:var(--panel);border:1px solid var(--line);font-size:13px;font-weight:600;
+    color:var(--sub);cursor:pointer;transition:.15s;user-select:none;
+  }
+  .tab.active{color:var(--txt);border-color:var(--accent)}
+  .tab[data-f="phys"].active{border-color:var(--phys);color:var(--phys)}
+  .tab[data-f="chem"].active{border-color:var(--chem);color:var(--chem)}
+  .tab[data-f="bio"].active{border-color:var(--bio);color:var(--bio)}
+  .tab[data-f="geo"].active{border-color:var(--geo);color:var(--geo)}
+  .tab[data-f="test"].active{border-color:#fff;color:#fff}
+
+  section{display:none;animation:fade .3s}
+  section.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .field-head{display:flex;align-items:center;gap:10px;margin:18px 0 10px}
+  .field-dot{width:12px;height:12px;border-radius:50%}
+  .field-head h2{font-size:17px}
+  .field-head .cnt{margin-left:auto;font-size:12px;color:var(--sub)}
+
+  .unit{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
+  .unit-head{display:flex;align-items:center;gap:10px;padding:15px 16px;cursor:pointer;user-select:none}
+  .unit-head:hover{background:var(--panel2)}
+  .unit-grade{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--panel2);color:var(--sub);white-space:nowrap}
+  .unit-title{font-weight:700;font-size:15px;flex:1}
+  .unit-check{font-size:16px;width:22px;text-align:center}
+  .unit-arrow{color:var(--sub);transition:transform .2s;font-size:12px}
+  .unit.open .unit-arrow{transform:rotate(90deg)}
+  .unit-body{display:none;padding:0 16px 16px;border-top:1px solid var(--line)}
+  .unit.open .unit-body{display:block}
+
+  h3.sec{font-size:13px;color:var(--accent);margin:16px 0 8px;font-weight:700;letter-spacing:.03em}
+  .points{list-style:none}
+  .points li{padding:7px 0 7px 22px;position:relative;font-size:14px;border-bottom:1px dashed var(--line)}
+  .points li:last-child{border-bottom:none}
+  .points li::before{content:"▸";position:absolute;left:2px;color:var(--accent2)}
+  .kw{color:var(--warn);font-weight:700}
+  .fm{background:var(--panel2);border-left:3px solid var(--accent);padding:8px 12px;border-radius:6px;margin:8px 0;font-size:14px;font-family:ui-monospace,'SF Mono',Menlo,monospace}
+
+  /* quiz */
+  .q{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
+  .q-txt{font-size:14px;font-weight:600;margin-bottom:10px}
+  .q-txt .num{color:var(--accent);margin-right:6px}
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opt{padding:10px 13px;border-radius:9px;background:var(--panel);border:1px solid var(--line);cursor:pointer;font-size:14px;transition:.12s}
+  .opt:hover{border-color:var(--accent)}
+  .opt.correct{background:rgba(102,217,168,.18);border-color:var(--good)}
+  .opt.wrong{background:rgba(255,107,107,.16);border-color:var(--bad)}
+  .opt.disabled{cursor:default;pointer-events:none;opacity:.55}
+  .opt.disabled.correct,.opt.disabled.wrong{opacity:1}
+  .expl{display:none;margin-top:10px;padding:10px 12px;background:var(--panel);border-radius:8px;font-size:13px;border-left:3px solid var(--accent2)}
+  .expl.show{display:block}
+  .expl b{color:var(--accent2)}
+
+  .btn{display:inline-block;padding:9px 16px;border-radius:9px;background:var(--panel);border:1px solid var(--line);color:var(--txt);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent);color:#04222f;border-color:var(--accent)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0}
+
+  /* test mode */
+  .test-intro{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0}
+  .test-intro h2{font-size:18px;margin-bottom:8px}
+  .test-intro p{color:var(--sub);font-size:14px;margin-bottom:14px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .chip{padding:7px 14px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);font-size:13px;cursor:pointer;font-weight:600}
+  .chip.on{background:var(--accent);color:#04222f;border-color:var(--accent)}
+  .result-card{text-align:center;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:14px;margin:16px 0}
+  .result-score{font-size:44px;font-weight:800;color:var(--accent)}
+  .result-msg{color:var(--sub);margin-top:6px}
+  .qcount{font-size:12px;color:var(--sub);text-align:right;margin-bottom:4px}
+
+  footer{text-align:center;color:var(--sub);font-size:12px;margin-top:30px}
+  .reset{color:var(--sub);text-decoration:underline;cursor:pointer;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>🧪 千葉県公立高校 理科 対策</h1>
+    <p>物理・化学・生物・地学の全単元｜要点整理と確認テスト</p>
+    <div class="prog-wrap">
+      <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+      <div class="prog-label">
+        <span>学習の進み具合</span>
+        <span id="progText">0 / 0 単元</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-f="phys">物理</div>
+    <div class="tab" data-f="chem">化学</div>
+    <div class="tab" data-f="bio">生物</div>
+    <div class="tab" data-f="geo">地学</div>
+    <div class="tab" data-f="test">模試</div>
+  </div>
+
+  <div id="content"></div>
+
+  <section id="sec-test">
+    <div id="testArea"></div>
+  </section>
+
+  <footer>
+    千葉県公立高校入試（理科）学習教材 ・ 全範囲対応<br>
+    進捗はこの端末に自動保存されます ・ <span class="reset" id="resetBtn">進捗をリセット</span>
+  </footer>
+</div>
+
+<script>
+/* =========================================================================
+   千葉県公立高校 理科 教材データ
+   分野: phys(物理) chem(化学) bio(生物) geo(地学)
+   各単元: grade, title, points[], formulas[], quiz[{q,opts,a,e}]
+   ========================================================================= */
+const DATA = {
+phys:{ name:"物理", color:"var(--phys)", units:[
+  {id:"p1", grade:"中1", title:"光の性質",
+   points:[
+     "光は<span class='kw'>直進</span>する。物体が見えるのは、光が物体で<span class='kw'>反射</span>して目に届くから。",
+     "反射の法則：<span class='kw'>入射角＝反射角</span>（角は鏡の面に垂直な線から測る）。",
+     "光が異なる物質へ進むとき境界で曲がる現象を<span class='kw'>屈折</span>という。",
+     "空気→水・ガラス：入射角＞屈折角。水・ガラス→空気：入射角＜屈折角。",
+     "光が全て反射して出ていかない現象を<span class='kw'>全反射</span>という（水中→空気で入射角が大きいとき）。",
+     "凸レンズ：焦点距離の2倍の位置に物体→<span class='kw'>実像</span>（上下左右逆・同じ大きさ）。焦点の内側→<span class='kw'>虚像</span>（正立・拡大）。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"鏡に光が当たったとき、入射角が30°のときの反射角は？",opts:["15°","30°","60°","90°"],a:1,e:"反射の法則により入射角＝反射角なので30°。"},
+     {q:"凸レンズで、焦点距離の2倍より遠くに物体を置いたときにできる像は？",opts:["正立の虚像","倒立の実像で物体より小さい","倒立の実像で物体より大きい","像はできない"],a:1,e:"焦点距離の2倍より遠い→倒立の実像で物体より小さくなる。"},
+     {q:"光が水中から空気中へ出るとき、入射角を大きくしていくと境界面で全て反射する現象を何という？",opts:["屈折","分散","全反射","乱反射"],a:2,e:"全反射。光ファイバーもこの原理を利用している。"}
+   ]},
+  {id:"p2", grade:"中1", title:"音の性質",
+   points:[
+     "音は物体の<span class='kw'>振動</span>によって生じ、波として伝わる。真空中では伝わらない。",
+     "音の伝わる速さは空気中で約<span class='kw'>340 m/s</span>（光よりずっと遅い）。",
+     "振動の<span class='kw'>振幅</span>が大きいほど音が<span class='kw'>大きい</span>。",
+     "1秒間の振動回数（<span class='kw'>振動数</span>／単位ヘルツHz）が多いほど音が<span class='kw'>高い</span>。"
+   ],
+   formulas:["音の速さ〔m/s〕＝距離〔m〕÷時間〔s〕"],
+   quiz:[
+     {q:"雷が光ってから4秒後に音が聞こえた。音の速さを340m/sとすると、雷までの距離は？",opts:["85 m","340 m","680 m","1360 m"],a:3,e:"340×4＝1360 m。光は一瞬で届くとみなす。"},
+     {q:"音を高くするには、弦をどうすればよい？",opts:["太くする","長くする","強くはじく","短く・強く張る"],a:3,e:"弦を短く・細く・強く張ると振動数が増え、高い音になる。強くはじくのは音量。"}
+   ]},
+  {id:"p3", grade:"中1", title:"力のはたらき・圧力",
+   points:[
+     "力の三要素：<span class='kw'>大きさ・向き・作用点</span>。力の単位はニュートン〔N〕。",
+     "質量100gの物体にはたらく重力の大きさは約<span class='kw'>1N</span>。",
+     "ばねののびは加えた力に比例する（<span class='kw'>フックの法則</span>）。",
+     "圧力＝面を垂直に押す力÷力がはたらく面積。単位は<span class='kw'>パスカル〔Pa〕</span>（＝N/m²）。",
+     "大気圧はあらゆる向きにはたらき、海面付近で約<span class='kw'>1013 hPa</span>。"
+   ],
+   formulas:["圧力〔Pa〕＝力〔N〕÷面積〔m²〕"],
+   quiz:[
+     {q:"質量300gの物体にはたらく重力の大きさは約何N？（100gで1N）",opts:["0.3 N","3 N","30 N","300 N"],a:1,e:"100gで1Nなので300gでは3N。"},
+     {q:"面積0.2m²に10Nの力が垂直にはたらくときの圧力は？",opts:["2 Pa","5 Pa","20 Pa","50 Pa"],a:3,e:"10÷0.2＝50 Pa。"},
+     {q:"同じ力でも、力がはたらく面積を小さくすると圧力は？",opts:["大きくなる","小さくなる","変わらない","0になる"],a:0,e:"圧力＝力÷面積。面積が小さいほど圧力は大きい（画びょうの先が細い理由）。"}
+   ]},
+  {id:"p4", grade:"中2", title:"電流と回路",
+   points:[
+     "<span class='kw'>直列回路</span>：電流はどこも等しい。電圧は各部の和が全体。",
+     "<span class='kw'>並列回路</span>：電圧はどこも等しい。電流は各部の和が全体。",
+     "電圧〔V〕は電流〔A〕に比例する（<span class='kw'>オームの法則</span>）。",
+     "電力〔W〕＝電圧×電流。電力量〔J〕＝電力×時間。熱量も同様。",
+     "抵抗の直列合成＝和、並列合成＝逆数の和の逆数（並列は小さくなる）。"
+   ],
+   formulas:["V＝R×I（電圧＝抵抗×電流）","電力P〔W〕＝V×I","熱量Q〔J〕＝P×t〔秒〕"],
+   quiz:[
+     {q:"抵抗20Ωに0.5Aの電流が流れているときの電圧は？",opts:["0.025 V","4 V","10 V","40 V"],a:2,e:"V＝R×I＝20×0.5＝10V。"},
+     {q:"100Vで2Aの電流が流れる電気器具の消費電力は？",opts:["50 W","102 W","200 W","2000 W"],a:2,e:"P＝V×I＝100×2＝200W。"},
+     {q:"直列回路について正しいものは？",opts:["各抵抗の電圧は等しい","電流はどこでも等しい","抵抗を増やすと電流が増える","全体の抵抗は各抵抗より小さい"],a:1,e:"直列では電流はどこでも等しい。抵抗を増やすと全体の抵抗は大きくなり電流は減る。"},
+     {q:"100Wの電熱線を5分間使ったときの発熱量は？",opts:["500 J","3000 J","30000 J","500 J"],a:2,e:"Q＝P×t＝100W×300秒＝30000J。時間は秒に直す。"}
+   ]},
+  {id:"p5", grade:"中2", title:"電流と磁界",
+   points:[
+     "電流のまわりには同心円状の<span class='kw'>磁界</span>ができる（右ねじの法則）。",
+     "コイルに電流を流すと<span class='kw'>電磁石</span>になる。",
+     "磁界中の電流は力を受ける（<span class='kw'>モーター</span>の原理）。",
+     "磁界の変化でコイルに電流が生じる現象を<span class='kw'>電磁誘導</span>、流れる電流を<span class='kw'>誘導電流</span>という（発電機の原理）。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"コイルに磁石を近づけたり遠ざけたりすると電流が流れる現象を何という？",opts:["静電気","電磁誘導","放電","帯電"],a:1,e:"電磁誘導。生じる電流を誘導電流といい、発電機に利用される。"},
+     {q:"磁界の中で電流が受ける力を利用した装置は？",opts:["発電機","電池","モーター","乾電池"],a:2,e:"モーターは磁界中の電流が受ける力で回転する。"}
+   ]},
+  {id:"p6", grade:"中2", title:"静電気",
+   points:[
+     "異なる物質をこすると<span class='kw'>静電気</span>が生じる（帯電）。",
+     "同じ種類の電気は<span class='kw'>しりぞけ合い</span>、異なる種類は<span class='kw'>引き合う</span>。",
+     "たまった電気が流れ出す現象を<span class='kw'>放電</span>という。",
+     "真空放電を利用したものに<span class='kw'>陰極線（電子の流れ）</span>がある。電子は－極から＋極へ進む。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"−の電気を帯びた物体どうしを近づけるとどうなる？",opts:["引き合う","しりぞけ合う","変化しない","放電する"],a:1,e:"同じ種類の電気どうしはしりぞけ合う。"},
+     {q:"陰極線（電子線）は何極から何極へ向かって進む？",opts:["＋極から−極","−極から＋極","動かない","両方向"],a:1,e:"電子は−の電気を持つので、−極から＋極へ向かう。"}
+   ]},
+  {id:"p7", grade:"中3", title:"力の合成・分解と運動",
+   points:[
+     "2力が一直線上にないとき、対角線が<span class='kw'>合力</span>（平行四辺形の法則）。",
+     "1つの力を2方向に分ける操作を<span class='kw'>力の分解</span>という。",
+     "物体に力がはたらかない・つり合うとき、静止または<span class='kw'>等速直線運動</span>を続ける（<span class='kw'>慣性の法則</span>）。",
+     "斜面を下る物体は速さが一定の割合で増える。自由落下も同様。",
+     "作用・反作用：一方が押すと同じ大きさで反対向きに押し返される。"
+   ],
+   formulas:["速さ〔m/s〕＝移動距離〔m〕÷時間〔s〕"],
+   quiz:[
+     {q:"力を加えなくても物体が同じ速さでまっすぐ進み続ける性質を何という？",opts:["慣性","弾性","重力","摩擦"],a:0,e:"慣性。力がつり合っていれば等速直線運動を続ける（慣性の法則）。"},
+     {q:"1.5秒間に6m進んだ物体の平均の速さは？",opts:["2 m/s","3 m/s","4 m/s","9 m/s"],a:2,e:"6÷1.5＝4 m/s。"},
+     {q:"作用・反作用の2力について正しいものは？",opts:["同じ物体にはたらく","向きが同じ","大きさが等しく逆向き","つり合って静止する"],a:2,e:"作用・反作用は2つの物体間で、大きさが等しく逆向き。同一物体にはたらく『つり合い』とは異なる。"}
+   ]},
+  {id:"p8", grade:"中3", title:"仕事とエネルギー",
+   points:[
+     "仕事〔J〕＝力〔N〕×力の向きに動いた距離〔m〕。動かなければ仕事は0。",
+     "道具を使っても仕事の量は変わらない（<span class='kw'>仕事の原理</span>）。",
+     "仕事率〔W〕＝仕事÷時間（1秒あたりの仕事）。",
+     "高い所の物体がもつ<span class='kw'>位置エネルギー</span>、運動する物体がもつ<span class='kw'>運動エネルギー</span>。",
+     "両者の和（<span class='kw'>力学的エネルギー</span>）は保存される（力学的エネルギー保存の法則）。"
+   ],
+   formulas:["仕事W〔J〕＝力〔N〕×距離〔m〕","仕事率〔W〕＝仕事〔J〕÷時間〔s〕"],
+   quiz:[
+     {q:"20Nの物体を3m持ち上げたときの仕事は？",opts:["6 J","23 J","60 J","600 J"],a:2,e:"W＝20×3＝60J。"},
+     {q:"60Jの仕事を5秒で行ったときの仕事率は？",opts:["12 W","55 W","65 W","300 W"],a:0,e:"仕事率＝60÷5＝12W。"},
+     {q:"振り子が最下点を通過するとき、最大になるエネルギーは？",opts:["位置エネルギー","運動エネルギー","熱エネルギー","化学エネルギー"],a:1,e:"最下点で位置エネルギーが最小、運動エネルギー（速さ）が最大になる。"}
+   ]},
+]},
+
+chem:{ name:"化学", color:"var(--chem)", units:[
+  {id:"c1", grade:"中1", title:"物質の性質・状態変化",
+   points:[
+     "金属の共通性質：<span class='kw'>金属光沢</span>・電気や熱を通す・たたくと広がる（展性）・引きのばせる（延性）。磁石につくのは鉄など一部のみ。",
+     "有機物は炭素を含み、燃やすと<span class='kw'>二酸化炭素</span>と水ができる。",
+     "密度〔g/cm³〕＝質量÷体積。物質ごとに決まった値。",
+     "状態変化（固体⇔液体⇔気体）では<span class='kw'>質量は変化せず、体積は変化</span>する（多くは気体で最大）。",
+     "水は例外的に固体（氷）の方が液体より体積が<span class='kw'>大きい</span>。"
+   ],
+   formulas:["密度〔g/cm³〕＝質量〔g〕÷体積〔cm³〕"],
+   quiz:[
+     {q:"質量54g、体積20cm³の金属の密度は？",opts:["0.37 g/cm³","2.7 g/cm³","27 g/cm³","74 g/cm³"],a:1,e:"54÷20＝2.7 g/cm³（アルミニウムの密度）。"},
+     {q:"状態変化について正しいものは？",opts:["質量も体積も変化する","質量は変化するが体積は変化しない","質量は変化しないが体積は変化する","どちらも変化しない"],a:2,e:"状態変化では粒子の数は変わらないので質量は一定、粒子の間隔が変わるので体積は変化する。"},
+     {q:"すべての金属に共通する性質でないものは？",opts:["金属光沢がある","電気をよく通す","磁石につく","たたくと広がる"],a:2,e:"磁石につくのは鉄など一部だけ。アルミや銅はつかない。"}
+   ]},
+  {id:"c2", grade:"中1", title:"気体の性質",
+   points:[
+     "<span class='kw'>酸素</span>：ものを燃やすはたらき（助燃性）。二酸化マンガン＋オキシドール。水上置換。",
+     "<span class='kw'>二酸化炭素</span>：石灰水を白くにごらせる。水に少し溶け酸性。石灰石＋うすい塩酸。",
+     "<span class='kw'>水素</span>：最も軽い。火をつけると音を立てて燃え水ができる。亜鉛＋塩酸。",
+     "<span class='kw'>アンモニア</span>：刺激臭・水に非常によく溶けアルカリ性。空気より軽い→上方置換。",
+     "水に溶けにくい気体→<span class='kw'>水上置換</span>、水に溶け空気より軽い→上方置換、重い→下方置換。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"石灰水を白くにごらせる気体は？",opts:["酸素","水素","二酸化炭素","アンモニア"],a:2,e:"二酸化炭素は石灰水を白くにごらせる（検出法）。"},
+     {q:"アンモニアの集め方として最も適するのは？",opts:["水上置換","上方置換","下方置換","どれでもよい"],a:1,e:"アンモニアは水に非常によく溶け空気より軽いので上方置換。"},
+     {q:"火のついた線香を近づけると音を立てて燃える気体は？",opts:["酸素","水素","窒素","二酸化炭素"],a:1,e:"水素はポンッと音を立てて燃え、水ができる。酸素は線香が炎を上げて激しく燃える。"}
+   ]},
+  {id:"c3", grade:"中1", title:"水溶液・溶解度",
+   points:[
+     "溶質が溶媒に溶けた液全体を<span class='kw'>溶液</span>という。溶媒が水なら水溶液。",
+     "質量パーセント濃度＝溶質の質量÷溶液全体の質量×100。",
+     "一定量の水に溶ける限界量を<span class='kw'>溶解度</span>という。温度で変化。",
+     "溶けきれず出てきた固体を再び結晶として取り出すことを<span class='kw'>再結晶</span>という。"
+   ],
+   formulas:["質量パーセント濃度〔%〕＝溶質の質量÷溶液の質量×100"],
+   quiz:[
+     {q:"水180gに食塩20gを溶かした水溶液の質量パーセント濃度は？",opts:["10 %","11 %","18 %","20 %"],a:0,e:"20÷(180+20)×100＝10%。分母は溶液全体（200g）。"},
+     {q:"温度による溶解度の差を利用して、溶けている物質を結晶として取り出す方法は？",opts:["ろ過","蒸留","再結晶","昇華"],a:2,e:"再結晶。温度を下げると溶けきれなくなった分が結晶になる。"}
+   ]},
+  {id:"c4", grade:"中2", title:"原子・分子と化学変化",
+   points:[
+     "物質をつくる最小の粒を<span class='kw'>原子</span>、いくつかの原子が結びついた粒を<span class='kw'>分子</span>という。",
+     "1種類の原子でできた物質を<span class='kw'>単体</span>、2種類以上を<span class='kw'>化合物</span>という。",
+     "化学式：水H₂O、二酸化炭素CO₂、酸素O₂、鉄Fe、塩化ナトリウムNaCl。",
+     "分解のうち、加熱によるものを<span class='kw'>熱分解</span>、電流によるものを<span class='kw'>電気分解</span>という。",
+     "化学反応式は<span class='kw'>矢印の左右で原子の数を等しく</span>する。"
+   ],
+   formulas:["水の電気分解：2H₂O → 2H₂ + O₂","炭酸水素ナトリウムの熱分解：2NaHCO₃ → Na₂CO₃ + H₂O + CO₂"],
+   quiz:[
+     {q:"次のうち化合物はどれ？",opts:["酸素 O₂","鉄 Fe","水 H₂O","銅 Cu"],a:2,e:"2種類以上の原子からできる水H₂Oが化合物。他は1種類の原子（単体）。"},
+     {q:"水を電気分解すると陰極から発生する気体は？",opts:["酸素","水素","塩素","二酸化炭素"],a:1,e:"陰極（−）から水素、陽極（＋）から酸素。体積比は水素:酸素＝2:1。"},
+     {q:"炭酸水素ナトリウムを加熱したときに発生する気体は？",opts:["水素","酸素","二酸化炭素","アンモニア"],a:2,e:"熱分解で二酸化炭素・水・炭酸ナトリウムができる。"}
+   ]},
+  {id:"c5", grade:"中2", title:"酸化・還元と化学変化と熱",
+   points:[
+     "物質が酸素と結びつく変化を<span class='kw'>酸化</span>、激しく熱・光を出す酸化を<span class='kw'>燃焼</span>という。",
+     "酸化物から酸素を取り除く変化を<span class='kw'>還元</span>という。酸化と還元は同時に起こる。",
+     "酸化銅＋炭素→銅＋二酸化炭素（炭素が酸素を奪う）。",
+     "熱を発生する反応を<span class='kw'>発熱反応</span>、吸収する反応を<span class='kw'>吸熱反応</span>という。",
+     "鉄の酸化（使い捨てカイロ）は発熱反応の例。"
+   ],
+   formulas:["酸化銅の還元：2CuO + C → 2Cu + CO₂"],
+   quiz:[
+     {q:"酸化銅を炭素と混ぜて加熱したとき、炭素は何をしている？",opts:["酸化されて還元剤になる","銅を酸化する","変化しない","水になる"],a:0,e:"炭素が酸化銅から酸素を奪い（自身は酸化され二酸化炭素に）、酸化銅は還元されて銅になる。"},
+     {q:"鉄が酸素と結びつくとき熱が発生する。このような反応を何という？",opts:["吸熱反応","発熱反応","中和","電気分解"],a:1,e:"熱を出す反応が発熱反応。使い捨てカイロが例。"}
+   ]},
+  {id:"c6", grade:"中2", title:"化学変化と物質の質量",
+   points:[
+     "化学変化の前後で物質全体の質量は変わらない（<span class='kw'>質量保存の法則</span>）。",
+     "反応する物質の質量の比は常に<span class='kw'>一定</span>（定比例）。",
+     "銅：酸素＝<span class='kw'>4:1</span>、マグネシウム：酸素＝<span class='kw'>3:2</span>で結びつく。",
+     "密閉容器で気体が発生する反応でも、外に逃げなければ質量は保存される。"
+   ],
+   formulas:["銅＋酸素→酸化銅（質量比 Cu:O＝4:1）"],
+   quiz:[
+     {q:"銅0.8gを完全に酸化させると酸化銅は何gになる？（銅:酸素＝4:1）",opts:["0.9 g","1.0 g","1.2 g","1.6 g"],a:1,e:"酸素は0.8×(1/4)＝0.2g結びつく。酸化銅＝0.8+0.2＝1.0g。"},
+     {q:"化学変化の前後で全体の質量が変わらないことを何という？",opts:["定比例の法則","質量保存の法則","エネルギー保存","フックの法則"],a:1,e:"質量保存の法則。原子の組み合わせが変わるだけで数は変わらないため。"}
+   ]},
+  {id:"c7", grade:"中3", title:"水溶液とイオン",
+   points:[
+     "水に溶けて電流を流す物質を<span class='kw'>電解質</span>、流さない物質を非電解質という。",
+     "原子が電子を失うと＋の<span class='kw'>陽イオン</span>、電子を受け取ると−の<span class='kw'>陰イオン</span>になる。",
+     "電解質が水中でイオンに分かれることを<span class='kw'>電離</span>という。",
+     "塩酸の電気分解：陰極に水素、陽極に塩素。塩化銅：陰極に銅、陽極に塩素。",
+     "イオン式：ナトリウムイオンNa⁺、塩化物イオンCl⁻、水素イオンH⁺、水酸化物イオンOH⁻。"
+   ],
+   formulas:["塩化銅の電離：CuCl₂ → Cu²⁺ + 2Cl⁻"],
+   quiz:[
+     {q:"原子が電子を1個失ってできるイオンは？",opts:["1価の陽イオン","1価の陰イオン","2価の陽イオン","電気を持たない"],a:0,e:"電子（−）を失うと＋に帯電し、1価の陽イオンになる。"},
+     {q:"塩化銅水溶液を電気分解すると陰極に付着するものは？",opts:["塩素","銅","水素","酸素"],a:1,e:"陰極（−）に陽イオンの銅Cu²⁺が引かれ、銅が付着する。陽極からは塩素。"},
+     {q:"次のうち非電解質はどれ？",opts:["塩化ナトリウム","塩酸","砂糖","水酸化ナトリウム"],a:2,e:"砂糖は水に溶けてもイオンに分かれない（非電解質）ので電流を流さない。"}
+   ]},
+  {id:"c8", grade:"中3", title:"酸・アルカリと中和",
+   points:[
+     "酸性：水に溶けて<span class='kw'>水素イオンH⁺</span>を生じる。青→赤リトマス、BTB黄色。",
+     "アルカリ性：水に溶けて<span class='kw'>水酸化物イオンOH⁻</span>を生じる。赤→青リトマス、BTB青色。",
+     "中性ではBTB<span class='kw'>緑色</span>。",
+     "酸とアルカリを混ぜるとH⁺とOH⁻が結びついて水ができる（<span class='kw'>中和</span>）。",
+     "中和で酸の陰イオンとアルカリの陽イオンから<span class='kw'>塩（えん）</span>ができる。塩酸＋水酸化ナトリウム→塩化ナトリウム＋水。"
+   ],
+   formulas:["中和：H⁺ + OH⁻ → H₂O","HCl + NaOH → NaCl + H₂O"],
+   quiz:[
+     {q:"BTB溶液を加えると黄色になる水溶液は？",opts:["酸性","中性","アルカリ性","判別できない"],a:0,e:"BTBは酸性で黄、中性で緑、アルカリ性で青。"},
+     {q:"酸とアルカリが打ち消し合い、水と塩ができる反応を何という？",opts:["電離","中和","酸化","還元"],a:1,e:"中和。H⁺＋OH⁻→H₂Oとなる。"},
+     {q:"塩酸に水酸化ナトリウム水溶液を加えて中性にしたとき、水を蒸発させると得られる物質は？",opts:["塩化ナトリウム","水酸化ナトリウム","塩化水素","炭酸ナトリウム"],a:0,e:"中和でできる塩は塩化ナトリウム（食塩）。"}
+   ]},
+]},
+
+bio:{ name:"生物", color:"var(--bio)", units:[
+  {id:"b1", grade:"中1", title:"植物のつくりとはたらき",
+   points:[
+     "被子植物は胚珠が<span class='kw'>子房</span>に包まれる。裸子植物（マツなど）は子房がなく胚珠がむき出し。",
+     "双子葉類：葉脈は<span class='kw'>網状脈</span>・根は<span class='kw'>主根と側根</span>・維管束は輪状。",
+     "単子葉類：葉脈は<span class='kw'>平行脈</span>・根は<span class='kw'>ひげ根</span>・維管束は散らばる。",
+     "光合成は<span class='kw'>葉緑体</span>で行われ、二酸化炭素と水から<span class='kw'>デンプンと酸素</span>をつくる（光が必要）。",
+     "呼吸は昼夜つねに行い酸素を吸収・二酸化炭素を放出。<span class='kw'>蒸散</span>は主に葉の裏の気孔から水を放出。"
+   ],
+   formulas:["光合成：二酸化炭素＋水 →(光)→ デンプン＋酸素"],
+   quiz:[
+     {q:"葉緑体で光を受けて栄養分をつくるはたらきは？",opts:["呼吸","蒸散","光合成","消化"],a:2,e:"光合成。二酸化炭素と水からデンプンと酸素をつくる。"},
+     {q:"単子葉類の特徴はどれ？",opts:["網状脈と主根","平行脈とひげ根","網状脈とひげ根","平行脈と主根"],a:1,e:"単子葉類は平行脈・ひげ根・維管束が散在。"},
+     {q:"植物が葉の気孔から水蒸気を放出するはたらきを何という？",opts:["光合成","蒸散","呼吸","吸水"],a:1,e:"蒸散。根からの吸水を促し、体温調節にも関わる。"}
+   ]},
+  {id:"b2", grade:"中1", title:"動物の分類",
+   points:[
+     "背骨のある動物を<span class='kw'>セキツイ動物</span>、ないものを無セキツイ動物という。",
+     "セキツイ動物：魚類・両生類・ハチュウ類・鳥類・ホニュウ類の5つ。",
+     "子の生まれ方：卵生（多く）、ホニュウ類は<span class='kw'>胎生</span>。",
+     "無セキツイ動物：体が外骨格でおおわれ節がある<span class='kw'>節足動物</span>（昆虫・甲殻類）、内臓が外とう膜に包まれる<span class='kw'>軟体動物</span>（イカ・貝）。",
+     "肉食動物は目が前向き（立体視・獲物の距離）、草食動物は横向き（広い視野）。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"胎生でうまれるのはどのなかま？",opts:["魚類","両生類","ハチュウ類","ホニュウ類"],a:3,e:"ホニュウ類は胎生。他のセキツイ動物は卵生。"},
+     {q:"昆虫やエビなどの、外骨格をもち体に節がある動物のなかまを何という？",opts:["軟体動物","節足動物","セキツイ動物","刺胞動物"],a:1,e:"節足動物。外骨格と節のある足が特徴。"},
+     {q:"両生類の呼吸の特徴として正しいものは？",opts:["一生えらで呼吸","一生肺で呼吸","子はえら、親は肺と皮膚","一生皮膚だけ"],a:2,e:"両生類は幼生（子）はえら、成体（親）は肺と皮膚で呼吸する。"}
+   ]},
+  {id:"b3", grade:"中2", title:"細胞と消化・吸収",
+   points:[
+     "細胞共通のつくり：<span class='kw'>核・細胞膜・細胞質</span>。植物細胞はさらに<span class='kw'>細胞壁・葉緑体・液胞</span>をもつ。",
+     "消化酵素：だ液の<span class='kw'>アミラーゼ</span>（デンプン→糖）、胃液のペプシン（タンパク質）、すい液・小腸（各種）。",
+     "デンプン→ブドウ糖、タンパク質→アミノ酸、脂肪→脂肪酸とモノグリセリド。",
+     "養分は小腸の<span class='kw'>柔毛</span>から吸収。ブドウ糖・アミノ酸は毛細血管、脂肪分はリンパ管へ。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"だ液に含まれ、デンプンを分解する消化酵素は？",opts:["ペプシン","アミラーゼ","トリプシン","リパーゼ"],a:1,e:"アミラーゼがデンプンを麦芽糖などに分解する。"},
+     {q:"植物細胞にあって動物細胞にないつくりは？",opts:["核","細胞膜","細胞壁","細胞質"],a:2,e:"細胞壁・葉緑体・液胞は植物細胞に特有。核と細胞膜は共通。"},
+     {q:"小腸の柔毛で吸収されたブドウ糖が入るのは？",opts:["リンパ管","毛細血管","気管","じん臓"],a:1,e:"ブドウ糖・アミノ酸は毛細血管へ、脂肪分はリンパ管へ入る。"}
+   ]},
+  {id:"b4", grade:"中2", title:"呼吸・血液・排出",
+   points:[
+     "肺胞で酸素を取り入れ二酸化炭素を放出（<span class='kw'>ガス交換</span>）。表面積が大きく効率的。",
+     "血液成分：<span class='kw'>赤血球</span>（酸素運搬・ヘモグロビン）、白血球（防御）、血小板（凝固）、血しょう（養分・不要物運搬）。",
+     "心臓から出る血液が流れる血管が<span class='kw'>動脈</span>、戻る血管が静脈。",
+     "肺を通った直後の血液（酸素が多い）を<span class='kw'>動脈血</span>という。",
+     "細胞の活動で出た<span class='kw'>アンモニア</span>は肝臓で尿素に変えられ、じん臓でこし取られる。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"酸素を運ぶ、ヘモグロビンを含む血液成分は？",opts:["白血球","赤血球","血小板","血しょう"],a:1,e:"赤血球中のヘモグロビンが酸素と結びついて運ぶ。"},
+     {q:"有害なアンモニアを尿素につくり変える器官は？",opts:["じん臓","肝臓","ぼうこう","肺"],a:1,e:"肝臓で尿素に変え、じん臓でこし取られ尿として排出される。"},
+     {q:"『動脈血』の説明として正しいものは？",opts:["必ず動脈を流れる","酸素を多く含む血液","二酸化炭素を多く含む","心臓に戻る血液"],a:1,e:"動脈血は酸素を多く含む血液。肺静脈のように静脈を流れることもある。"}
+   ]},
+  {id:"b5", grade:"中2", title:"刺激と反応・神経",
+   points:[
+     "感覚器官（目・耳など）で刺激を受け取り、信号が神経を伝わる。",
+     "脳やせきずいを<span class='kw'>中枢神経</span>、そこから出る神経を末しょう神経という。",
+     "感覚神経（刺激を中枢へ）・運動神経（命令を筋肉へ）。",
+     "熱いものに触れて思わず手を引く反応を<span class='kw'>反射</span>という。脳を経由せずせきずいで命令→反応が速い。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"熱いものに触れて意識せず手を引っこめる反応を何という？",opts:["随意運動","反射","反応時間","刺激"],a:1,e:"反射。せきずいで命令が出るため、脳を経由するより速い。"},
+     {q:"皮膚が受け取った刺激を中枢へ伝える神経は？",opts:["運動神経","感覚神経","中枢神経","交感神経"],a:1,e:"感覚神経が刺激を中枢へ、運動神経が命令を筋肉へ伝える。"}
+   ]},
+  {id:"b6", grade:"中3", title:"細胞分裂と生殖",
+   points:[
+     "細胞が分かれて数を増やすことを<span class='kw'>細胞分裂</span>という。分裂前に染色体が複製される。",
+     "受精を行わない生殖を<span class='kw'>無性生殖</span>、受精による生殖を<span class='kw'>有性生殖</span>という。",
+     "生殖細胞をつくる特別な細胞分裂を<span class='kw'>減数分裂</span>といい、染色体数が半分になる。",
+     "受精卵が細胞分裂をくり返して成体になるまでの過程を<span class='kw'>発生</span>という。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"生殖細胞ができるときに起こり、染色体数が半分になる分裂は？",opts:["体細胞分裂","減数分裂","無性生殖","受精"],a:1,e:"減数分裂。受精で元の数に戻る。"},
+     {q:"受精卵が分裂をくり返して成体になるまでの過程を何という？",opts:["発生","成長","遺伝","進化"],a:0,e:"発生。受精卵→胚→成体へと成長する過程。"}
+   ]},
+  {id:"b7", grade:"中3", title:"遺伝の規則性",
+   points:[
+     "形質を伝えるもとになるものを<span class='kw'>遺伝子</span>といい、染色体にある。本体は<span class='kw'>DNA</span>。",
+     "対立形質のうち子に現れる方を<span class='kw'>顕性（優性）形質</span>、現れない方を潜性（劣性）形質という。",
+     "AAとaaをかけ合わせると子はすべて<span class='kw'>Aa</span>（顕性が現れる）。",
+     "AaとAaをかけ合わせると孫は顕性:潜性＝<span class='kw'>3:1</span>（分離の法則）。"
+   ],
+   formulas:["Aa × Aa → AA : Aa : aa ＝ 1:2:1 → 顕性:潜性＝3:1"],
+   quiz:[
+     {q:"丸(A)としわ(a)の純系AAとaaをかけ合わせたとき、子の形質は？",opts:["すべて丸","すべてしわ","丸:しわ＝1:1","丸:しわ＝3:1"],a:0,e:"子はすべてAaとなり、顕性の丸が現れる。"},
+     {q:"AaとAaをかけ合わせたとき、孫に現れる顕性:潜性の比は？",opts:["1:1","2:1","3:1","1:3"],a:2,e:"AA:Aa:aa＝1:2:1、形質は顕性:潜性＝3:1（分離の法則）。"},
+     {q:"遺伝子の本体である物質は？",opts:["タンパク質","DNA","ATP","デンプン"],a:1,e:"遺伝子の本体はDNA（デオキシリボ核酸）。"}
+   ]},
+  {id:"b8", grade:"中3", title:"生物どうしのつながり・自然界",
+   points:[
+     "食べる・食べられる関係のつながりを<span class='kw'>食物連鎖</span>、網目状の関係を食物網という。",
+     "光合成で有機物をつくる植物は<span class='kw'>生産者</span>、それを食べる動物は<span class='kw'>消費者</span>。",
+     "菌類・細菌類など有機物を無機物に分解するものを<span class='kw'>分解者</span>という。",
+     "生態系の中で炭素は二酸化炭素↔有機物と<span class='kw'>循環</span>する。",
+     "数量関係はふつうピラミッド型（生産者が最も多い）。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"菌類や細菌類のように、有機物を無機物に分解する生物を何という？",opts:["生産者","消費者","分解者","捕食者"],a:2,e:"分解者。落ち葉や死がいを無機物に分解し、循環を支える。"},
+     {q:"光合成によって無機物から有機物をつくる生物を何という？",opts:["生産者","消費者","分解者","寄生者"],a:0,e:"植物などの生産者が食物連鎖の出発点になる。"}
+   ]},
+]},
+
+geo:{ name:"地学", color:"var(--geo)", units:[
+  {id:"g1", grade:"中1", title:"火山と火成岩",
+   points:[
+     "マグマが冷えて固まった岩石を<span class='kw'>火成岩</span>という。",
+     "地表付近で急に冷えた<span class='kw'>火山岩</span>は斑状組織、地下深くでゆっくり冷えた<span class='kw'>深成岩</span>は等粒状組織。",
+     "ねばりけが強いマグマ→白っぽく盛り上がった形（激しい噴火）、弱い→黒っぽく傾斜がゆるい。",
+     "無色鉱物：セキエイ・チョウ石。有色鉱物：クロウンモ・カクセン石・キ石・カンラン石。",
+     "火山岩：流紋岩・安山岩・玄武岩。深成岩：花こう岩・せん緑岩・斑れい岩。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"地下深くでマグマがゆっくり冷えてできた、大きな鉱物がぎっしり並ぶつくりの岩石は？",opts:["火山岩","深成岩","堆積岩","変成岩"],a:1,e:"深成岩。ゆっくり冷えるため大きな結晶がそろう等粒状組織。"},
+     {q:"ねばりけの強いマグマによる火山の特徴は？",opts:["黒っぽく傾斜がゆるい","白っぽく盛り上がった形","溶岩が遠くまで流れる","噴火がおだやか"],a:1,e:"ねばりけが強いと白っぽくドーム状に盛り上がり、爆発的な噴火になる。"}
+   ]},
+  {id:"g2", grade:"中1", title:"地震",
+   points:[
+     "地震で最初にくる小さなゆれ（P波による）が<span class='kw'>初期微動</span>、後の大きなゆれ（S波による）が主要動。",
+     "初期微動が続く時間を<span class='kw'>初期微動継続時間</span>といい、震源から遠いほど長い。",
+     "ゆれの大きさが<span class='kw'>震度</span>（0〜7）、地震の規模が<span class='kw'>マグニチュード</span>。",
+     "P波はS波より速い。P波・S波の速さが分かれば震源までの距離が計算できる。",
+     "海溝型地震はプレートの境界で起こり、津波を伴うことがある。"
+   ],
+   formulas:["震源までの距離〔km〕＝速さ〔km/s〕×地震発生からの時間〔s〕"],
+   quiz:[
+     {q:"地震のゆれの大きさを表すものは？",opts:["マグニチュード","震度","初期微動","震源"],a:1,e:"震度は各地点のゆれの大きさ（0〜7）。マグニチュードは地震そのものの規模。"},
+     {q:"初期微動継続時間と震源からの距離の関係は？",opts:["遠いほど短い","遠いほど長い","関係ない","近いほど長い"],a:1,e:"震源から遠いほどP波とS波の到達時間差が大きく、初期微動継続時間は長くなる。"},
+     {q:"P波の速さが8km/sのとき、P波が観測点に届くまで5秒かかった。震源までの距離は？",opts:["1.6 km","13 km","40 km","3 km"],a:2,e:"8×5＝40km。"}
+   ]},
+  {id:"g3", grade:"中1", title:"地層と堆積岩・化石",
+   points:[
+     "流水のはたらき：<span class='kw'>侵食・運搬・堆積</span>。粒の大きさで れき（大）＞砂＞泥（小）に分かれて堆積。",
+     "堆積岩：れき岩・砂岩・泥岩（粒の大きさで区別）、石灰岩・チャート（生物や化学的なもの）、凝灰岩（火山灰）。",
+     "石灰岩は塩酸で二酸化炭素を出す。チャートは非常にかたく塩酸に反応しない。",
+     "地層が堆積した当時の環境を示す化石を<span class='kw'>示相化石</span>（例：サンゴ→あたたかく浅い海）。",
+     "地層が堆積した年代を示す化石を<span class='kw'>示準化石</span>（例：サンヨウチュウ→古生代、アンモナイト→中生代）。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"アンモナイトの化石が見つかると、その地層ができた『年代』が推定できる。このような化石を何という？",opts:["示相化石","示準化石","生痕化石","標準化石"],a:1,e:"示準化石。地質年代を知る手がかりになる（広範囲に分布し短期間に栄えた生物）。"},
+     {q:"うすい塩酸をかけると二酸化炭素が発生する堆積岩は？",opts:["チャート","石灰岩","砂岩","凝灰岩"],a:1,e:"石灰岩は塩酸と反応して二酸化炭素を発生する。チャートは反応しない。"},
+     {q:"火山灰が堆積してできた岩石は？",opts:["れき岩","石灰岩","凝灰岩","泥岩"],a:2,e:"凝灰岩。火山灰などが固まってできる。"}
+   ]},
+  {id:"g4", grade:"中2", title:"気象の観測と大気中の水",
+   points:[
+     "気温・湿度・気圧を観測する。気圧の単位は<span class='kw'>ヘクトパスカル〔hPa〕</span>。",
+     "空気1m³中に含みうる最大の水蒸気量を<span class='kw'>飽和水蒸気量</span>という（気温が高いほど大きい）。",
+     "水蒸気が凝結し始める温度を<span class='kw'>露点</span>という。",
+     "湿度〔%〕＝空気中の水蒸気量÷その気温での飽和水蒸気量×100。",
+     "上昇気流で空気が膨張・冷却され露点に達すると雲ができる。"
+   ],
+   formulas:["湿度〔%〕＝水蒸気量〔g/m³〕÷飽和水蒸気量〔g/m³〕×100"],
+   quiz:[
+     {q:"空気中の水蒸気が冷やされて凝結し始める温度を何という？",opts:["沸点","融点","露点","飽和点"],a:2,e:"露点。その気温での飽和水蒸気量と実際の水蒸気量が等しくなる温度。"},
+     {q:"ある気温での飽和水蒸気量が20g/m³、実際の水蒸気量が15g/m³のときの湿度は？",opts:["50 %","65 %","75 %","85 %"],a:2,e:"15÷20×100＝75%。"}
+   ]},
+  {id:"g5", grade:"中2", title:"前線と天気の変化",
+   points:[
+     "気圧が周囲より高いところが<span class='kw'>高気圧</span>（下降気流・晴れ・時計回りに吹き出す）。",
+     "気圧が低いところが<span class='kw'>低気圧</span>（上昇気流・くもりや雨・反時計回りに吹き込む）。",
+     "暖気と寒気の境目が前線。<span class='kw'>寒冷前線</span>は寒気が暖気の下にもぐりこみ、強い雨・短時間・通過後に気温低下。",
+     "<span class='kw'>温暖前線</span>は暖気が寒気の上にはい上がり、広い範囲に弱い雨・長時間・通過後に気温上昇。",
+     "偏西風により日本付近の天気は西から東へ移る。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"寒冷前線が通過したあとの天気・気温の変化は？",opts:["気温が上がり晴れる","気温が下がり北寄りの風","気温が上がり弱い雨","変化しない"],a:1,e:"寒冷前線通過後は寒気に入るため気温が下がり、風向が北寄りに変わる。"},
+     {q:"低気圧の中心付近の空気の動きは？",opts:["下降気流で晴れ","上昇気流でくもりや雨","風は吹かない","時計回りに吹き出す"],a:1,e:"低気圧は上昇気流で雲ができやすく、反時計回りに風が吹き込む。"},
+     {q:"日本付近の天気が西から東へ移り変わる主な原因は？",opts:["季節風","偏西風","海風","貿易風"],a:1,e:"上空を吹く偏西風によって、天気が西から東へ移動する。"}
+   ]},
+  {id:"g6", grade:"中2", title:"日本の天気",
+   points:[
+     "冬：<span class='kw'>西高東低</span>の気圧配置。シベリア気団（冷たく乾燥）→日本海側で雪、太平洋側は乾燥晴れ。",
+     "夏：南高北低。<span class='kw'>小笠原気団</span>（あたたかく湿潤）→蒸し暑い晴天。",
+     "梅雨・秋雨：オホーツク海気団と小笠原気団がぶつかり<span class='kw'>停滞前線</span>ができる。",
+     "台風：熱帯低気圧が発達したもの。前線を伴わない。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"冬に特徴的な気圧配置は？",opts:["南高北低","西高東低","移動性高気圧","停滞前線"],a:1,e:"冬は西高東低。シベリア気団から冷たい北西の季節風が吹く。"},
+     {q:"梅雨のころにできる、暖気と寒気がぶつかって長期間ほとんど動かない前線は？",opts:["寒冷前線","温暖前線","停滞前線","閉そく前線"],a:2,e:"停滞前線（梅雨前線・秋雨前線）。2つの気団の勢力がつり合ってできる。"}
+   ]},
+  {id:"g7", grade:"中3", title:"天体の動き（地球の運動）",
+   points:[
+     "地球の<span class='kw'>自転</span>（1日1回・西→東）で太陽や星が東から西へ動いて見える（日周運動）。",
+     "地球の<span class='kw'>公転</span>（1年1回）で星座が季節ごとに移り、南中する星座が変わる（年周運動）。",
+     "地軸が公転面に対して傾いているため<span class='kw'>季節</span>が生じる。夏は南中高度が高く昼が長い。",
+     "太陽の1年の通り道を<span class='kw'>黄道</span>という。"
+   ],
+   formulas:["星の日周運動：1時間に約15°西へ動く（360°÷24時間）"],
+   quiz:[
+     {q:"1日の間に太陽や星が東から西へ動いて見えるのは、地球の何による見かけの動き？",opts:["公転","自転","歳差","傾き"],a:1,e:"自転（1日1回、西→東）による日周運動。"},
+     {q:"季節が生じる主な原因は？",opts:["地球と太陽の距離の変化","地軸が傾いたまま公転すること","自転の速さの変化","月の引力"],a:1,e:"地軸が公転面に対して傾いているため、季節で南中高度と昼の長さが変わる。"},
+     {q:"星は1時間に約何度動いて見える？",opts:["約1°","約15°","約30°","約90°"],a:1,e:"360°÷24時間＝15°/時。"}
+   ]},
+  {id:"g8", grade:"中3", title:"太陽系と月・金星",
+   points:[
+     "太陽は自ら光る<span class='kw'>恒星</span>。黒点は周囲より温度が低い部分で、移動から太陽の自転が分かる。",
+     "月の<span class='kw'>満ち欠け</span>は、太陽・月・地球の位置関係で見える形が変わるため。約1か月周期。",
+     "太陽・月・地球が一直線に並ぶと<span class='kw'>日食（太陽が隠れる）</span>・月食が起こる。",
+     "金星は地球より内側を公転する<span class='kw'>内惑星</span>。真夜中には見えず、明け方（明けの明星）か夕方（宵の明星）に見える。",
+     "金星は地球に近いほど大きく細く見える。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"金星が真夜中に見えないのはなぜ？",opts:["自ら光らないから","地球より内側を公転しているから","小さすぎるから","雲が多いから"],a:1,e:"内惑星の金星は太陽に近い方向にしか見えないため、真夜中には見えない。"},
+     {q:"太陽の表面に見える、周囲より温度が低く黒く見える部分を何という？",opts:["プロミネンス","コロナ","黒点","クレーター"],a:2,e:"黒点。周囲（約6000℃）より低温（約4000℃）のため黒く見える。移動から太陽の自転がわかる。"},
+     {q:"太陽・月・地球がこの順に一直線に並ぶと起こる現象は？",opts:["月食","日食","満月","流星"],a:1,e:"太陽−月−地球の順（月が太陽を隠す）で日食。太陽−地球−月の順だと月食。"}
+   ]}
+]}
+};
+
+/* ================= 状態管理（localStorage） ================= */
+const LS_KEY="chiba_rika_progress_v1";
+let progress = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+function save(){localStorage.setItem(LS_KEY, JSON.stringify(progress));}
+
+function allUnits(){
+  return Object.keys(DATA).flatMap(f=>DATA[f].units.map(u=>u.id));
+}
+function updateProgress(){
+  const all=allUnits();
+  const done=all.filter(id=>progress[id]).length;
+  const pct=all.length? Math.round(done/all.length*100):0;
+  document.getElementById('progFill').style.width=pct+"%";
+  document.getElementById('progText').textContent=`${done} / ${all.length} 単元 完了`;
+}
+
+/* ================= 描画 ================= */
+function renderField(fkey){
+  const f=DATA[fkey];
+  let html=`<section id="sec-${fkey}" class="${fkey==='phys'?'active':''}">`;
+  html+=`<div class="field-head"><span class="field-dot" style="background:${f.color}"></span><h2>${f.name}</h2><span class="cnt">${f.units.length}単元</span></div>`;
+  f.units.forEach(u=>{
+    const done=progress[u.id];
+    html+=`<div class="unit" data-uid="${u.id}">
+      <div class="unit-head">
+        <span class="unit-grade">${u.grade}</span>
+        <span class="unit-title">${u.title}</span>
+        <span class="unit-check">${done?'✅':'⬜'}</span>
+        <span class="unit-arrow">▶</span>
+      </div>
+      <div class="unit-body">
+        <h3 class="sec">📘 要点整理</h3>
+        <ul class="points">${u.points.map(p=>`<li>${p}</li>`).join('')}</ul>
+        ${u.formulas.length?`<h3 class="sec">📐 覚える式</h3>${u.formulas.map(fm=>`<div class="fm">${fm}</div>`).join('')}`:''}
+        <h3 class="sec">✏️ 確認問題</h3>
+        <div class="quiz-box">${u.quiz.map((q,qi)=>renderQuiz(u.id,qi,q)).join('')}</div>
+        <div class="row">
+          <button class="btn primary mark-btn" data-uid="${u.id}">${done?'✅ 学習済み（解除）':'この単元を学習済みにする'}</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  html+=`</section>`;
+  return html;
+}
+function renderQuiz(uid,qi,q){
+  return `<div class="q" data-uid="${uid}" data-qi="${qi}">
+    <div class="q-txt"><span class="num">Q${qi+1}.</span>${q.q}</div>
+    <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
+    <div class="expl"><b>解説：</b>${q.e}</div>
+  </div>`;
+}
+
+function buildAll(){
+  const c=document.getElementById('content');
+  c.innerHTML = Object.keys(DATA).map(renderField).join('');
+  updateProgress();
+  bindEvents();
+}
+
+/* ================= イベント ================= */
+function bindEvents(){
+  // タブ
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.onclick=()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+      t.classList.add('active');
+      const f=t.dataset.f;
+      if(f==='test'){document.getElementById('sec-test').classList.add('active'); renderTestIntro();}
+      else document.getElementById('sec-'+f).classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+    };
+  });
+  // 単元の開閉
+  document.querySelectorAll('.unit-head').forEach(h=>{
+    h.onclick=()=>h.parentElement.classList.toggle('open');
+  });
+  // クイズ回答
+  document.querySelectorAll('.q').forEach(qEl=>{
+    const uid=qEl.dataset.uid, qi=+qEl.dataset.qi;
+    const ans=findQuiz(uid,qi).a;
+    qEl.querySelectorAll('.opt').forEach(opt=>{
+      opt.onclick=()=>{
+        if(qEl.classList.contains('answered'))return;
+        qEl.classList.add('answered');
+        const chosen=+opt.dataset.oi;
+        qEl.querySelectorAll('.opt').forEach((o,i)=>{
+          o.classList.add('disabled');
+          if(i===ans)o.classList.add('correct');
+          if(i===chosen&&chosen!==ans)o.classList.add('wrong');
+        });
+        qEl.querySelector('.expl').classList.add('show');
+      };
+    });
+  });
+  // 学習済みボタン
+  document.querySelectorAll('.mark-btn').forEach(b=>{
+    b.onclick=(e)=>{
+      e.stopPropagation();
+      const uid=b.dataset.uid;
+      progress[uid]=!progress[uid];
+      save(); updateProgress();
+      // 更新
+      const unit=document.querySelector(`.unit[data-uid="${uid}"]`);
+      unit.querySelector('.unit-check').textContent=progress[uid]?'✅':'⬜';
+      b.textContent=progress[uid]?'✅ 学習済み（解除）':'この単元を学習済みにする';
+    };
+  });
+}
+function findQuiz(uid,qi){
+  for(const f of Object.values(DATA)){
+    const u=f.units.find(u=>u.id===uid);
+    if(u)return u.quiz[qi];
+  }
+}
+
+/* ================= 模試モード ================= */
+let testState=null;
+function renderTestIntro(){
+  const area=document.getElementById('testArea');
+  area.innerHTML=`
+    <div class="test-intro">
+      <h2>📝 実力チェック模試</h2>
+      <p>全分野からランダムに出題します。本番のように、まず自分で解いてから答え合わせをしよう。分野をしぼることもできます。</p>
+      <div class="chips" id="fieldChips">
+        <div class="chip on" data-f="phys">物理</div>
+        <div class="chip on" data-f="chem">化学</div>
+        <div class="chip on" data-f="bio">生物</div>
+        <div class="chip on" data-f="geo">地学</div>
+      </div>
+      <div class="row">
+        <span style="font-size:13px;color:var(--sub)">問題数：</span>
+        <div class="chips" id="countChips" style="margin:0">
+          <div class="chip on" data-n="10">10問</div>
+          <div class="chip" data-n="20">20問</div>
+          <div class="chip" data-n="0">全問</div>
+        </div>
+      </div>
+      <div class="row"><button class="btn primary" id="startTest">模試スタート</button></div>
+    </div>`;
+  area.querySelectorAll('#fieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+  area.querySelectorAll('#countChips .chip').forEach(c=>c.onclick=()=>{
+    area.querySelectorAll('#countChips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');
+  });
+  document.getElementById('startTest').onclick=startTest;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function startTest(){
+  const fields=[...document.querySelectorAll('#fieldChips .chip.on')].map(c=>c.dataset.f);
+  if(!fields.length){alert('分野を1つ以上選んでください');return;}
+  const n=+document.querySelector('#countChips .chip.on').dataset.n;
+  let pool=[];
+  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach(q=>pool.push({...q,field:DATA[fk].name}))));
+  pool=shuffle(pool);
+  if(n>0)pool=pool.slice(0,n);
+  testState={pool,answers:new Array(pool.length).fill(null),submitted:false};
+  renderTestQuestions();
+}
+function renderTestQuestions(){
+  const {pool}=testState;
+  const area=document.getElementById('testArea');
+  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p></div>`;
+  pool.forEach((q,i)=>{
+    html+=`<div class="q" data-i="${i}">
+      <div class="qcount">${q.field}</div>
+      <div class="q-txt"><span class="num">問${i+1}.</span>${q.q}</div>
+      <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
+      <div class="expl"><b>解説：</b>${q.e}</div>
+    </div>`;
+  });
+  html+=`<div class="row"><button class="btn primary" id="submitTest">採点する</button><button class="btn" id="cancelTest">やめる</button></div>`;
+  area.innerHTML=html;
+  area.querySelectorAll('.q').forEach(qEl=>{
+    const i=+qEl.dataset.i;
+    qEl.querySelectorAll('.opt').forEach(opt=>{
+      opt.onclick=()=>{
+        if(testState.submitted)return;
+        qEl.querySelectorAll('.opt').forEach(o=>o.style.borderColor='');
+        opt.style.borderColor='var(--accent)';
+        testState.answers[i]=+opt.dataset.oi;
+      };
+    });
+  });
+  document.getElementById('submitTest').onclick=gradeTest;
+  document.getElementById('cancelTest').onclick=renderTestIntro;
+}
+function gradeTest(){
+  const {pool,answers}=testState;
+  const unanswered=answers.filter(a=>a===null).length;
+  if(unanswered>0 && !confirm(`未回答が${unanswered}問あります。このまま採点しますか？`))return;
+  testState.submitted=true;
+  let correct=0;
+  document.querySelectorAll('#testArea .q').forEach(qEl=>{
+    const i=+qEl.dataset.i;const q=pool[i];
+    if(answers[i]===q.a)correct++;
+    qEl.querySelectorAll('.opt').forEach((o,oi)=>{
+      o.classList.add('disabled');o.style.borderColor='';
+      if(oi===q.a)o.classList.add('correct');
+      if(oi===answers[i]&&answers[i]!==q.a)o.classList.add('wrong');
+    });
+    qEl.querySelector('.expl').classList.add('show');
+  });
+  const pct=Math.round(correct/pool.length*100);
+  let msg;
+  if(pct>=90)msg='素晴らしい！合格圏内。この調子で苦手分野を仕上げよう。';
+  else if(pct>=70)msg='good！あと一歩。まちがえた単元の要点を読み直そう。';
+  else if(pct>=50)msg='基礎はついてきた。解説をよく読んで復習しよう。';
+  else msg='まずは各単元の「要点整理」から。くり返せば必ず伸びる！';
+  const card=document.createElement('div');
+  card.className='result-card';
+  card.innerHTML=`<div class="result-score">${correct} / ${pool.length}</div>
+    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%</div>
+    <div class="result-msg">${msg}</div>
+    <div class="row" style="justify-content:center;margin-top:14px">
+      <button class="btn primary" id="retryTest">もう一度</button>
+    </div>`;
+  const area=document.getElementById('testArea');
+  area.insertBefore(card, area.firstChild);
+  document.getElementById('retryTest').onclick=renderTestIntro;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ================= リセット ================= */
+document.getElementById('resetBtn').onclick=()=>{
+  if(confirm('学習の進捗をすべてリセットしますか？')){
+    progress={};save();buildAll();
+  }
+};
+
+buildAll();
+</script>
+</body>
+</html>
