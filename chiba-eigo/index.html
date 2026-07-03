@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>千葉県公立高校 英語 対策</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3441;
+    --txt:#e6edf3; --sub:#8b98a9; --accent:#4fc3f7; --accent2:#66d9a8;
+    --warn:#ffb454; --bad:#ff6b6b; --good:#66d9a8;
+    --gram:#4fc3f7; --voc:#c792ea; --kaiwa:#66d9a8; --tech:#ffb454;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Kaku Gothic ProN','Yu Gothic',Meiryo,sans-serif;
+    background:var(--bg); color:var(--txt); line-height:1.7; padding-bottom:80px;
+  }
+  a{color:inherit}
+  .wrap{max-width:860px;margin:0 auto;padding:0 18px}
+
+  header{
+    background:linear-gradient(135deg,#14263a,#0d1117);
+    border-bottom:1px solid var(--line); padding:26px 0 22px; margin-bottom:8px;
+  }
+  header h1{font-size:20px;font-weight:700;letter-spacing:.02em}
+  header p{color:var(--sub);font-size:13px;margin-top:4px}
+  .prog-wrap{margin-top:16px}
+  .prog-bar{height:8px;background:var(--panel2);border-radius:6px;overflow:hidden}
+  .prog-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .5s}
+  .prog-label{font-size:12px;color:var(--sub);margin-top:6px;display:flex;justify-content:space-between}
+
+  /* nav tabs */
+  .tabs{display:flex;gap:6px;position:sticky;top:0;background:var(--bg);padding:12px 0;z-index:20;flex-wrap:wrap}
+  .tab{
+    flex:1;min-width:70px;text-align:center;padding:9px 4px;border-radius:10px;
+    background:var(--panel);border:1px solid var(--line);font-size:13px;font-weight:600;
+    color:var(--sub);cursor:pointer;transition:.15s;user-select:none;
+  }
+  .tab.active{color:var(--txt);border-color:var(--accent)}
+  .tab[data-f="gram"].active{border-color:var(--gram);color:var(--gram)}
+  .tab[data-f="voc"].active{border-color:var(--voc);color:var(--voc)}
+  .tab[data-f="kaiwa"].active{border-color:var(--kaiwa);color:var(--kaiwa)}
+  .tab[data-f="tech"].active{border-color:var(--tech);color:var(--tech)}
+  .tab[data-f="test"].active{border-color:#fff;color:#fff}
+
+  section{display:none;animation:fade .3s}
+  section.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .field-head{display:flex;align-items:center;gap:10px;margin:18px 0 10px}
+  .field-dot{width:12px;height:12px;border-radius:50%}
+  .field-head h2{font-size:17px}
+  .field-head .cnt{margin-left:auto;font-size:12px;color:var(--sub)}
+
+  .unit{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
+  .unit-head{display:flex;align-items:center;gap:10px;padding:15px 16px;cursor:pointer;user-select:none}
+  .unit-head:hover{background:var(--panel2)}
+  .unit-grade{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--panel2);color:var(--sub);white-space:nowrap}
+  .unit-title{font-weight:700;font-size:15px;flex:1}
+  .unit-check{font-size:16px;width:22px;text-align:center}
+  .unit-arrow{color:var(--sub);transition:transform .2s;font-size:12px}
+  .unit.open .unit-arrow{transform:rotate(90deg)}
+  .unit-body{display:none;padding:0 16px 16px;border-top:1px solid var(--line)}
+  .unit.open .unit-body{display:block}
+
+  h3.sec{font-size:13px;color:var(--accent);margin:16px 0 8px;font-weight:700;letter-spacing:.03em}
+  .points{list-style:none}
+  .points li{padding:7px 0 7px 22px;position:relative;font-size:14px;border-bottom:1px dashed var(--line)}
+  .points li:last-child{border-bottom:none}
+  .points li::before{content:"▸";position:absolute;left:2px;color:var(--accent2)}
+  .kw{color:var(--warn);font-weight:700}
+  .fm{background:var(--panel2);border-left:3px solid var(--accent);padding:8px 12px;border-radius:6px;margin:8px 0;font-size:14px}
+  .fm .en{font-weight:700;letter-spacing:.01em}
+  .fm .ja{color:var(--sub);font-size:13px}
+
+  /* quiz */
+  .q{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
+  .q-txt{font-size:14px;font-weight:600;margin-bottom:10px}
+  .q-txt .num{color:var(--accent);margin-right:6px}
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opt{padding:10px 13px;border-radius:9px;background:var(--panel);border:1px solid var(--line);cursor:pointer;font-size:14px;transition:.12s}
+  .opt:hover{border-color:var(--accent)}
+  .opt.correct{background:rgba(102,217,168,.18);border-color:var(--good)}
+  .opt.wrong{background:rgba(255,107,107,.16);border-color:var(--bad)}
+  .opt.disabled{cursor:default;pointer-events:none;opacity:.55}
+  .opt.disabled.correct,.opt.disabled.wrong{opacity:1}
+  .expl{display:none;margin-top:10px;padding:10px 12px;background:var(--panel);border-radius:8px;font-size:13px;border-left:3px solid var(--accent2)}
+  .expl.show{display:block}
+  .expl b{color:var(--accent2)}
+
+  .btn{display:inline-block;padding:9px 16px;border-radius:9px;background:var(--panel);border:1px solid var(--line);color:var(--txt);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent);color:#04222f;border-color:var(--accent)}
+  .btn:disabled{opacity:.4;cursor:default;pointer-events:none}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0}
+
+  /* test mode */
+  .test-intro{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0}
+  .test-intro h2{font-size:18px;margin-bottom:8px}
+  .test-intro p{color:var(--sub);font-size:14px;margin-bottom:14px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .chip{padding:7px 14px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);font-size:13px;cursor:pointer;font-weight:600}
+  .chip.on{background:var(--accent);color:#04222f;border-color:var(--accent)}
+  .result-card{text-align:center;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:14px;margin:16px 0}
+  .result-score{font-size:44px;font-weight:800;color:var(--accent)}
+  .result-msg{color:var(--sub);margin-top:6px}
+  .qcount{font-size:12px;color:var(--sub);text-align:right;margin-bottom:4px}
+
+  /* flashcard (単語カード) */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px 20px;margin:14px 0;min-height:200px;display:flex;flex-direction:column;justify-content:center;text-align:center}
+  .card-field{font-size:12px;color:var(--sub);margin-bottom:12px;font-weight:700}
+  .card-q{font-size:24px;font-weight:700;line-height:1.6}
+  .card-a{font-size:24px;font-weight:800;color:var(--accent2);margin-top:18px;display:none}
+  .card.revealed .card-a{display:block;animation:fade .25s}
+  .card-hint{font-size:12px;color:var(--sub);margin-top:16px}
+  .grade-row{display:flex;gap:10px;margin:10px 0}
+  .grade-row .btn{flex:1;text-align:center;padding:13px}
+  .btn.ng{border-color:var(--bad);color:var(--bad)}
+  .btn.ok{border-color:var(--good);color:var(--good)}
+  .qa-stat{display:flex;justify-content:space-around;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;font-size:13px}
+  .qa-stat b{display:block;font-size:22px;font-weight:800}
+  .qa-stat .s-rem b{color:var(--accent)} .qa-stat .s-ok b{color:var(--good)} .qa-stat .s-ng b{color:var(--warn)}
+
+  /* 並べかえ */
+  .nb-ja{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;font-size:15px;font-weight:700;margin:12px 0}
+  .nb-ja .nb-grade{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--panel2);color:var(--sub);margin-right:8px;vertical-align:middle}
+  .nb-zone{min-height:56px;background:var(--panel2);border:2px dashed var(--line);border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+  .nb-zone.empty::before{content:"ここに単語を並べよう";color:var(--sub);font-size:13px;padding-left:4px}
+  .nb-pool{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;min-height:44px}
+  .wchip{padding:9px 14px;border-radius:9px;background:var(--panel);border:1px solid var(--accent);font-size:15px;font-weight:600;cursor:pointer;user-select:none;transition:.12s}
+  .wchip:hover{background:var(--panel2)}
+  .nb-zone .wchip{border-color:var(--accent2)}
+  .nb-result{display:none;margin-top:10px;padding:12px 14px;border-radius:9px;font-size:14px;line-height:1.7}
+  .nb-result.show{display:block;animation:fade .25s}
+  .nb-result.good{background:rgba(102,217,168,.14);border:1px solid var(--good)}
+  .nb-result.bad{background:rgba(255,107,107,.12);border:1px solid var(--bad)}
+  .nb-result .ans{font-weight:700}
+  .nb-result .note{color:var(--sub);font-size:13px;margin-top:4px}
+
+  /* 英作文 */
+  .kj{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+  .kj-q{font-size:15px;font-weight:700;margin-bottom:6px}
+  .kj-q .num{color:var(--tech)}
+  .kj-a{display:none;margin-top:12px;padding:12px 14px;background:var(--panel2);border-radius:9px;border-left:3px solid var(--good);font-size:14px;line-height:1.7}
+  .kj-a.show{display:block;animation:fade .25s}
+  .kj-a .lbl{color:var(--good);font-weight:700;font-size:12px;display:block;margin-bottom:4px}
+  .kj-point{color:var(--sub);font-size:13px;margin-top:8px}
+  footer{text-align:center;color:var(--sub);font-size:12px;margin-top:30px}
+  .reset{color:var(--sub);text-decoration:underline;cursor:pointer;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>🔤 千葉県公立高校 英語 対策</h1>
+    <p>文法・単語・会話・読解の全範囲｜要点整理と確認テスト・並べかえ・英作文</p>
+    <div class="prog-wrap">
+      <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+      <div class="prog-label">
+        <span>学習の進み具合</span>
+        <span id="progText">0 / 0 単元</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-f="gram">文法</div>
+    <div class="tab" data-f="voc">単語・熟語</div>
+    <div class="tab" data-f="kaiwa">会話表現</div>
+    <div class="tab" data-f="tech">読解・入試</div>
+    <div class="tab" data-f="qa">単語カード</div>
+    <div class="tab" data-f="narabe">並べかえ</div>
+    <div class="tab" data-f="sakubun">英作文</div>
+    <div class="tab" data-f="test">模試</div>
+  </div>
+
+  <div id="content"></div>
+
+  <section id="sec-qa">
+    <div id="qaArea"></div>
+  </section>
+
+  <section id="sec-narabe">
+    <div id="narabeArea"></div>
+  </section>
+
+  <section id="sec-sakubun">
+    <div id="sakubunArea"></div>
+  </section>
+
+  <section id="sec-test">
+    <div id="testArea"></div>
+  </section>
+
+  <footer>
+    千葉県公立高校入試（英語）学習教材 ・ 全範囲対応<br>
+    進捗はこの端末に自動保存されます ・ <span class="reset" id="resetBtn">進捗をリセット</span>
+  </footer>
+</div>
+
+<script>
+/* =========================================================================
+   千葉県公立高校 英語 教材データ
+   分野: gram(文法) voc(単語・熟語) kaiwa(会話表現) tech(読解・入試対策)
+   各単元: grade, title, points[], ex[{en,ja}], quiz[{q,opts,a,e}]
+   ========================================================================= */
+const DATA = {
+gram:{ name:"文法", color:"var(--gram)", units:[
+  {id:"g1", grade:"中1", title:"be動詞・一般動詞（現在形）",
+   points:[
+     "be動詞（am / is / are）は「〜です・〜にいる」。主語で使い分け：I→<span class='kw'>am</span>、3人称単数→<span class='kw'>is</span>、you・複数→<span class='kw'>are</span>。",
+     "一般動詞の文で、主語が3人称単数（he, she, itなど）のとき動詞に<span class='kw'>-s / -es</span>をつける（3単現のs）。",
+     "一般動詞の否定文は <span class='kw'>don't / doesn't ＋ 動詞の原形</span>。doesn'tのとき動詞のsは消える。",
+     "疑問文：be動詞は<span class='kw'>主語の前に出す</span>（Are you 〜?）。一般動詞は<span class='kw'>Do / Does</span>で始める。",
+     "答え方はたずねられた動詞に合わせる：Do you 〜? → Yes, I <span class='kw'>do</span>. ／ Is he 〜? → Yes, he <span class='kw'>is</span>."
+   ],
+   ex:[
+     {en:"I am a junior high school student.", ja:"私は中学生です。"},
+     {en:"She plays tennis every day.", ja:"彼女は毎日テニスをします。"},
+     {en:"Does he like music? — Yes, he does.", ja:"彼は音楽が好きですか。— はい、好きです。"}
+   ],
+   quiz:[
+     {q:"My brother ( ) soccer very well.",opts:["play","plays","playing","is play"],a:1,e:"主語My brotherは3人称単数なので<b>plays</b>。3単現のsを忘れない。"},
+     {q:"( ) your sister like cats? — Yes, she does.",opts:["Is","Do","Does","Are"],a:2,e:"一般動詞likeの疑問文で主語が3人称単数→<b>Does</b>。答えのdoesもヒント。"},
+     {q:"Tom and Ken ( ) in the library now.",opts:["is","am","are","be"],a:2,e:"Tom and Kenは複数なので<b>are</b>。"},
+     {q:"She ( ) watch TV on Sundays.",opts:["don't","doesn't","isn't","not"],a:1,e:"一般動詞watchの否定文で主語が3人称単数→<b>doesn't</b>＋動詞の原形。"}
+   ]},
+  {id:"g2", grade:"中1", title:"疑問詞（what / who / when / where / why / how）",
+   points:[
+     "疑問詞は<span class='kw'>文の先頭</span>に置き、そのあとは疑問文の語順（do you 〜? / is it 〜?）。",
+     "what（何）／ who（だれ）／ whose（だれの）／ which（どちら）／ when（いつ）／ where（どこ）／ why（なぜ）／ how（どのように）。",
+     "<span class='kw'>How many＋複数名詞</span>（数）、How much（値段・量）、How long（期間・長さ）、How often（頻度）、How old（年齢）。",
+     "疑問詞が主語のときは<span class='kw'>疑問詞＋動詞</span>の語順（Who made this? — My mother did.）。",
+     "Whyの質問には<span class='kw'>Because 〜.</span>（〜だから）や To 〜.（〜するため）で答える。"
+   ],
+   ex:[
+     {en:"What time do you get up?", ja:"あなたは何時に起きますか。"},
+     {en:"How many books do you have?", ja:"あなたは本を何冊持っていますか。"},
+     {en:"Who made this cake? — My mother did.", ja:"だれがこのケーキを作りましたか。— 母です。"}
+   ],
+   quiz:[
+     {q:"( ) do you go to school? — By bus.",opts:["What","When","How","Where"],a:2,e:"By bus（バスで）と手段を答えている→方法をたずねる<b>How</b>。"},
+     {q:"( ) is your birthday? — It's May 5th.",opts:["When","Where","Who","How"],a:0,e:"日付を答えている→「いつ」をたずねる<b>When</b>。"},
+     {q:"( ) made this cake? — My mother did.",opts:["What","Who","Whose","Which"],a:1,e:"「だれが作ったか」。疑問詞Whoが主語なので Who made 〜? の語順になる。"},
+     {q:"How ( ) brothers do you have?",opts:["much","many","long","old"],a:1,e:"brothersは数えられる名詞の複数形→<b>How many</b>。値段や量ならHow much。"}
+   ]},
+  {id:"g3", grade:"中1", title:"命令文・can・現在進行形",
+   points:[
+     "命令文は<span class='kw'>動詞の原形</span>で文を始める。「〜するな」は<span class='kw'>Don't＋原形</span>、「〜しましょう」は<span class='kw'>Let's＋原形</span>。",
+     "can（〜できる）のあとは<span class='kw'>動詞の原形</span>。主語が3人称単数でもsはつかない（He can swim.）。",
+     "Can you 〜? は「〜してくれますか」（依頼）、Can I 〜? は「〜してもいいですか」（許可）の意味にもなる。",
+     "現在進行形「〜している」は<span class='kw'>be動詞＋動詞のing形</span>。",
+     "ing形の作り方：run→<span class='kw'>running</span>（重ねる）、make→<span class='kw'>making</span>（eをとる）、study→studying（そのまま）。",
+     "like, want, know など状態を表す動詞はふつう<span class='kw'>進行形にしない</span>。"
+   ],
+   ex:[
+     {en:"Be quiet in the library.", ja:"図書館では静かにしなさい。"},
+     {en:"My sister can speak English well.", ja:"私の姉は英語を上手に話せます。"},
+     {en:"They are playing soccer now.", ja:"彼らは今サッカーをしています。"}
+   ],
+   quiz:[
+     {q:"Look! The children ( ) in the park.",opts:["run","runs","are running","ran"],a:2,e:"Look!（見て！）は「今まさに〜している」の合図→現在進行形<b>are running</b>。nを重ねる。"},
+     {q:"( ) open the window. It's cold.",opts:["Don't","Doesn't","Not","Isn't"],a:0,e:"「窓を開けないで」という否定の命令文→<b>Don't＋動詞の原形</b>。"},
+     {q:"My sister can ( ) English well.",opts:["speaks","speak","speaking","to speak"],a:1,e:"canなど助動詞のあとは必ず<b>動詞の原形</b>。主語が3人称単数でもsはつかない。"}
+   ]},
+  {id:"g4", grade:"中1", title:"過去形・過去進行形",
+   points:[
+     "規則動詞の過去形は<span class='kw'>-ed</span>（play→played, study→studied, stop→stopped）。",
+     "不規則動詞は形が変わる：go→<span class='kw'>went</span>、come→came、see→saw、have→had、make→made など（暗記必須）。",
+     "否定文は<span class='kw'>didn't＋動詞の原形</span>、疑問文は<span class='kw'>Did＋主語＋原形</span>。過去形に戻さないよう注意。",
+     "be動詞の過去形は <span class='kw'>was</span>（am, isの過去）と <span class='kw'>were</span>（areの過去）。",
+     "過去進行形「〜していた」は<span class='kw'>was / were＋ing形</span>。whenの文とセットで頻出。"
+   ],
+   ex:[
+     {en:"I went to Kyoto with my family last week.", ja:"私は先週、家族と京都へ行きました。"},
+     {en:"Did you enjoy the party? — Yes, I did.", ja:"パーティーは楽しかったですか。— はい。"},
+     {en:"She was reading a book when I called her.", ja:"私が電話したとき、彼女は本を読んでいました。"}
+   ],
+   quiz:[
+     {q:"I ( ) a letter to my friend yesterday.",opts:["write","writes","wrote","written"],a:2,e:"yesterdayがあるので過去形<b>wrote</b>。write-wrote-writtenの変化は必修。"},
+     {q:"( ) you watch the movie last night? — Yes, I did.",opts:["Do","Did","Were","Are"],a:1,e:"last night（昨夜）→過去の疑問文<b>Did</b>＋主語＋動詞の原形。"},
+     {q:"When I called him, he ( ) a bath.",opts:["takes","is taking","was taking","take"],a:2,e:"「電話したとき〜していた」→過去進行形<b>was taking</b>。"},
+     {q:"We ( ) very busy last week.",opts:["are","was","were","did"],a:2,e:"主語Weでbe動詞の過去→<b>were</b>。"}
+   ]},
+  {id:"g5", grade:"中2", title:"未来表現・助動詞",
+   points:[
+     "未来は <span class='kw'>will＋原形</span> または <span class='kw'>be going to＋原形</span>。be going to はすでに決めた予定に使うことが多い。",
+     "willの否定は <span class='kw'>won't</span>（= will not）。",
+     "must（〜しなければならない）≒ <span class='kw'>have to</span>。ただし否定は意味がちがう：<span class='kw'>must not＝禁止</span>「〜してはいけない」、<span class='kw'>don't have to＝不要</span>「〜しなくてよい」。",
+     "should（〜すべきだ）、may（〜してもよい・〜かもしれない）。",
+     "<span class='kw'>Shall I 〜?</span>「（私が）〜しましょうか」、<span class='kw'>Shall we 〜?</span>「（いっしょに）〜しましょうか」。",
+     "ていねいな依頼：<span class='kw'>Could you 〜?</span> / Would you 〜?"
+   ],
+   ex:[
+     {en:"I'm going to visit my uncle next Sunday.", ja:"私は今度の日曜日におじを訪ねる予定です。"},
+     {en:"It will be rainy tomorrow.", ja:"明日は雨になるでしょう。"},
+     {en:"You don't have to hurry.", ja:"急ぐ必要はありません。"}
+   ],
+   quiz:[
+     {q:"Ken ( ) play tennis with his friends tomorrow.",opts:["is going to","goes","went","is"],a:0,e:"tomorrow＋「〜する予定」→<b>is going to＋原形</b>。"},
+     {q:"You ( ) eat too much. It's bad for your health.",opts:["don't have to","must not","have to","should"],a:1,e:"「食べすぎては<b>いけない</b>」＝禁止→<b>must not</b>。don't have toは「しなくてよい」。"},
+     {q:"( ) I carry your bag? — Yes, please.",opts:["Shall","Will","Do","Am"],a:0,e:"「（私が）〜しましょうか」と申し出る→<b>Shall I 〜?</b>。"},
+     {q:"You ( ) bring lunch tomorrow. We will give you some food.",opts:["must","must not","don't have to","should"],a:2,e:"「持ってこなくてよい」＝不要→<b>don't have to</b>。must notとの区別は超頻出。"}
+   ]},
+  {id:"g6", grade:"中2", title:"There is 〜・接続詞（when / if / because / that）",
+   points:[
+     "「〜がある・いる」は <span class='kw'>There is＋単数</span> ／ <span class='kw'>There are＋複数</span>＋場所。",
+     "接続詞 when（〜のとき）、if（もし〜なら）、because（〜だから）、that（〜ということ）で2つの文をつなぐ。",
+     "<span class='kw'>if / whenの節の中は、未来のことでも現在形</span>で表す（If it rains tomorrow, 〜）。",
+     "I think (that) 〜.「〜だと思う」のthatは<span class='kw'>省略できる</span>。",
+     "Why 〜? の答えに Because 〜. を使う。"
+   ],
+   ex:[
+     {en:"There are two big parks in my town.", ja:"私の町には大きな公園が2つあります。"},
+     {en:"If it rains tomorrow, I will stay home.", ja:"もし明日雨が降れば、私は家にいます。"},
+     {en:"I think that this book is interesting.", ja:"私はこの本はおもしろいと思います。"}
+   ],
+   quiz:[
+     {q:"There ( ) a lot of children in the park.",opts:["is","are","was","be"],a:1,e:"a lot of children（複数）→<b>There are</b>。"},
+     {q:"If it ( ) sunny tomorrow, let's go fishing.",opts:["will be","is","was","be"],a:1,e:"ifの節の中は未来のことでも<b>現在形</b>。will beとしないのがポイント。"},
+     {q:"I stayed home ( ) I was sick.",opts:["but","or","because","if"],a:2,e:"「病気<b>だったから</b>家にいた」→理由を表す<b>because</b>。"}
+   ]},
+  {id:"g7", grade:"中2", title:"不定詞・動名詞",
+   points:[
+     "不定詞は<span class='kw'>to＋動詞の原形</span>。3つの用法：名詞的「〜すること」／形容詞的「〜するための」／副詞的「〜するために・〜して」。",
+     "動名詞は<span class='kw'>動詞のing形</span>で「〜すること」。",
+     "<span class='kw'>enjoy / finish / stop ＋ 〜ing</span>（動名詞のみ）、<span class='kw'>want / hope / decide ＋ to〜</span>（不定詞のみ）。like / begin / start はどちらもOK。",
+     "形容詞的用法は名詞のうしろから修飾：something to drink（何か飲むもの）、a lot of homework <span class='kw'>to do</span>。",
+     "副詞的用法「〜するために」は目的を表す：He went to the station <span class='kw'>to meet</span> his friend."
+   ],
+   ex:[
+     {en:"I want to be a doctor in the future.", ja:"私は将来、医者になりたいです。"},
+     {en:"He went to the station to meet his friend.", ja:"彼は友だちを迎えに駅へ行きました。"},
+     {en:"I enjoyed talking with my classmates.", ja:"私はクラスメイトと話をして楽しみました。"}
+   ],
+   quiz:[
+     {q:"I want ( ) abroad in the future.",opts:["study","studying","to study","studied"],a:2,e:"wantは<b>不定詞（to＋原形）</b>のみをとる動詞。want to 〜「〜したい」。"},
+     {q:"My father finished ( ) the newspaper.",opts:["read","to read","reading","reads"],a:2,e:"finishは<b>動名詞（〜ing）</b>のみをとる動詞。enjoy, stopも同じ仲間。"},
+     {q:"I went to the library ( ) some books.",opts:["borrow","to borrow","borrowing","borrowed"],a:1,e:"「借りる<b>ために</b>行った」→目的を表す不定詞の副詞的用法<b>to borrow</b>。"},
+     {q:"I have a lot of things ( ) today.",opts:["do","to do","doing","did"],a:1,e:"things<b>を後ろから修飾</b>する形容詞的用法。「今日すべきたくさんのこと」。"}
+   ]},
+  {id:"g8", grade:"中2", title:"比較",
+   points:[
+     "比較級「〜より…」：<span class='kw'>-er＋than</span>。最上級「いちばん…」：<span class='kw'>the -est</span>＋in（場所・範囲）/ of（複数のなかま）。",
+     "長い語（interesting, famous, popularなど）は <span class='kw'>more / most</span> をつける。",
+     "不規則変化：good / well → <span class='kw'>better / best</span>、many / much → more / most。",
+     "「AとBではどちらが〜か」：Which is 〜er, A or B?",
+     "同じくらい：<span class='kw'>as＋原級＋as</span>。否定 not as 〜 as …「…ほど〜ではない」。",
+     "「〜がいちばん好き」：like 〜 <span class='kw'>the best</span>."
+   ],
+   ex:[
+     {en:"Tom is taller than Ken.", ja:"トムはケンより背が高い。"},
+     {en:"This is the most famous picture in the museum.", ja:"これはその美術館でいちばん有名な絵です。"},
+     {en:"I like summer the best of all seasons.", ja:"私はすべての季節の中で夏がいちばん好きです。"}
+   ],
+   quiz:[
+     {q:"This question is ( ) than that one.",opts:["easy","easier","easiest","more easy"],a:1,e:"thanがあるので比較級。easyはyをiに変えて<b>easier</b>。"},
+     {q:"Mt. Fuji is ( ) mountain in Japan.",opts:["higher","the highest","high","more high"],a:1,e:"「日本で<b>いちばん</b>高い山」→最上級<b>the highest</b>＋in Japan。"},
+     {q:"This movie is ( ) interesting than that one.",opts:["much","many","more","most"],a:2,e:"interestingは長い語なので<b>more</b>をつけて比較級にする。"},
+     {q:"I can't run as ( ) as my brother.",opts:["fast","faster","fastest","more fast"],a:0,e:"as 〜 as の間は<b>原級</b>（そのままの形）。not as fast as「〜ほど速くない」。"}
+   ]},
+  {id:"g9", grade:"中3", title:"受け身（受動態）",
+   points:[
+     "「〜される」は <span class='kw'>be動詞＋過去分詞</span>。行為をする人は<span class='kw'>by 〜</span>で表す（省略も多い）。",
+     "時制はbe動詞で表す：is made（現在）／<span class='kw'>was made</span>（過去）。",
+     "疑問文はbe動詞を前に：<span class='kw'>Is this car made in Japan?</span> 否定文は be動詞＋not。",
+     "byを使わない表現：be known <span class='kw'>to</span> 〜（〜に知られている）、be covered <span class='kw'>with</span> 〜（〜でおおわれている）。",
+     "be made <span class='kw'>of</span> 〜（材料が見てわかる）／ be made <span class='kw'>from</span> 〜（原料が変化している）。"
+   ],
+   ex:[
+     {en:"English is spoken in many countries.", ja:"英語は多くの国で話されています。"},
+     {en:"This temple was built about 400 years ago.", ja:"この寺は約400年前に建てられました。"},
+     {en:"The top of the mountain is covered with snow.", ja:"山頂は雪でおおわれています。"}
+   ],
+   quiz:[
+     {q:"This song ( ) by many young people.",opts:["loves","is loved","is loving","loving"],a:1,e:"「歌は愛<b>される</b>」→受け身<b>be動詞＋過去分詞</b>。"},
+     {q:"These pictures ( ) taken in Kyoto last year.",opts:["are","was","were","did"],a:2,e:"主語が複数＋last year（過去）→<b>were</b> taken。"},
+     {q:"Butter is made ( ) milk.",opts:["of","from","by","in"],a:1,e:"牛乳はバターになると形が変わる（原料）→<b>from</b>。木の机のように材料が見てわかるならof。"}
+   ]},
+  {id:"g10", grade:"中3", title:"現在完了・現在完了進行形",
+   points:[
+     "現在完了は <span class='kw'>have / has＋過去分詞</span>。過去とつながった「今」を表す。",
+     "<span class='kw'>継続</span>「ずっと〜している」：for（〜の間）／ since（〜以来）とセット。",
+     "<span class='kw'>経験</span>「〜したことがある」：ever（今までに）／ never（一度もない）／ 〜 times（〜回）。",
+     "<span class='kw'>完了</span>「〜したところだ・してしまった」：just（ちょうど）／ already（すでに）／ yet（疑問文：もう、否定文：まだ）。",
+     "have <span class='kw'>been</span> to 〜「行ったことがある」／ have <span class='kw'>gone</span> to 〜「行ってしまった（今ここにいない）」。",
+     "動作の継続は現在完了進行形 <span class='kw'>have been＋ing</span>（It has been raining since last night.）。"
+   ],
+   ex:[
+     {en:"I have lived in Chiba for ten years.", ja:"私は10年間ずっと千葉に住んでいます。"},
+     {en:"Have you ever been to Okinawa?", ja:"あなたは今までに沖縄へ行ったことがありますか。"},
+     {en:"I have just finished my homework.", ja:"私はちょうど宿題を終えたところです。"}
+   ],
+   quiz:[
+     {q:"My brother has ( ) in Tokyo since 2020.",opts:["live","lived","living","lives"],a:1,e:"has＋<b>過去分詞</b>で現在完了。since 2020「2020年からずっと」→継続。"},
+     {q:"Have you ever ( ) to Hokkaido?",opts:["go","went","gone","been"],a:3,e:"「行ったことがある」は<b>have been to</b>。have gone toは「行ってしまった」。"},
+     {q:"She has been ( ) TV for three hours.",opts:["watch","watched","watching","watches"],a:2,e:"has been＋<b>ing</b>＝現在完了進行形。「3時間ずっと見続けている」。"},
+     {q:"I have ( ) seen the movie, so I know the story.",opts:["yet","never","already","ever"],a:2,e:"「<b>すでに</b>見たので話を知っている」→<b>already</b>。yetは疑問文・否定文で使う。"}
+   ]},
+  {id:"g11", grade:"中3", title:"不定詞の応用・文型（SVOO / SVOC）",
+   points:[
+     "<span class='kw'>It is … (for A) to 〜</span>「（Aにとって）〜することは…だ」。Itは仮の主語。",
+     "<span class='kw'>want / tell / ask＋人＋to 〜</span>「人に〜してほしい／〜するように言う／頼む」。",
+     "<span class='kw'>疑問詞＋to 〜</span>：how to（〜のしかた）、what to（何を〜すべきか）、where to（どこで〜すべきか）。",
+     "<span class='kw'>too … to 〜</span>「…すぎて〜できない」（= so … that ─ can't 〜）。",
+     "SVOO：<span class='kw'>give A B</span>「AにBをあげる」＝ give B to A。",
+     "SVOC：<span class='kw'>call A B</span>「AをBと呼ぶ」、<span class='kw'>make A B</span>「AをBにする」（The news made me happy.）。"
+   ],
+   ex:[
+     {en:"It is important for us to learn English.", ja:"私たちにとって英語を学ぶことは大切です。"},
+     {en:"My mother told me to clean my room.", ja:"母は私に部屋を掃除するように言いました。"},
+     {en:"I don't know how to use this computer.", ja:"私はこのコンピュータの使い方がわかりません。"}
+   ],
+   quiz:[
+     {q:"It is fun ( ) me to play the guitar.",opts:["of","for","to","with"],a:1,e:"It is …<b>for</b> A to 〜「Aにとって〜することは…だ」。"},
+     {q:"My teacher told us ( ) our best.",opts:["do","doing","to do","did"],a:2,e:"tell＋人＋<b>to＋原形</b>「人に〜するように言う」。"},
+     {q:"I didn't know ( ) to say, so I was quiet.",opts:["what","how","where","when"],a:0,e:"「<b>何を</b>言えばよいか」→<b>what to say</b>。how to sayなら「言い方」。"},
+     {q:"The news made me ( ).",opts:["happily","happy","to happy","happiness"],a:1,e:"make A B「AをBにする」。Bには<b>形容詞</b>がくる（SVOC）。"}
+   ]},
+  {id:"g12", grade:"中3", title:"分詞・関係代名詞",
+   points:[
+     "現在分詞（<span class='kw'>ing形</span>）「〜している…」：The boy <span class='kw'>playing tennis</span> over there is Ken.（2語以上は名詞のうしろ）",
+     "過去分詞「〜された…」：a camera <span class='kw'>made in Japan</span>（日本製のカメラ）。",
+     "関係代名詞は名詞（先行詞）を文で説明する：人→<span class='kw'>who / that</span>、物→<span class='kw'>which / that</span>。",
+     "主格：I have a friend <span class='kw'>who lives</span> in Canada.（whoのあとは動詞）",
+     "目的格：The book <span class='kw'>(which) I read</span> yesterday was interesting.（目的格は<span class='kw'>省略できる</span>）"
+   ],
+   ex:[
+     {en:"The girl singing over there is my sister.", ja:"向こうで歌っている少女は私の姉です。"},
+     {en:"This is a camera made in Japan.", ja:"これは日本で作られたカメラです。"},
+     {en:"I have a friend who lives in Canada.", ja:"私にはカナダに住んでいる友だちがいます。"}
+   ],
+   quiz:[
+     {q:"The boy ( ) soccer over there is Ken.",opts:["play","played","playing","plays"],a:2,e:"「サッカーを<b>している</b>少年」→現在分詞<b>playing</b>が後ろからboyを修飾。"},
+     {q:"This is a letter ( ) by Soseki.",opts:["write","wrote","writing","written"],a:3,e:"「漱石によって<b>書かれた</b>手紙」→過去分詞<b>written</b>。"},
+     {q:"I have an aunt ( ) lives in Osaka.",opts:["who","which","whose","it"],a:0,e:"先行詞an auntは<b>人</b>で、あとに動詞→主格の<b>who</b>。"},
+     {q:"The cake ( ) my mother made was delicious.",opts:["who","which","whose","what"],a:1,e:"先行詞The cakeは<b>物</b>→<b>which</b>（that）。目的格なので省略も可能。"}
+   ]},
+  {id:"g13", grade:"中3", title:"間接疑問文・仮定法",
+   points:[
+     "間接疑問文：疑問詞のあとが<span class='kw'>主語＋動詞</span>の語順になる。I know <span class='kw'>where he lives</span>.（× where does he live）",
+     "Do you know what time <span class='kw'>it is</span>?（何時か知っていますか）",
+     "仮定法過去「もし〜なら…なのに」（現実とちがう仮定）：<span class='kw'>If＋主語＋過去形, 主語＋would / could＋原形</span>。",
+     "仮定法ではbe動詞はふつう<span class='kw'>were</span>を使う：If I <span class='kw'>were</span> you, 〜。",
+     "<span class='kw'>I wish＋主語＋過去形</span>「〜ならいいのに」：I wish I could fly."
+   ],
+   ex:[
+     {en:"Do you know what time it is?", ja:"今、何時か知っていますか。"},
+     {en:"If I had more time, I could read more books.", ja:"もっと時間があれば、もっと本が読めるのに。"},
+     {en:"I wish I were a bird.", ja:"私が鳥ならいいのに。"}
+   ],
+   quiz:[
+     {q:"I don't know where ( ).",opts:["does he live","he lives","lives he","did he live"],a:1,e:"間接疑問文は疑問詞のあとが<b>主語＋動詞</b>の語順。「彼がどこに住んでいるか」。"},
+     {q:"If I ( ) rich, I would travel around the world.",opts:["am","is","were","will be"],a:2,e:"現実とちがう仮定（仮定法過去）→be動詞は<b>were</b>。"},
+     {q:"I wish I ( ) play the piano well.",opts:["can","could","will","may"],a:1,e:"I wish＋<b>過去形</b>「〜ならいいのに」→<b>could</b>。"}
+   ]},
+]},
+
+voc:{ name:"単語・熟語", color:"var(--voc)", units:[
+  {id:"v1", grade:"必修", title:"不規則動詞の変化表",
+   points:[
+     "<b>■ A-B-C型（全部ちがう）</b>：go-<span class='kw'>went</span>-<span class='kw'>gone</span>／see-saw-<span class='kw'>seen</span>／take-took-<span class='kw'>taken</span>／write-wrote-<span class='kw'>written</span>／eat-ate-<span class='kw'>eaten</span>／give-gave-<span class='kw'>given</span>／know-knew-<span class='kw'>known</span>／speak-spoke-<span class='kw'>spoken</span>／break-broke-broken／do-did-<span class='kw'>done</span>",
+     "<b>■ A-B-B型（過去＝過去分詞）</b>：make-<span class='kw'>made</span>-made／have-had-had／buy-<span class='kw'>bought</span>-bought／teach-<span class='kw'>taught</span>-taught／bring-brought-brought／think-thought-thought／find-found-found／get-got-got(ten)／say-said-said／tell-told-told／hear-heard-heard／leave-<span class='kw'>left</span>-left／meet-met-met／send-sent-sent／build-<span class='kw'>built</span>-built",
+     "<b>■ A-B-A型（原形＝過去分詞）</b>：come-came-<span class='kw'>come</span>／run-ran-<span class='kw'>run</span>／become-became-become",
+     "<b>■ A-A-A型（全部同じ）</b>：put-put-put／cut-cut-cut／<span class='kw'>read-read-read</span>（発音は「リード・レッド・レッド」と変わる）",
+     "受け身・現在完了・分詞では<span class='kw'>過去分詞</span>を使う。過去形とのちがいを意識して覚えること。"
+   ],
+   ex:[
+     {en:"go - went - gone ／ write - wrote - written", ja:"「行く」「書く」：A-B-C型の代表"},
+     {en:"buy - bought - bought ／ teach - taught - taught", ja:"「買う」「教える」：-ought / -aught の仲間"}
+   ],
+   quiz:[
+     {q:"write の過去分詞は？",opts:["wrote","writed","written","writing"],a:2,e:"write-wrote-<b>written</b>。受け身や現在完了で使う形。"},
+     {q:"buy の過去形は？",opts:["buyed","bought","brought","built"],a:1,e:"buy-<b>bought</b>-bought。broughtはbring（持ってくる）の過去形なので混同注意。"},
+     {q:"read の過去形の発音は？",opts:["リード","レッド","ロード","リーデッド"],a:1,e:"つづりはreadのまま、発音だけ「<b>レッド</b>」に変わる。"},
+     {q:"come の過去分詞は？",opts:["came","come","comed","coming"],a:1,e:"come-came-<b>come</b>のA-B-A型。原形と過去分詞が同じ。"}
+   ]},
+  {id:"v2", grade:"必修", title:"テーマ別 重要単語",
+   points:[
+     "<b>■ 月の名前（つづりミス頻出）</b>：January（1月）／<span class='kw'>February</span>（2月）／March／April／May／June／July／<span class='kw'>August</span>（8月）／September／October／November／December",
+     "<b>■ 曜日</b>：Monday／Tuesday／<span class='kw'>Wednesday</span>（水）／Thursday（木）／Friday／Saturday／Sunday　※WednesdayとThursdayのつづりに注意",
+     "<b>■ 教科</b>：Japanese（国語）／math（数学）／<span class='kw'>science</span>（理科）／social studies（社会）／P.E.（体育）／music／art",
+     "<b>■ 序数</b>：first（1番目）／second／third／fourth／fifth／<span class='kw'>twelfth</span>（12番目）／twentieth（20番目）　※日付に使う",
+     "<b>■ 数のつまずき</b>：<span class='kw'>forty</span>（40：uが入らない）／nineteen（19）とninety（90）の聞き分け",
+     "<b>■ 家族・人</b>：daughter（娘）／son（息子）／uncle（おじ）／aunt（おば）／<span class='kw'>foreigner</span>（外国人）"
+   ],
+   ex:[
+     {en:"My birthday is February twelfth.", ja:"私の誕生日は2月12日です。"},
+     {en:"We have science on Wednesday.", ja:"水曜日に理科があります。"}
+   ],
+   quiz:[
+     {q:"「水曜日」の正しいつづりは？",opts:["Wensday","Wednesday","Wedensday","Wendsday"],a:1,e:"<b>Wednesday</b>。「ウェドネスデイ」と言いながら書くと覚えやすい。"},
+     {q:"「2月」の正しいつづりは？",opts:["Feburary","February","Febrary","Februaly"],a:1,e:"<b>February</b>。rが2か所（Feb<b>r</b>ua<b>r</b>y）にあるのがポイント。"},
+     {q:"「40」の正しいつづりは？",opts:["fourty","forty","fourteen","foty"],a:1,e:"<b>forty</b>。four（4）にはuがあるが、40はuが消える。"},
+     {q:"「理科」を英語で言うと？",opts:["social studies","math","science","subject"],a:2,e:"<b>science</b>。social studiesは社会、mathは数学。"}
+   ]},
+  {id:"v3", grade:"必修", title:"頻出熟語・連語",
+   points:[
+     "be interested <span class='kw'>in</span> 〜（〜に興味がある）／be good <span class='kw'>at</span> 〜（〜が得意だ）／be famous <span class='kw'>for</span> 〜（〜で有名だ）／be afraid of 〜（〜をこわがる）／be proud of 〜（〜を誇りに思う）",
+     "look <span class='kw'>forward to 〜ing</span>（〜を楽しみに待つ ※toのあとはing！）／look for 〜（〜をさがす）／look after 〜（〜の世話をする）",
+     "take care <span class='kw'>of</span> 〜（〜の世話をする）／take part <span class='kw'>in</span> 〜（〜に参加する）／take a picture（写真をとる）",
+     "get up（起きる）／get to 〜（〜に着く）＝arrive <span class='kw'>at</span> 〜／give up（あきらめる）／pick up（拾う・迎えに行く）",
+     "<span class='kw'>a lot of</span> 〜（たくさんの）／a kind of 〜（一種の）／for example（たとえば）／of course（もちろん）／at first（最初は）／at last（ついに）／each other（お互い）",
+     "<span class='kw'>be able to</span> 〜（〜できる＝can）／<span class='kw'>would like to</span> 〜（〜したい：wantのていねい形）／have a good time（楽しく過ごす）／do one's best（全力を尽くす）"
+   ],
+   ex:[
+     {en:"I'm looking forward to seeing you again.", ja:"あなたにまた会えるのを楽しみにしています。"},
+     {en:"She took part in the speech contest.", ja:"彼女はスピーチコンテストに参加しました。"}
+   ],
+   quiz:[
+     {q:"I am interested ( ) Japanese history.",opts:["at","of","in","for"],a:2,e:"be interested <b>in</b> 〜「〜に興味がある」。"},
+     {q:"My sister is good ( ) playing the piano.",opts:["at","in","of","with"],a:0,e:"be good <b>at</b> 〜「〜が得意だ」。atのあとは名詞か動名詞。"},
+     {q:"I'm looking forward to ( ) you.",opts:["see","seeing","saw","be seen"],a:1,e:"look forward to のtoは前置詞なので、あとは<b>動名詞（〜ing）</b>。to seeとしないこと！"},
+     {q:"「〜に参加する」＝ take ( ) in 〜",opts:["care","part","place","time"],a:1,e:"take <b>part</b> in 〜。take care of（世話をする）、take place（行われる）と区別。"}
+   ]},
+  {id:"v4", grade:"必修", title:"つなぎ言葉・作文で使える表現",
+   points:[
+     "順序を示す：<span class='kw'>First</span>（まず）→ Second / Next / Then（次に）→ <span class='kw'>Finally</span>（最後に）。長文の流れをつかむ目印にもなる。",
+     "逆接：but（しかし）／<span class='kw'>however</span>（しかしながら：文頭でよく使う）。",
+     "理由・結果：because（〜だから）／so（だから）／<span class='kw'>because of＋名詞</span>（〜のせいで）。",
+     "例示・追加：for example（たとえば）／<span class='kw'>also</span>（〜もまた）／too（文末で「〜も」）。",
+     "意見を言う：I think (that) 〜／In my opinion（私の考えでは）／<span class='kw'>I agree</span>（賛成です）／I don't agree＝I disagree（反対です）。",
+     "時を表す：in the future（将来）／these days（近ごろ）／<span class='kw'>for the first time</span>（初めて）／one day（ある日）。"
+   ],
+   ex:[
+     {en:"I think so, too.", ja:"私もそう思います。"},
+     {en:"The game was stopped because of the rain.", ja:"試合は雨のために中断されました。"}
+   ],
+   quiz:[
+     {q:"We couldn't play outside ( ) the heavy rain.",opts:["because","because of","so","but"],a:1,e:"あとに名詞（the heavy rain）が続くので<b>because of</b>。文（主語＋動詞）が続くならbecause。"},
+     {q:"I was tired, ( ) I went to bed early.",opts:["because","but","so","or"],a:2,e:"「疲れていた、<b>だから</b>早く寝た」→結果を表す<b>so</b>。"},
+     {q:"「初めて」を表す表現は？",opts:["at first","for the first time","first of all","one day"],a:1,e:"<b>for the first time</b>「初めて」。at firstは「最初は（あとで変わる）」。"},
+     {q:"I visited Kyoto. I visited Nara, ( ).",opts:["also","too","so","either"],a:1,e:"文末につけて「〜も」は<b>too</b>。alsoはふつう動詞の前に置く。"}
+   ]},
+]},
+
+kaiwa:{ name:"会話表現", color:"var(--kaiwa)", units:[
+  {id:"k1", grade:"場面", title:"あいさつ・お礼・紹介",
+   points:[
+     "初対面：Nice to meet you. → 返事は Nice to meet you, <span class='kw'>too</span>.",
+     "調子をたずねる：How are you? ／ <span class='kw'>What's up?</span>（くだけた言い方）",
+     "お礼：Thank you for <span class='kw'>〜ing</span>.（〜してくれてありがとう）→ 返事は <span class='kw'>You're welcome.</span>（どういたしまして）／ No problem.",
+     "紹介：This is my friend, Ken.（こちらは友だちのケンです）",
+     "別れ際：See you later.（またね）／ Have a nice day.（よい一日を）→ 返事は You, too.",
+     "久しぶり：<span class='kw'>Long time no see.</span>（久しぶり）"
+   ],
+   ex:[
+     {en:"Thank you for inviting me. — You're welcome.", ja:"招待してくれてありがとう。— どういたしまして。"},
+     {en:"This is my friend, Ken. He is from Osaka.", ja:"こちらは友だちのケン。大阪出身です。"}
+   ],
+   quiz:[
+     {q:"\"Thank you for helping me.\" に対する応答として最も適切なのは？",opts:["Yes, I do.","You're welcome.","I'm sorry.","Me, too."],a:1,e:"お礼を言われたら<b>You're welcome.</b>（どういたしまして）。No problem.でもよい。"},
+     {q:"\"Nice to meet you.\" と言われたら？",opts:["Nice to meet you, too.","You're welcome.","That's too bad.","See you."],a:0,e:"「はじめまして」には<b>Nice to meet you, too.</b>と返す。"},
+     {q:"\"Have a nice weekend!\" への応答は？",opts:["You, too.","Me neither.","Yes, I am.","Here you are."],a:0,e:"「よい週末を」→「<b>あなたもね（You, too.）</b>」。"}
+   ]},
+  {id:"k2", grade:"場面", title:"依頼・許可・提案・誘い",
+   points:[
+     "依頼：Can you 〜?（〜してくれる？）／ていねいに <span class='kw'>Could you 〜?</span> → OK：Sure. / All right. ／ 断る：I'm sorry, I can't.",
+     "許可：Can I 〜? ／ <span class='kw'>May I 〜?</span>（〜してもいいですか）→ Sure. / Of course.",
+     "提案・誘い：<span class='kw'>Shall we 〜?</span> ／ Let's 〜. ／ <span class='kw'>Why don't we 〜?</span>（いっしょに〜しない？）／ <span class='kw'>How about 〜ing?</span>（〜するのはどう？）",
+     "Why don't <span class='kw'>you</span> 〜? は「（あなたが）〜したらどう？」というアドバイス。",
+     "誘いへの返事：That sounds <span class='kw'>good</span> [great / fun].（いいね）／ I'd love to.（ぜひ）／ I'm sorry, but I have to 〜.（残念だけど〜しないと）",
+     "Would you like 〜?（〜はいかがですか）／ Would you like to 〜?（〜しませんか）"
+   ],
+   ex:[
+     {en:"Could you say that again? — Sure.", ja:"もう一度言っていただけますか。— いいですよ。"},
+     {en:"How about playing tennis after school? — That sounds fun!", ja:"放課後テニスをするのはどう？ — 楽しそう！"}
+   ],
+   quiz:[
+     {q:"\"Shall we go to the movies tomorrow?\" 誘いを受けるときの応答は？",opts:["Yes, I shall.","That sounds good.","You're welcome.","That's too bad."],a:1,e:"誘いに乗るときは<b>That sounds good.</b>（いいね）など。Yes, let's. でもOK。"},
+     {q:"How about ( ) in the park?",opts:["run","to run","running","ran"],a:2,e:"How about のaboutは前置詞なので、あとは<b>動名詞（〜ing）</b>。"},
+     {q:"「窓を開けてもいいですか」とていねいにたずねるには？",opts:["May I open the window?","You open the window.","Shall we open the window?","Do I open the window?"],a:0,e:"許可を求める<b>May I 〜?</b>。Can I 〜? でもよい。"}
+   ]},
+  {id:"k3", grade:"場面", title:"買い物・レストラン・電話",
+   points:[
+     "店員：<span class='kw'>May I help you?</span>（いらっしゃいませ）→ 客：I'm <span class='kw'>looking for</span> a T-shirt.（Tシャツをさがしています）／ Just looking, thank you.（見ているだけです）",
+     "値段：<span class='kw'>How much</span> is it? → It's 2,000 yen.　買う決断：<span class='kw'>I'll take it.</span>（それをください）",
+     "試着：May I <span class='kw'>try it on</span>?（試着してもいいですか）／サイズ：Do you have a smaller one?",
+     "レストラン：<span class='kw'>Would you like</span> something to drink?（お飲み物はいかがですか）→ Yes, please. / No, thank you.",
+     "注文：May I take your order?（ご注文は？）→ I'd like 〜.（〜をお願いします）",
+     "電話：Hello. <span class='kw'>This is</span> Ken (speaking).（もしもし、ケンです）／ May I speak to Yumi?（ユミさんをお願いします）→ <span class='kw'>Speaking.</span>（私です）／ Can I <span class='kw'>leave a message</span>?（伝言をお願いできますか）"
+   ],
+   ex:[
+     {en:"May I help you? — Yes, I'm looking for a bag for my mother.", ja:"いらっしゃいませ。— はい、母へのかばんをさがしています。"},
+     {en:"Hello. This is Ken. May I speak to Yumi? — Speaking.", ja:"もしもし、ケンです。ユミさんをお願いします。— 私です。"}
+   ],
+   quiz:[
+     {q:"店で \"May I help you?\" と言われた。「見ているだけです」と伝えるには？",opts:["I'll take it.","Just looking, thank you.","Here you are.","It's mine."],a:1,e:"<b>Just looking, thank you.</b>「見ているだけです、ありがとう」。"},
+     {q:"電話で \"May I speak to Yumi?\" と言われた本人（ユミ）の応答は？",opts:["Speaking.","I'm Yumi, too.","See you.","She is fine."],a:0,e:"「私です」は<b>Speaking.</b>（電話の決まり文句）。"},
+     {q:"レストランで \"Would you like something to drink?\" 断るときは？",opts:["No, thank you.","You're welcome.","I don't.","Don't drink."],a:0,e:"ていねいに断るときは<b>No, thank you.</b>。ほしいときはYes, please.。"}
+   ]},
+  {id:"k4", grade:"場面", title:"道案内・体調・聞き返し",
+   points:[
+     "道のたずね方：<span class='kw'>How can I get to</span> the station?（駅へはどう行けばいいですか）／ Could you tell me <span class='kw'>the way to</span> 〜?",
+     "案内：Go straight (down this street).（まっすぐ行って）／ <span class='kw'>Turn right [left] at</span> the second corner.（2つ目の角を右[左]へ）／ You'll see it <span class='kw'>on your left</span>.（左手に見えます）",
+     "所要時間：How long does it take? → It takes about ten minutes.（約10分かかります）",
+     "体調：<span class='kw'>What's wrong?</span> / What's the matter?（どうしたの？）→ I have a <span class='kw'>cold</span> [headache / fever].（かぜ／頭痛／熱があります）",
+     "気づかい：<span class='kw'>That's too bad.</span>（お気の毒に）／ Take care.（お大事に）",
+     "聞き返し：<span class='kw'>Pardon?</span> / Sorry?（もう一度言ってください）／ Could you speak more slowly?（ゆっくり話してもらえますか）"
+   ],
+   ex:[
+     {en:"How can I get to the museum? — Turn left at the bank. You'll see it on your right.", ja:"博物館へはどう行けばいいですか。— 銀行の角を左へ。右手に見えます。"},
+     {en:"What's wrong? — I have a headache. — That's too bad.", ja:"どうしたの？ — 頭が痛いんだ。— それは気の毒に。"}
+   ],
+   quiz:[
+     {q:"\"I have a cold and I can't go to the party.\" への応答として適切なのは？",opts:["That's too bad.","You're welcome.","That sounds fun.","Me, too."],a:0,e:"体調が悪い人には<b>That's too bad.</b>（お気の毒に）。"},
+     {q:"「駅へはどう行けばいいですか」と道をたずねる表現は？",opts:["Where do you go?","How can I get to the station?","When is the station?","Shall I go to the station?"],a:1,e:"<b>How can I get to 〜?</b>が道のたずね方の定番。Could you tell me the way to 〜? も同じ。"},
+     {q:"相手の英語が聞き取れなかったときに言う一言は？",opts:["Pardon?","Really?","Of course.","No, thank you."],a:0,e:"<b>Pardon?</b>（もう一度お願いします）。Sorry? でもよい。"}
+   ]},
+]},
+
+tech:{ name:"読解・入試対策", color:"var(--tech)", units:[
+  {id:"t1", grade:"対策", title:"リスニング（放送問題）の心得",
+   points:[
+     "千葉県の英語はリスニングの配点が大きい（例年<span class='kw'>3割前後</span>）。ここを安定させると強い。",
+     "放送が始まる前に<span class='kw'>選択肢やイラストに目を通す</span>。「何を聞き取ればよいか」を先に決めておく。",
+     "<span class='kw'>数字・曜日・時刻・場所</span>は聞き取りの定番。nineteen(19)とninety(90)、Tuesday と Thursday の聞き分けに注意。",
+     "1回目で全体の場面（だれが・どこで・何の話か）をつかみ、<span class='kw'>2回目で答えの根拠</span>を確認する。",
+     "聞き逃しても止まらない。<span class='kw'>次の問題に頭を切り替える</span>のが鉄則。",
+     "対話のあとの応答を選ぶ問題では、<span class='kw'>最後の一文（質問）</span>に集中する。"
+   ],
+   ex:[
+     {en:"What time shall we meet? — How about ten thirty?", ja:"何時に会おうか。— 10時30分はどう？（時刻の聞き取りは頻出）"}
+   ],
+   quiz:[
+     {q:"A: I went shopping yesterday. B: ( ) A: I bought a new bag. 空所に入る応答は？",opts:["What did you buy?","Where are you?","Who are you?","When is it?"],a:0,e:"直後に「新しいかばんを買った」と答えている→<b>何を買ったか</b>をたずねたはず。前後のつながりで選ぶのはリスニングも同じ。"},
+     {q:"A: What time does the movie start? B: At two ( ). 「2時15分」にするには？",opts:["fifty","fifteen","five","forty"],a:1,e:"15は<b>fifteen</b>（フィフティーン）。fifty（50）との聞き分けは超頻出。アクセントの位置がちがう。"},
+     {q:"放送問題で聞き逃してしまったときの正しい行動は？",opts:["思い出すまで考え続ける","となりの人に聞く","気持ちを切り替えて次の問題の選択肢を読む","解答をやめる"],a:2,e:"1問にこだわると次も落とす。<b>すぐ切り替えて次の選択肢を先読み</b>するのが得点を守るコツ。"}
+   ]},
+  {id:"t2", grade:"対策", title:"長文読解のコツ",
+   points:[
+     "本文より先に<span class='kw'>設問と選択肢に目を通す</span>。「何を探しながら読むか」が決まり、読み直しが減る。",
+     "<span class='kw'>指示語（it / they / this / that）</span>が出たら、直前の文から「何を指すか」を確認するクセをつける。指示語問題は定番。",
+     "段落の<span class='kw'>最初の文</span>に話題がまとまっていることが多い。段落ごとに「ひとこと要約」しながら読む。",
+     "正解の選択肢は本文の<span class='kw'>言いかえ</span>になっていることが多い（同じ単語のままではない）。",
+     "知らない単語が出ても止まらない。<span class='kw'>前後から意味を推測</span>するか、飛ばして先へ。",
+     "グラフ・ポスター・メールなどの資料問題は、<span class='kw'>数字と条件</span>（日付・値段・対象）を丁寧に照らし合わせる。"
+   ],
+   ex:[
+     {en:"Ken has a dog. He takes care of it every day.", ja:"itが指すのは直前の a dog。指示語は直前から探す。"}
+   ],
+   quiz:[
+     {q:"【ミニ読解】Ken visited his grandmother last Sunday. She lives in a small town near the sea. In the morning, they walked on the beach. In the afternoon, Ken helped her in the garden. ── ケンが午後にしたことは？",opts:["海辺を散歩した","庭仕事を手伝った","買い物に行った","魚つりをした"],a:1,e:"In the afternoon, Ken <b>helped her in the garden</b>（庭で手伝った）。in the morning／afternoonの対比を正確に。"},
+     {q:"【ミニ読解】Yumi likes music very much. She practices the guitar every day because she wants to play it at the school festival. ── Yumiが毎日ギターを練習する理由は？",opts:["宿題だから","学園祭で演奏したいから","先生になりたいから","家族が好きだから"],a:1,e:"becauseのあとに理由：she <b>wants to play it at the school festival</b>。"},
+     {q:"【指示語】My father gave me a watch. I use it every day. ── itが指すものは？",opts:["my father","me","a watch","every day"],a:2,e:"直前の文の<b>a watch</b>。itは前に出た「物」を指す。"}
+   ]},
+  {id:"t3", grade:"対策", title:"千葉県入試の傾向と時間配分",
+   points:[
+     "出題の柱は毎年ほぼ同じ：<span class='kw'>①リスニング ②語形変化・適語補充 ③対話文・並べかえ ④条件英作文 ⑤長文読解 ⑥会話文読解</span>。形式に慣れることが最大の対策。",
+     "<span class='kw'>並べかえ（整序英作文）</span>は毎年出る。まず動詞を見つけて文の骨組み（主語＋動詞）を作るのがコツ。→「並べかえ」タブで練習！",
+     "<span class='kw'>条件英作文</span>は「減点されない英語」を書く：知っている単語で、短い文を2つ書く方が、難しい1文より安全。→「英作文」タブで練習！",
+     "語形変化の問題では、文中の<span class='kw'>時や主語のヒント</span>（yesterday, since, every dayなど）を探して形を決める。",
+     "時間配分の目安（60分）：リスニング後、<span class='kw'>文法・作文に約15分、長文2題に約25分、見直し5分</span>。長文で悩んだら印をつけて先へ。",
+     "見直しは<span class='kw'>3単現のs・時制・複数形</span>のケアレスミスを重点チェック。"
+   ],
+   ex:[
+     {en:"since → 現在完了 / yesterday → 過去形 / now → 進行形", ja:"時を表す語は動詞の形を決めるヒントになる。"}
+   ],
+   quiz:[
+     {q:"並べかえ問題で最初にすべきことは？",opts:["長い単語から置く","動詞を見つけて主語＋動詞の骨組みを作る","日本語を無視する","最後の単語から決める"],a:1,e:"英語の文は<b>主語＋動詞</b>が骨組み。動詞（とその形）を見つければ文の型が決まる。"},
+     {q:"条件英作文で、書きたい単語のつづりに自信がないときは？",opts:["空欄のままにする","ローマ字で書く","知っている簡単な単語・表現に言いかえる","日本語で書く"],a:2,e:"英作文は<b>減点されないこと</b>が大事。確実に書ける表現への言いかえは立派な作戦。"},
+     {q:"英文中に since 2020 とあるとき、動詞はどの形が合う？",opts:["現在形","過去形","現在完了","命令形"],a:2,e:"since（〜以来）は<b>現在完了</b>（have＋過去分詞）の目印。for, just, ever なども同様。"}
+   ]},
+]}
+};
+
+/* ================= 状態管理（localStorage） ================= */
+const LS_KEY="chiba_eigo_progress_v1";
+let progress = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+function save(){localStorage.setItem(LS_KEY, JSON.stringify(progress));}
+
+function allUnits(){
+  return Object.keys(DATA).flatMap(f=>DATA[f].units.map(u=>u.id));
+}
+function updateProgress(){
+  const all=allUnits();
+  const done=all.filter(id=>progress[id]).length;
+  const pct=all.length? Math.round(done/all.length*100):0;
+  document.getElementById('progFill').style.width=pct+"%";
+  document.getElementById('progText').textContent=`${done} / ${all.length} 単元 完了`;
+}
+
+/* ================= 描画 ================= */
+function renderField(fkey){
+  const f=DATA[fkey];
+  let html=`<section id="sec-${fkey}" class="${fkey==='gram'?'active':''}">`;
+  html+=`<div class="field-head"><span class="field-dot" style="background:${f.color}"></span><h2>${f.name}</h2><span class="cnt">${f.units.length}単元</span></div>`;
+  f.units.forEach(u=>{
+    const done=progress[u.id];
+    html+=`<div class="unit" data-uid="${u.id}">
+      <div class="unit-head">
+        <span class="unit-grade">${u.grade}</span>
+        <span class="unit-title">${u.title}</span>
+        <span class="unit-check">${done?'✅':'⬜'}</span>
+        <span class="unit-arrow">▶</span>
+      </div>
+      <div class="unit-body">
+        <h3 class="sec">📘 要点整理</h3>
+        <ul class="points">${u.points.map(p=>`<li>${p}</li>`).join('')}</ul>
+        ${u.ex&&u.ex.length?`<h3 class="sec">📝 基本例文</h3>${u.ex.map(x=>`<div class="fm"><div class="en">${x.en}</div><div class="ja">${x.ja}</div></div>`).join('')}`:''}
+        ${u.quiz.length?`<h3 class="sec">✏️ 確認問題</h3><div class="quiz-box">${u.quiz.map((q,qi)=>renderQuiz(u.id,qi,q)).join('')}</div>`:''}
+        <div class="row">
+          <button class="btn primary mark-btn" data-uid="${u.id}">${done?'✅ 学習済み（解除）':'この単元を学習済みにする'}</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  html+=`</section>`;
+  return html;
+}
+function renderQuiz(uid,qi,q){
+  return `<div class="q" data-uid="${uid}" data-qi="${qi}">
+    <div class="q-txt"><span class="num">Q${qi+1}.</span>${q.q}</div>
+    <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
+    <div class="expl"><b>解説：</b>${q.e}</div>
+  </div>`;
+}
+
+function buildAll(){
+  const c=document.getElementById('content');
+  c.innerHTML = Object.keys(DATA).map(renderField).join('');
+  updateProgress();
+  bindEvents();
+}
+
+/* ================= イベント ================= */
+function bindEvents(){
+  // タブ
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.onclick=()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+      t.classList.add('active');
+      const f=t.dataset.f;
+      if(f==='test'){document.getElementById('sec-test').classList.add('active'); renderTestIntro();}
+      else if(f==='qa'){document.getElementById('sec-qa').classList.add('active'); if(!qaState)renderQAIntro();}
+      else if(f==='narabe'){document.getElementById('sec-narabe').classList.add('active'); if(!nbState)renderNarabeIntro();}
+      else if(f==='sakubun'){document.getElementById('sec-sakubun').classList.add('active'); renderSakubun();}
+      else document.getElementById('sec-'+f).classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+    };
+  });
+  // 単元の開閉
+  document.querySelectorAll('.unit-head').forEach(h=>{
+    h.onclick=()=>h.parentElement.classList.toggle('open');
+  });
+  // クイズ回答
+  document.querySelectorAll('.q').forEach(qEl=>{
+    const uid=qEl.dataset.uid, qi=+qEl.dataset.qi;
+    const ans=findQuiz(uid,qi).a;
+    qEl.querySelectorAll('.opt').forEach(opt=>{
+      opt.onclick=()=>{
+        if(qEl.classList.contains('answered'))return;
+        qEl.classList.add('answered');
+        const chosen=+opt.dataset.oi;
+        qEl.querySelectorAll('.opt').forEach((o,i)=>{
+          o.classList.add('disabled');
+          if(i===ans)o.classList.add('correct');
+          if(i===chosen&&chosen!==ans)o.classList.add('wrong');
+        });
+        qEl.querySelector('.expl').classList.add('show');
+      };
+    });
+  });
+  // 学習済みボタン
+  document.querySelectorAll('.mark-btn').forEach(b=>{
+    b.onclick=(e)=>{
+      e.stopPropagation();
+      const uid=b.dataset.uid;
+      progress[uid]=!progress[uid];
+      save(); updateProgress();
+      const unit=document.querySelector(`.unit[data-uid="${uid}"]`);
+      unit.querySelector('.unit-check').textContent=progress[uid]?'✅':'⬜';
+      b.textContent=progress[uid]?'✅ 学習済み（解除）':'この単元を学習済みにする';
+    };
+  });
+}
+function findQuiz(uid,qi){
+  for(const f of Object.values(DATA)){
+    const u=f.units.find(u=>u.id===uid);
+    if(u)return u.quiz[qi];
+  }
+}
+
+/* ================= 模試モード ================= */
+let testState=null;
+function renderTestIntro(){
+  const area=document.getElementById('testArea');
+  area.innerHTML=`
+    <div class="test-intro">
+      <h2>📝 実力チェック模試</h2>
+      <p>全分野からランダムに出題します。本番のように、まず自分で解いてから答え合わせをしよう。分野をしぼることもできます。</p>
+      <div class="chips" id="fieldChips">
+        <div class="chip on" data-f="gram">文法</div>
+        <div class="chip on" data-f="voc">単語・熟語</div>
+        <div class="chip on" data-f="kaiwa">会話表現</div>
+        <div class="chip on" data-f="tech">読解・入試</div>
+      </div>
+      <div class="row">
+        <span style="font-size:13px;color:var(--sub)">問題数：</span>
+        <div class="chips" id="countChips" style="margin:0">
+          <div class="chip on" data-n="10">10問</div>
+          <div class="chip" data-n="20">20問</div>
+          <div class="chip" data-n="0">全問</div>
+        </div>
+      </div>
+      <div class="row"><button class="btn primary" id="startTest">模試スタート</button></div>
+    </div>`;
+  area.querySelectorAll('#fieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+  area.querySelectorAll('#countChips .chip').forEach(c=>c.onclick=()=>{
+    area.querySelectorAll('#countChips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');
+  });
+  document.getElementById('startTest').onclick=startTest;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function startTest(){
+  const fields=[...document.querySelectorAll('#fieldChips .chip.on')].map(c=>c.dataset.f);
+  if(!fields.length){alert('分野を1つ以上選んでください');return;}
+  const n=+document.querySelector('#countChips .chip.on').dataset.n;
+  let pool=[];
+  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach(q=>pool.push({...q,field:DATA[fk].name}))));
+  pool=shuffle(pool);
+  if(n>0)pool=pool.slice(0,n);
+  testState={pool,answers:new Array(pool.length).fill(null),submitted:false};
+  renderTestQuestions();
+}
+function renderTestQuestions(){
+  const {pool}=testState;
+  const area=document.getElementById('testArea');
+  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p></div>`;
+  pool.forEach((q,i)=>{
+    html+=`<div class="q" data-i="${i}">
+      <div class="qcount">${q.field}</div>
+      <div class="q-txt"><span class="num">問${i+1}.</span>${q.q}</div>
+      <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
+      <div class="expl"><b>解説：</b>${q.e}</div>
+    </div>`;
+  });
+  html+=`<div class="row"><button class="btn primary" id="submitTest">採点する</button><button class="btn" id="cancelTest">やめる</button></div>`;
+  area.innerHTML=html;
+  area.querySelectorAll('.q').forEach(qEl=>{
+    const i=+qEl.dataset.i;
+    qEl.querySelectorAll('.opt').forEach(opt=>{
+      opt.onclick=()=>{
+        if(testState.submitted)return;
+        qEl.querySelectorAll('.opt').forEach(o=>o.style.borderColor='');
+        opt.style.borderColor='var(--accent)';
+        testState.answers[i]=+opt.dataset.oi;
+      };
+    });
+  });
+  document.getElementById('submitTest').onclick=gradeTest;
+  document.getElementById('cancelTest').onclick=renderTestIntro;
+}
+function gradeTest(){
+  const {pool,answers}=testState;
+  const unanswered=answers.filter(a=>a===null).length;
+  if(unanswered>0 && !confirm(`未回答が${unanswered}問あります。このまま採点しますか？`))return;
+  testState.submitted=true;
+  let correct=0;
+  document.querySelectorAll('#testArea .q').forEach(qEl=>{
+    const i=+qEl.dataset.i;const q=pool[i];
+    if(answers[i]===q.a)correct++;
+    qEl.querySelectorAll('.opt').forEach((o,oi)=>{
+      o.classList.add('disabled');o.style.borderColor='';
+      if(oi===q.a)o.classList.add('correct');
+      if(oi===answers[i]&&answers[i]!==q.a)o.classList.add('wrong');
+    });
+    qEl.querySelector('.expl').classList.add('show');
+  });
+  const pct=Math.round(correct/pool.length*100);
+  let msg;
+  if(pct>=90)msg='素晴らしい！合格圏内。この調子で並べかえ・英作文も仕上げよう。';
+  else if(pct>=70)msg='good！あと一歩。まちがえた単元の要点を読み直そう。';
+  else if(pct>=50)msg='基礎はついてきた。解説をよく読んで復習しよう。';
+  else msg='まずは各単元の「要点整理」から。くり返せば必ず伸びる！';
+  const card=document.createElement('div');
+  card.className='result-card';
+  card.innerHTML=`<div class="result-score">${correct} / ${pool.length}</div>
+    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%</div>
+    <div class="result-msg">${msg}</div>
+    <div class="row" style="justify-content:center;margin-top:14px">
+      <button class="btn primary" id="retryTest">もう一度</button>
+    </div>`;
+  const area=document.getElementById('testArea');
+  area.insertBefore(card, area.firstChild);
+  document.getElementById('retryTest').onclick=renderTestIntro;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ================= 単語カード（フラッシュカード） ================= */
+const QA={
+ verb:[
+  {en:"borrow", ja:"借りる"},
+  {en:"arrive", ja:"到着する"},
+  {en:"decide", ja:"決める"},
+  {en:"invite", ja:"招待する"},
+  {en:"carry", ja:"運ぶ"},
+  {en:"choose", ja:"選ぶ"},
+  {en:"remember", ja:"覚えている・思い出す"},
+  {en:"forget", ja:"忘れる"},
+  {en:"understand", ja:"理解する"},
+  {en:"worry", ja:"心配する"},
+  {en:"agree", ja:"賛成する"},
+  {en:"improve", ja:"上達させる・改善する"},
+  {en:"share", ja:"分け合う・共有する"},
+  {en:"save", ja:"救う・節約する"},
+  {en:"continue", ja:"続ける"},
+  {en:"communicate", ja:"意思を伝え合う"}
+ ],
+ noun:[
+  {en:"environment", ja:"環境"},
+  {en:"experience", ja:"経験"},
+  {en:"future", ja:"未来・将来"},
+  {en:"culture", ja:"文化"},
+  {en:"language", ja:"言語"},
+  {en:"museum", ja:"博物館・美術館"},
+  {en:"hospital", ja:"病院"},
+  {en:"vegetable", ja:"野菜"},
+  {en:"weather", ja:"天気"},
+  {en:"war", ja:"戦争"},
+  {en:"peace", ja:"平和"},
+  {en:"health", ja:"健康"},
+  {en:"dictionary", ja:"辞書"},
+  {en:"opinion", ja:"意見"},
+  {en:"vacation", ja:"休暇"},
+  {en:"information", ja:"情報"}
+ ],
+ adj:[
+  {en:"famous", ja:"有名な"},
+  {en:"useful", ja:"役に立つ"},
+  {en:"difficult", ja:"難しい"},
+  {en:"important", ja:"重要な"},
+  {en:"expensive", ja:"（値段が）高い"},
+  {en:"cheap", ja:"安い"},
+  {en:"foreign", ja:"外国の"},
+  {en:"favorite", ja:"お気に入りの"},
+  {en:"different", ja:"ちがった・異なる"},
+  {en:"delicious", ja:"とてもおいしい"},
+  {en:"popular", ja:"人気のある"},
+  {en:"necessary", ja:"必要な"},
+  {en:"abroad", ja:"外国へ・外国で（副詞）"},
+  {en:"usually", ja:"ふつう・たいてい"},
+  {en:"suddenly", ja:"突然"},
+  {en:"early", ja:"早く・早い"}
+ ],
+ idiom:[
+  {en:"look forward to 〜ing", ja:"〜を楽しみに待つ"},
+  {en:"be interested in 〜", ja:"〜に興味がある"},
+  {en:"take care of 〜", ja:"〜の世話をする"},
+  {en:"be good at 〜", ja:"〜が得意だ"},
+  {en:"for the first time", ja:"初めて"},
+  {en:"each other", ja:"お互い"},
+  {en:"be able to 〜", ja:"〜できる"},
+  {en:"at last", ja:"ついに"},
+  {en:"on my way to 〜", ja:"〜へ行く途中で"},
+  {en:"be proud of 〜", ja:"〜を誇りに思う"},
+  {en:"give up", ja:"あきらめる"},
+  {en:"take part in 〜", ja:"〜に参加する"},
+  {en:"would like to 〜", ja:"〜したい（ていねい）"},
+  {en:"have a good time", ja:"楽しく過ごす"},
+  {en:"do one's best", ja:"全力を尽くす"},
+  {en:"because of 〜", ja:"〜のために・〜のせいで"}
+ ]
+};
+const QA_FIELDS={verb:"動詞",noun:"名詞",adj:"形容詞・副詞",idiom:"熟語・連語"};
+let qaState=null;
+function renderQAIntro(){
+  const area=document.getElementById('qaArea');
+  area.innerHTML=`
+    <div class="test-intro">
+      <h2>🃏 単語カード</h2>
+      <p>入試頻出の単語・熟語をフラッシュカードで暗記しよう。カードを見て頭の中で答えてからタップ。覚えたカードは消え、まちがえたカードはくり返し出てきます。</p>
+      <div class="chips" id="qaFieldChips">
+        <div class="chip on" data-f="verb">動詞</div>
+        <div class="chip on" data-f="noun">名詞</div>
+        <div class="chip on" data-f="adj">形容詞・副詞</div>
+        <div class="chip on" data-f="idiom">熟語・連語</div>
+      </div>
+      <div class="row">
+        <span style="font-size:13px;color:var(--sub)">出題方向：</span>
+        <div class="chips" id="qaDirChips" style="margin:0">
+          <div class="chip on" data-d="e2j">英語 → 日本語</div>
+          <div class="chip" data-d="j2e">日本語 → 英語</div>
+        </div>
+      </div>
+      <div class="row"><button class="btn primary" id="startQA">スタート</button></div>
+    </div>`;
+  area.querySelectorAll('#qaFieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+  area.querySelectorAll('#qaDirChips .chip').forEach(c=>c.onclick=()=>{
+    area.querySelectorAll('#qaDirChips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');
+  });
+  document.getElementById('startQA').onclick=startQA;
+}
+function startQA(){
+  const fields=[...document.querySelectorAll('#qaFieldChips .chip.on')].map(c=>c.dataset.f);
+  if(!fields.length){alert('分野を1つ以上選んでください');return;}
+  const dir=document.querySelector('#qaDirChips .chip.on').dataset.d;
+  let deck=[];
+  fields.forEach(f=>QA[f].forEach(c=>{
+    const q = dir==='e2j' ? c.en : c.ja;
+    const a = dir==='e2j' ? c.ja : c.en;
+    deck.push({q,a,field:QA_FIELDS[f]});
+  }));
+  deck=shuffle(deck);
+  qaState={deck,total:deck.length,ok:0,ng:0,revealed:false};
+  renderQACard();
+}
+function renderQACard(){
+  const s=qaState, area=document.getElementById('qaArea');
+  if(s.deck.length===0){
+    area.innerHTML=`<div class="result-card">
+      <div class="result-score">🎉</div>
+      <div style="font-size:18px;font-weight:700;margin-top:6px">全${s.total}枚 コンプリート！</div>
+      <div class="result-msg">日本語→英語の方向でも挑戦すると、英作文にも効くよ。</div>
+      <div class="row" style="justify-content:center;margin-top:14px"><button class="btn primary" id="qaAgain">もう一度</button></div>
+    </div>`;
+    document.getElementById('qaAgain').onclick=renderQAIntro;
+    return;
+  }
+  const card=s.deck[0];
+  area.innerHTML=`
+    <div class="qa-stat">
+      <div class="s-rem">のこり<b>${s.deck.length}</b></div>
+      <div class="s-ok">覚えた<b>${s.ok}</b></div>
+      <div class="s-ng">要復習<b>${s.ng}</b></div>
+    </div>
+    <div class="card" id="qaCard">
+      <div class="card-field">${card.field}</div>
+      <div class="card-q">${card.q}</div>
+      <div class="card-a">${card.a}</div>
+      <div class="card-hint" id="qaHint">タップして答えを見る</div>
+    </div>
+    <div id="qaControls"></div>`;
+  const cardEl=document.getElementById('qaCard');
+  const reveal=()=>{
+    if(s.revealed)return; s.revealed=true;
+    cardEl.classList.add('revealed');
+    document.getElementById('qaHint').style.display='none';
+    document.getElementById('qaControls').innerHTML=`
+      <div class="grade-row">
+        <button class="btn ng" id="qaNG">× もう一度</button>
+        <button class="btn ok" id="qaOK">✓ 覚えた</button>
+      </div>`;
+    document.getElementById('qaOK').onclick=()=>gradeCard(true);
+    document.getElementById('qaNG').onclick=()=>gradeCard(false);
+  };
+  cardEl.onclick=reveal;
+}
+function gradeCard(ok){
+  const s=qaState;
+  const card=s.deck.shift();
+  s.revealed=false;
+  if(ok){s.ok++;}
+  else{s.ng++; s.deck.push(card);} // まちがえたら山の最後へ戻す
+  renderQACard();
+}
+
+/* ================= 並べかえ（整序英作文） ================= */
+const NARABE=[
+ {grade:"中1", ja:"私は毎朝6時に起きます。",
+  words:["I","get","up","at","six","every","morning"],
+  ans:"I get up at six every morning.", note:"get up（起きる）＋at＋時刻＋every morning の順。"},
+ {grade:"中1", ja:"あなたは何のスポーツが好きですか。",
+  words:["What","sport","do","you","like"],
+  ans:"What sport do you like?", note:"What＋名詞「何の〜」で始め、あとは疑問文の語順 do you like。"},
+ {grade:"中1", ja:"彼女は日曜日にテレビを見ません。",
+  words:["She","does","not","watch","TV","on","Sundays"],
+  ans:"She does not watch TV on Sundays.", note:"3人称単数の否定文は does not＋動詞の原形。watchにsはつかない。"},
+ {grade:"中2", ja:"私は宿題をするために図書館へ行きました。",
+  words:["I","went","to","the","library","to","do","my","homework"],
+  ans:"I went to the library to do my homework.", note:"「〜するために」＝不定詞の副詞的用法 to do を文の後半に。"},
+ {grade:"中2", ja:"私の兄は私より速く走ることができます。",
+  words:["My","brother","can","run","faster","than","me"],
+  ans:"My brother can run faster than me.", note:"can＋原形run、そのあとに比較級 faster than 〜。"},
+ {grade:"中2", ja:"もし明日晴れたら、私たちは釣りに行くつもりです。",
+  words:["If","it","is","sunny","tomorrow","we","will","go","fishing"],
+  ans:"If it is sunny tomorrow, we will go fishing.", note:"ifの節の中は未来でも現在形（is）。willは後半の文で使う。"},
+ {grade:"中2", ja:"私にとって英語を話すことは難しい。",
+  words:["It","is","difficult","for","me","to","speak","English"],
+  ans:"It is difficult for me to speak English.", note:"It is … for A to 〜 の型。Itで始めるのがポイント。"},
+ {grade:"中2", ja:"この本はあの本ほどおもしろくありません。",
+  words:["This","book","is","not","as","interesting","as","that","one"],
+  ans:"This book is not as interesting as that one.", note:"not as＋原級＋as …「…ほど〜ではない」。oneはbookの代わり。"},
+ {grade:"中3", ja:"あなたは今までに沖縄へ行ったことがありますか。",
+  words:["Have","you","ever","been","to","Okinawa"],
+  ans:"Have you ever been to Okinawa?", note:"経験は have been to。everは過去分詞の前に置く。"},
+ {grade:"中3", ja:"私は彼がどこに住んでいるか知りません。",
+  words:["I","don't","know","where","he","lives"],
+  ans:"I don't know where he lives.", note:"間接疑問文：whereのあとは主語＋動詞（he lives）の語順。"},
+ {grade:"中3", ja:"これは50年前に建てられた学校です。",
+  words:["This","is","a","school","built","fifty","years","ago"],
+  ans:"This is a school built fifty years ago.", note:"過去分詞 built 〜 が後ろから a school を修飾する。"},
+ {grade:"中3", ja:"向こうでテニスをしている少年は私の弟です。",
+  words:["The","boy","playing","tennis","over","there","is","my","brother"],
+  ans:"The boy playing tennis over there is my brother.", note:"現在分詞 playing 〜 が The boy を修飾。動詞はis。主語が長い文に慣れよう。"},
+ {grade:"中3", ja:"私にはカナダに住んでいる友だちがいます。",
+  words:["I","have","a","friend","who","lives","in","Canada"],
+  ans:"I have a friend who lives in Canada.", note:"関係代名詞who（主格）のあとに動詞lives。先行詞はa friend。"},
+ {grade:"中3", ja:"母は私に部屋を掃除するように言いました。",
+  words:["My","mother","told","me","to","clean","my","room"],
+  ans:"My mother told me to clean my room.", note:"tell＋人＋to＋原形「人に〜するように言う」。"},
+ {grade:"中3", ja:"あなたはそのコンサートが何時に始まるか知っていますか。",
+  words:["Do","you","know","what","time","the","concert","starts"],
+  ans:"Do you know what time the concert starts?", note:"間接疑問文：what timeのあとは主語＋動詞（the concert starts）。"},
+ {grade:"中3", ja:"もし私があなたなら、その本を買うでしょう。",
+  words:["If","I","were","you","I","would","buy","the","book"],
+  ans:"If I were you, I would buy the book.", note:"仮定法過去。be動詞はwere、後半はwould＋原形。"}
+];
+let nbState=null;
+function renderNarabeIntro(){
+  const area=document.getElementById('narabeArea');
+  area.innerHTML=`
+    <div class="test-intro">
+      <h2>🧩 並べかえ（整序英作文）</h2>
+      <p>千葉県入試で毎年出る形式。日本語に合うように単語をタップして英文を作ろう。<b>まず動詞を見つけて「主語＋動詞」の骨組みを作る</b>のがコツ。全${NARABE.length}問。</p>
+      <div class="row"><button class="btn primary" id="startNB">スタート</button></div>
+    </div>`;
+  document.getElementById('startNB').onclick=()=>{
+    nbState={order:shuffle([...NARABE.keys()]),idx:0,correct:0};
+    renderNBQuestion();
+  };
+}
+function renderNBQuestion(){
+  const s=nbState;
+  if(s.idx>=s.order.length){
+    const area=document.getElementById('narabeArea');
+    const pct=Math.round(s.correct/s.order.length*100);
+    area.innerHTML=`<div class="result-card">
+      <div class="result-score">${s.correct} / ${s.order.length}</div>
+      <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%</div>
+      <div class="result-msg">${pct>=80?'すばらしい！この形式はもう得点源。':'まちがえた文は音読して語順ごと覚えよう。'}</div>
+      <div class="row" style="justify-content:center;margin-top:14px"><button class="btn primary" id="nbAgain">もう一度</button></div>
+    </div>`;
+    document.getElementById('nbAgain').onclick=renderNarabeIntro;
+    return;
+  }
+  const p=NARABE[s.order[s.idx]];
+  let pool=shuffle([...p.words]);
+  if(p.words.length>1){
+    let guard=0;
+    while(pool.join(' ')===p.words.join(' ') && guard<10){pool=shuffle([...pool]);guard++;}
+  }
+  const built=[];
+  const area=document.getElementById('narabeArea');
+  area.innerHTML=`
+    <div class="qcount">第${s.idx+1}問 / 全${s.order.length}問</div>
+    <div class="nb-ja"><span class="nb-grade">${p.grade}</span>${p.ja}</div>
+    <div class="nb-zone empty" id="nbZone"></div>
+    <div class="nb-pool" id="nbPool"></div>
+    <div class="row">
+      <button class="btn" id="nbUndo">一つ戻す</button>
+      <button class="btn" id="nbClear">やり直す</button>
+      <button class="btn primary" id="nbCheck" disabled>答え合わせ</button>
+    </div>
+    <div class="nb-result" id="nbResult"></div>
+    <div class="row" id="nbNextRow" style="display:none"><button class="btn primary" id="nbNext">次の問題へ</button></div>`;
+  const zone=document.getElementById('nbZone'), poolEl=document.getElementById('nbPool');
+  const checkBtn=document.getElementById('nbCheck');
+  let done=false;
+  function draw(){
+    zone.innerHTML=built.map((w,i)=>`<span class="wchip" data-i="${i}">${w}</span>`).join('');
+    zone.classList.toggle('empty',built.length===0);
+    poolEl.innerHTML=pool.map((w,i)=>`<span class="wchip" data-i="${i}">${w}</span>`).join('');
+    checkBtn.disabled=pool.length!==0;
+    if(done)return;
+    poolEl.querySelectorAll('.wchip').forEach(ch=>{
+      ch.onclick=()=>{built.push(pool.splice(+ch.dataset.i,1)[0]);draw();};
+    });
+    zone.querySelectorAll('.wchip').forEach(ch=>{
+      ch.onclick=()=>{pool.push(built.splice(+ch.dataset.i,1)[0]);draw();};
+    });
+  }
+  draw();
+  document.getElementById('nbUndo').onclick=()=>{if(done||!built.length)return;pool.push(built.pop());draw();};
+  document.getElementById('nbClear').onclick=()=>{if(done)return;pool.push(...built.splice(0));draw();};
+  checkBtn.onclick=()=>{
+    if(done)return;
+    done=true;
+    const ok=built.join(' ')===p.words.join(' ');
+    if(ok)s.correct++;
+    const res=document.getElementById('nbResult');
+    res.className='nb-result show '+(ok?'good':'bad');
+    res.innerHTML=`${ok?'⭕ 正解！':'❌ ざんねん…'}<div class="ans">${p.ans}</div><div class="note">💡 ${p.note}</div>`;
+    checkBtn.disabled=true;
+    document.getElementById('nbNextRow').style.display='flex';
+    document.getElementById('nbNext').onclick=()=>{s.idx++;renderNBQuestion();};
+    draw();
+  };
+}
+
+/* ================= 条件英作文対策 ================= */
+const SAKUBUN={
+ jibun:{name:"自分のことを伝える", items:[
+  {q:"あなたのいちばん好きな教科と、その理由を2文の英語で書きなさい。",
+   a:"I like English the best. I can talk with people from other countries.",
+   p:"1文目で「好きなもの」、2文目で「理由」。I like 〜 the best. ＋ I can 〜. の型が万能。"},
+  {q:"あなたが週末によくすることを、英語1文で書きなさい。",
+   a:"I usually play soccer with my friends on weekends.",
+   p:"usually（たいてい）を入れると自然。on weekends（週末に）も覚えておく。"},
+  {q:"あなたの将来の夢について、2文の英語で書きなさい。",
+   a:"I want to be a teacher. I like children and I want to help them.",
+   p:"want to be 〜（〜になりたい）が定番。2文目で理由や気持ちを足す。"},
+  {q:"あなたの町のよいところを1つ、英語1〜2文で紹介しなさい。",
+   a:"My town has a beautiful park. Many people enjoy walking there.",
+   p:"My town has 〜. / There is 〜 in my town. で紹介できる。難しい固有名詞は使わなくてよい。"}
+ ]},
+ iken:{name:"意見と理由を書く", items:[
+  {q:"「夏と冬では、どちらが好きですか」。あなたの答えを理由とともに2文の英語で書きなさい。",
+   a:"I like summer better. I can swim in the sea with my family.",
+   p:"like A better（Aのほうが好き）→理由は I can 〜. が書きやすい。"},
+  {q:"「中学生は毎日朝食を食べるべきだ」という意見について、あなたの考えを理由とともに英語で書きなさい。",
+   a:"I agree. If we eat breakfast every day, we can study hard in the morning.",
+   p:"まず I agree. / I don't agree. と立場を示す。理由は If 〜, we can …. の型が便利。"},
+  {q:"外国の人に紹介したい日本の文化を1つ挙げ、2文の英語で説明しなさい。",
+   a:"I want to introduce origami. We can make many things with paper.",
+   p:"難しい文化の説明はいらない。We can 〜.（〜できる）で具体的な楽しさを1つ書けば十分。"},
+  {q:"「本を読むことは大切だ」と思う理由を、英語1〜2文で書きなさい。",
+   a:"Reading books is important because we can learn many new things.",
+   p:"動名詞 Reading books を主語に。because で理由をつなぐと1文で書ける。"}
+ ]},
+ bamen:{name:"場面に合った一言", items:[
+  {q:"留学生の友人を「今週末いっしょに映画を見に行こう」と誘う英文を1文書きなさい。",
+   a:"Shall we go to see a movie this weekend?",
+   p:"誘いは Shall we 〜? / Why don't we 〜? / How about 〜ing? のどれでもOK。"},
+  {q:"道に迷っている様子の外国人に「お手伝いしましょうか」と申し出る英文を1文書きなさい。",
+   a:"May I help you?",
+   p:"May I help you? / Shall I help you? / Do you need any help? など。短くてよい。"},
+  {q:"友人に「昨夜は電話できなくてごめんなさい」と謝る英文を1文書きなさい。",
+   a:"I'm sorry I couldn't call you last night.",
+   p:"I'm sorry (that)＋文. で「〜してごめんなさい」。couldn't（できなかった）を使う。"},
+  {q:"ALTの先生に「もう一度ゆっくり話していただけますか」とお願いする英文を1文書きなさい。",
+   a:"Could you speak more slowly?",
+   p:"ていねいな依頼は Could you 〜? 。more slowly（もっとゆっくり）もセットで覚える。"}
+ ]},
+ taiwa:{name:"対話・メールの応答", items:[
+  {q:"A: I went to Hokkaido during the winter vacation.　B: Really? (　　)　── Bの空所に入る、話を広げる英文を1文書きなさい。",
+   a:"What did you do there?",
+   p:"疑問文で聞き返すのがコツ。How was it? / How long did you stay? なども正解になる。"},
+  {q:"A: You look happy today.　B: (　　)　── 理由を伝える英文を1文書きなさい。",
+   a:"I got a letter from my friend in Australia.",
+   p:"look＋形容詞（〜そうに見える）と言われたら、その理由を過去形で答える。"},
+  {q:"留学生からのメール「日本で何をするのがおすすめ？」への返事を2文の英語で書きなさい。",
+   a:"You should visit Kyoto. There are many old temples to see.",
+   p:"You should 〜.（〜するといいよ）でおすすめし、2文目で理由・説明を足す。"},
+  {q:"ホームステイでお世話になった家族へのお礼を、1〜2文の英語で書きなさい。",
+   a:"Thank you for everything. I had a wonderful time with your family.",
+   p:"Thank you for 〜. ＋ I had a good [wonderful] time. はお礼メールの鉄板。"}
+ ]}
+};
+function renderSakubun(){
+  const area=document.getElementById('sakubunArea');
+  let html=`<div class="test-intro" style="padding:16px 18px">
+     <h2>✍️ 条件英作文対策</h2>
+     <p style="margin:0 0 8px">千葉県入試で毎年出る英作文。まずノートに自分で書いてから模範解答を確認しよう。</p>
+     <p style="margin:0;font-size:13px">🔑 減点されないコツ：<b>①主語＋動詞のある文にする ②知っている単語で短く2文 ③時制をそろえる ④最後にピリオド・クエスチョンマーク</b></p>
+   </div>`;
+  Object.keys(SAKUBUN).forEach(f=>{
+    html+=`<div class="field-head"><span class="field-dot" style="background:var(--tech)"></span><h2 style="font-size:15px">${SAKUBUN[f].name}</h2></div>`;
+    SAKUBUN[f].items.forEach((k,i)=>{
+      html+=`<div class="kj">
+        <div class="kj-q"><span class="num">問${i+1}.</span> ${k.q}</div>
+        <button class="btn kj-btn" data-f="${f}" data-i="${i}">解答例を見る</button>
+        <div class="kj-a" id="kj-${f}-${i}">
+          <span class="lbl">解答例</span>${k.a}
+          <div class="kj-point">🔑 ${k.p}</div>
+        </div>
+      </div>`;
+    });
+  });
+  area.innerHTML=html;
+  area.querySelectorAll('.kj-btn').forEach(b=>{
+    b.onclick=()=>{
+      const box=document.getElementById(`kj-${b.dataset.f}-${b.dataset.i}`);
+      const open=box.classList.toggle('show');
+      b.textContent=open?'解答例を隠す':'解答例を見る';
+    };
+  });
+}
+
+/* ================= リセット ================= */
+document.getElementById('resetBtn').onclick=()=>{
+  if(confirm('学習の進捗をすべてリセットしますか？')){
+    progress={};save();buildAll();
+  }
+};
+
+buildAll();
+</script>
+</body>
+</html>
