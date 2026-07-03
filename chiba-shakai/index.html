@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>千葉県公立高校 社会 対策</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3441;
+    --txt:#e6edf3; --sub:#8b98a9; --accent:#4fc3f7; --accent2:#66d9a8;
+    --warn:#ffb454; --bad:#ff6b6b; --good:#66d9a8;
+    --geo:#66d9a8; --his:#ffb454; --civ:#4fc3f7;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Kaku Gothic ProN','Yu Gothic',Meiryo,sans-serif;
+    background:var(--bg); color:var(--txt); line-height:1.7; padding-bottom:80px;
+  }
+  a{color:inherit}
+  .wrap{max-width:860px;margin:0 auto;padding:0 18px}
+
+  header{
+    background:linear-gradient(135deg,#2a2214,#0d1117);
+    border-bottom:1px solid var(--line); padding:26px 0 22px; margin-bottom:8px;
+  }
+  header h1{font-size:20px;font-weight:700;letter-spacing:.02em}
+  header p{color:var(--sub);font-size:13px;margin-top:4px}
+  .prog-wrap{margin-top:16px}
+  .prog-bar{height:8px;background:var(--panel2);border-radius:6px;overflow:hidden}
+  .prog-fill{height:100%;width:0;background:linear-gradient(90deg,var(--warn),var(--accent2));transition:width .5s}
+  .prog-label{font-size:12px;color:var(--sub);margin-top:6px;display:flex;justify-content:space-between}
+
+  /* nav tabs */
+  .tabs{display:flex;gap:6px;position:sticky;top:0;background:var(--bg);padding:12px 0;z-index:20;flex-wrap:wrap}
+  .tab{
+    flex:1;min-width:64px;text-align:center;padding:9px 4px;border-radius:10px;
+    background:var(--panel);border:1px solid var(--line);font-size:13px;font-weight:600;
+    color:var(--sub);cursor:pointer;transition:.15s;user-select:none;
+  }
+  .tab.active{color:var(--txt);border-color:var(--accent)}
+  .tab[data-f="geo"].active{border-color:var(--geo);color:var(--geo)}
+  .tab[data-f="his"].active{border-color:var(--his);color:var(--his)}
+  .tab[data-f="civ"].active{border-color:var(--civ);color:var(--civ)}
+  .tab[data-f="test"].active{border-color:#fff;color:#fff}
+
+  section{display:none;animation:fade .3s}
+  section.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .field-head{display:flex;align-items:center;gap:10px;margin:18px 0 10px}
+  .field-dot{width:12px;height:12px;border-radius:50%}
+  .field-head h2{font-size:17px}
+  .field-head .cnt{margin-left:auto;font-size:12px;color:var(--sub)}
+
+  .unit{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
+  .unit-head{display:flex;align-items:center;gap:10px;padding:15px 16px;cursor:pointer;user-select:none}
+  .unit-head:hover{background:var(--panel2)}
+  .unit-grade{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--panel2);color:var(--sub);white-space:nowrap}
+  .unit-title{font-weight:700;font-size:15px;flex:1}
+  .unit-check{font-size:16px;width:22px;text-align:center}
+  .unit-arrow{color:var(--sub);transition:transform .2s;font-size:12px}
+  .unit.open .unit-arrow{transform:rotate(90deg)}
+  .unit-body{display:none;padding:0 16px 16px;border-top:1px solid var(--line)}
+  .unit.open .unit-body{display:block}
+
+  h3.sec{font-size:13px;color:var(--accent);margin:16px 0 8px;font-weight:700;letter-spacing:.03em}
+  .points{list-style:none}
+  .points li{padding:7px 0 7px 22px;position:relative;font-size:14px;border-bottom:1px dashed var(--line)}
+  .points li:last-child{border-bottom:none}
+  .points li::before{content:"▸";position:absolute;left:2px;color:var(--accent2)}
+  .kw{color:var(--warn);font-weight:700}
+  .fm{background:var(--panel2);border-left:3px solid var(--accent);padding:8px 12px;border-radius:6px;margin:8px 0;font-size:14px}
+
+  /* quiz */
+  .q{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
+  .q-txt{font-size:14px;font-weight:600;margin-bottom:10px}
+  .q-txt .num{color:var(--accent);margin-right:6px}
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opt{padding:10px 13px;border-radius:9px;background:var(--panel);border:1px solid var(--line);cursor:pointer;font-size:14px;transition:.12s}
+  .opt:hover{border-color:var(--accent)}
+  .opt.correct{background:rgba(102,217,168,.18);border-color:var(--good)}
+  .opt.wrong{background:rgba(255,107,107,.16);border-color:var(--bad)}
+  .opt.disabled{cursor:default;pointer-events:none;opacity:.55}
+  .opt.disabled.correct,.opt.disabled.wrong{opacity:1}
+  .expl{display:none;margin-top:10px;padding:10px 12px;background:var(--panel);border-radius:8px;font-size:13px;border-left:3px solid var(--accent2)}
+  .expl.show{display:block}
+  .expl b{color:var(--accent2)}
+
+  .btn{display:inline-block;padding:9px 16px;border-radius:9px;background:var(--panel);border:1px solid var(--line);color:var(--txt);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent);color:#04222f;border-color:var(--accent)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0}
+
+  /* test mode */
+  .test-intro{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0}
+  .test-intro h2{font-size:18px;margin-bottom:8px}
+  .test-intro p{color:var(--sub);font-size:14px;margin-bottom:14px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .chip{padding:7px 14px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);font-size:13px;cursor:pointer;font-weight:600}
+  .chip.on{background:var(--accent);color:#04222f;border-color:var(--accent)}
+  .result-card{text-align:center;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:14px;margin:16px 0}
+  .result-score{font-size:44px;font-weight:800;color:var(--accent)}
+  .result-msg{color:var(--sub);margin-top:6px}
+  .qcount{font-size:12px;color:var(--sub);text-align:right;margin-bottom:4px}
+
+  /* flashcard (一問一答) */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px 20px;margin:14px 0;min-height:200px;display:flex;flex-direction:column;justify-content:center;text-align:center}
+  .card-field{font-size:12px;color:var(--sub);margin-bottom:12px;font-weight:700}
+  .card-q{font-size:19px;font-weight:700;line-height:1.6}
+  .card-a{font-size:24px;font-weight:800;color:var(--accent2);margin-top:18px;display:none}
+  .card.revealed .card-a{display:block;animation:fade .25s}
+  .card-hint{font-size:12px;color:var(--sub);margin-top:16px}
+  .grade-row{display:flex;gap:10px;margin:10px 0}
+  .grade-row .btn{flex:1;text-align:center;padding:13px}
+  .btn.ng{border-color:var(--bad);color:var(--bad)}
+  .btn.ok{border-color:var(--good);color:var(--good)}
+  .qa-stat{display:flex;justify-content:space-around;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;font-size:13px}
+  .qa-stat b{display:block;font-size:22px;font-weight:800}
+  .qa-stat .s-rem b{color:var(--accent)} .qa-stat .s-ok b{color:var(--good)} .qa-stat .s-ng b{color:var(--warn)}
+
+  /* 記述 */
+  .kj{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+  .kj-q{font-size:15px;font-weight:700;margin-bottom:6px}
+  .kj-q .num{color:var(--his)}
+  .kj-a{display:none;margin-top:12px;padding:12px 14px;background:var(--panel2);border-radius:9px;border-left:3px solid var(--good);font-size:14px;line-height:1.7}
+  .kj-a.show{display:block;animation:fade .25s}
+  .kj-a .lbl{color:var(--good);font-weight:700;font-size:12px;display:block;margin-bottom:4px}
+  .kj-point{color:var(--sub);font-size:13px;margin-top:8px}
+
+  /* 年代（年表・並べかえ） */
+  .tl-group{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
+  .tl-head{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none;font-weight:700;font-size:15px}
+  .tl-head:hover{background:var(--panel2)}
+  .tl-head .cnt{margin-left:auto;font-size:12px;color:var(--sub);font-weight:400}
+  .tl-head .unit-arrow{margin-left:8px}
+  .tl-body{display:none;padding:0 16px 14px;border-top:1px solid var(--line)}
+  .tl-group.open .tl-body{display:block}
+  .tl-group.open .unit-arrow{transform:rotate(90deg)}
+  .tl{display:flex;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:14px;align-items:baseline}
+  .tl:last-child{border-bottom:none}
+  .tl-y{color:var(--his);font-weight:800;min-width:52px;text-align:right;flex-shrink:0}
+  .tl-e{flex:1}
+  .tl-g{display:block;color:var(--sub);font-size:12px}
+  .ord-item{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);margin:8px 0;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px;user-select:none}
+  .ord-item .badge{width:26px;height:26px;border-radius:50%;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:var(--sub);flex-shrink:0}
+  .ord-item.sel .badge{background:var(--accent);color:#04222f}
+  .ord-item.right{border-color:var(--good)}
+  .ord-item.wrongo{border-color:var(--bad)}
+  .ord-y{margin-left:auto;color:var(--warn);font-weight:700;font-size:13px;display:none;flex-shrink:0}
+  .show-years .ord-y{display:block}
+  .ord-score{display:flex;justify-content:space-around;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;font-size:13px}
+  .ord-score b{display:block;font-size:22px;font-weight:800;color:var(--accent)}
+
+  footer{text-align:center;color:var(--sub);font-size:12px;margin-top:30px}
+  .reset{color:var(--sub);text-decoration:underline;cursor:pointer;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>🗾 千葉県公立高校 社会 対策</h1>
+    <p>地理・歴史・公民の全単元｜要点整理・一問一答・年代並べかえ・記述・模試</p>
+    <div class="prog-wrap">
+      <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+      <div class="prog-label">
+        <span>学習の進み具合</span>
+        <span id="progText">0 / 0 単元</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-f="geo">地理</div>
+    <div class="tab" data-f="his">歴史</div>
+    <div class="tab" data-f="civ">公民</div>
+    <div class="tab" data-f="qa">一問一答</div>
+    <div class="tab" data-f="nendai">年代</div>
+    <div class="tab" data-f="kijutsu">記述</div>
+    <div class="tab" data-f="test">模試</div>
+  </div>
+
+  <div id="content"></div>
+
+  <section id="sec-qa">
+    <div id="qaArea"></div>
+  </section>
+
+  <section id="sec-nendai">
+    <div id="nendaiArea"></div>
+  </section>
+
+  <section id="sec-kijutsu">
+    <div id="kijutsuArea"></div>
+  </section>
+
+  <section id="sec-test">
+    <div id="testArea"></div>
+  </section>
+
+  <footer>
+    千葉県公立高校入試（社会）学習教材 ・ 全範囲対応<br>
+    進捗はこの端末に自動保存されます ・ <span class="reset" id="resetBtn">進捗をリセット</span>
+  </footer>
+</div>
+
+<script>
+/* =========================================================================
+   千葉県公立高校 社会 教材データ
+   分野: geo(地理) his(歴史) civ(公民)
+   各単元: grade, title, points[], notes[], quiz[{q,opts,a,e}]
+   千葉県入試の傾向: 大問1が三分野総合（千葉県に関する題材が頻出）、
+   地理2題・歴史2題・公民2題＋資料読み取り・記述。年代並べかえが毎年出る。
+   ========================================================================= */
+const DATA = {
+geo:{ name:"地理", color:"var(--geo)", units:[
+  {id:"g1", grade:"中1", title:"世界の姿（大陸・緯度経度・時差）",
+   points:[
+     "六大陸：<span class='kw'>ユーラシア</span>・アフリカ・北アメリカ・南アメリカ・オーストラリア・南極。三大洋：<span class='kw'>太平洋</span>・大西洋・インド洋（最大は太平洋）。",
+     "緯度は<span class='kw'>赤道（0度）</span>から南北へ90度ずつ。経度は<span class='kw'>本初子午線（0度）</span>＝ロンドンの旧グリニッジ天文台を通る線から東西へ180度ずつ。",
+     "地図の図法：<span class='kw'>メルカトル図法</span>は角度が正しい（航海図）が高緯度ほど面積が拡大。<span class='kw'>正距方位図法</span>は中心からの距離と方位が正しい（航空図）。モルワイデ図法は面積が正しい。",
+     "時差：経度<span class='kw'>15度</span>で1時間（360度÷24時間）。日本の標準時子午線は<span class='kw'>東経135度</span>（兵庫県明石市）。",
+     "時差の計算：2地点の経度差÷15＝時差。東経どうしなら経度の差、東経と西経なら経度の和。<span class='kw'>東にある地点ほど時刻が進んでいる</span>。"
+   ],
+   notes:["時差の計算手順：①経度差を求める → ②15で割る → ③東にある方が「進んでいる」","日本（東経135度）とロンドン（0度）の時差＝135÷15＝9時間（日本が9時間進む）"],
+   quiz:[
+     {q:"日本（東経135度）が1月1日午前9時のとき、ロンドン（経度0度）は何時？",opts:["1月1日午前0時","1月1日午後6時","12月31日午後6時","1月1日午後0時"],a:0,e:"時差は135÷15＝9時間。日本の方が東にあり9時間進んでいるので、9時−9時間＝1月1日午前0時。"},
+     {q:"地図の中心からの距離と方位が正しく、航空図に使われる図法は？",opts:["メルカトル図法","正距方位図法","モルワイデ図法","正射図法"],a:1,e:"正距方位図法。メルカトル図法は角度（航海図）、モルワイデ図法は面積が正しい。"},
+     {q:"三大洋のうち、最も面積が大きい海洋は？",opts:["大西洋","インド洋","太平洋","北極海"],a:2,e:"太平洋が最大。三大洋は太平洋・大西洋・インド洋。"},
+     {q:"日本の標準時子午線が通る都市は？",opts:["東京都新宿区","兵庫県明石市","京都府京都市","広島県広島市"],a:1,e:"東経135度の経線が兵庫県明石市を通る。"}
+   ]},
+  {id:"g2", grade:"中1", title:"世界の気候と人々のくらし・宗教",
+   points:[
+     "5つの気候帯：<span class='kw'>熱帯・乾燥帯・温帯・冷帯（亜寒帯）・寒帯</span>。赤道付近から高緯度へこの順に分布。",
+     "熱帯：一年中高温。<span class='kw'>熱帯雨林気候</span>と、雨季と乾季のある<span class='kw'>サバナ気候</span>。",
+     "乾燥帯：砂漠気候と、少しの雨で草原が広がる<span class='kw'>ステップ気候</span>。乾燥地域では<span class='kw'>遊牧</span>やかんがい農業、オアシス。",
+     "温帯：日本の大部分は<span class='kw'>温暖湿潤気候</span>。ヨーロッパ西部は暖流と偏西風の影響の<span class='kw'>西岸海洋性気候</span>。<span class='kw'>地中海性気候</span>は夏に乾燥し冬に雨（オリーブ・ぶどう）。",
+     "冷帯（亜寒帯）は北半球のみ。シベリアには<span class='kw'>永久凍土</span>があり、建物は<span class='kw'>高床</span>にして熱が伝わるのを防ぐ。寒帯にはイヌイットなどが暮らす。",
+     "三大宗教：<span class='kw'>キリスト教・イスラム教・仏教</span>。イスラム教は豚肉を食べず1日5回の礼拝、聖地メッカ。<span class='kw'>ヒンドゥー教</span>はインドの民族宗教で牛を神聖視。"
+   ],
+   notes:["雨温図の見分け方：①気温の折れ線で帯を判断（一年中高温→熱帯、夏冬の差大→冷帯） ②降水量の棒で細分（夏に少雨→地中海性）","南半球の雨温図は気温のグラフが谷型（1月が夏）になる"],
+   quiz:[
+     {q:"夏に乾燥し、冬に雨が多く降る温帯の気候は？",opts:["温暖湿潤気候","西岸海洋性気候","地中海性気候","サバナ気候"],a:2,e:"地中海性気候。乾燥に強いオリーブやぶどうの栽培がさかん。"},
+     {q:"シベリアで建物を高床にする理由は？",opts:["洪水を防ぐため","風通しをよくするため","建物の熱で永久凍土がとけて傾くのを防ぐため","雪を積もらせないため"],a:2,e:"永久凍土が建物の熱でとけると建物が傾くため、高床にして熱を伝えにくくしている。"},
+     {q:"1日5回の礼拝を行い、豚肉を食べないなどの決まりがある宗教は？",opts:["キリスト教","イスラム教","仏教","ヒンドゥー教"],a:1,e:"イスラム教。聖典はコーラン、聖地はメッカ。ヒンドゥー教（牛を神聖視）と区別する。"},
+     {q:"雨温図で、1月ごろの気温が高く7月ごろが低い「谷型」のグラフになるのはどんな地域？",opts:["赤道直下","北半球の高緯度","南半球","内陸部"],a:2,e:"南半球は季節が北半球と逆になるため、1月が夏で気温のグラフが谷型になる。"}
+   ]},
+  {id:"g3", grade:"中1", title:"世界の諸地域① アジア",
+   points:[
+     "中国：人口約14億人。人口の大部分は東部に集中。沿岸部に<span class='kw'>経済特区</span>を設け外国企業を誘致し、「<span class='kw'>世界の工場</span>」と呼ばれる工業国に成長。沿岸部と内陸部の経済格差が課題。",
+     "東南アジア：<span class='kw'>ASEAN（東南アジア諸国連合）</span>を結成。植民地時代に開かれた<span class='kw'>プランテーション</span>（大農園）で天然ゴム・油やしなどを栽培。稲作がさかんで二期作も行われる。工業化が進み外国企業が進出。",
+     "インド：<span class='kw'>ヒンドゥー教</span>徒が多数。数学教育などを背景に<span class='kw'>ICT（情報通信技術）産業</span>が急成長（ベンガルール）。",
+     "西アジア：世界最大級の<span class='kw'>石油（原油）</span>の産出地。ペルシャ湾岸に油田が集中し、産油国は<span class='kw'>OPEC（石油輸出国機構）</span>を結成。イスラム教徒が多い。"
+   ],
+   notes:["「世界の工場」＝中国、「ICT産業の成長」＝インド、「プランテーション・ASEAN」＝東南アジア、「石油・OPEC」＝西アジア、とキーワードで整理"],
+   quiz:[
+     {q:"中国が沿岸部に設け、外国企業を受け入れて経済発展のきっかけとした地区は？",opts:["経済特区","工業団地","自由都市","開発区"],a:0,e:"経済特区。シェンチェンなど。安い労働力を求め外国企業が進出し「世界の工場」へ成長した。"},
+     {q:"東南アジアの10か国が加盟する地域協力組織は？",opts:["EU","OPEC","ASEAN","APEC"],a:2,e:"ASEAN（東南アジア諸国連合）。貿易の拡大や政治の安定を目指す。"},
+     {q:"インドで急成長している産業は？",opts:["自動車産業","ICT（情報通信技術）産業","石油産業","繊維産業のみ"],a:1,e:"ICT産業。数学教育の水準が高いこと、英語を話せる人が多いことが背景。"},
+     {q:"ペルシャ湾岸の産油国などが結成している組織は？",opts:["ASEAN","NATO","OPEC","TPP"],a:2,e:"OPEC（石油輸出国機構）。原油価格や生産量を調整する。"}
+   ]},
+  {id:"g4", grade:"中1", title:"世界の諸地域② ヨーロッパ・アフリカ",
+   points:[
+     "ヨーロッパは高緯度のわりに温暖。暖流の<span class='kw'>北大西洋海流</span>と<span class='kw'>偏西風</span>の影響。",
+     "<span class='kw'>EU（ヨーロッパ連合）</span>：多くの加盟国で共通通貨<span class='kw'>ユーロ</span>を使用。国境の通過が自由で関税がない。課題は加盟国間の<span class='kw'>経済格差</span>。",
+     "農業：小麦栽培と家畜の飼育を組み合わせた<span class='kw'>混合農業</span>、地中海沿岸の<span class='kw'>地中海式農業</span>（オリーブ・ぶどう）、デンマークなどの<span class='kw'>酪農</span>。",
+     "アフリカ：かつてヨーロッパ諸国の<span class='kw'>植民地</span>。緯線・経線を利用した<span class='kw'>直線的な国境</span>が多い。",
+     "特定の農産物や鉱産資源の輸出に頼る<span class='kw'>モノカルチャー経済</span>（カカオ＝コートジボワール・ガーナなど）。価格変動の影響を受けやすく経済が不安定。",
+     "携帯電話などに使われる希少金属<span class='kw'>レアメタル</span>が豊富。"
+   ],
+   notes:["記述頻出：「モノカルチャー経済の問題点」→ 特定の産物の輸出に頼るため、天候や国際価格の変動で収入が不安定になる"],
+   quiz:[
+     {q:"ヨーロッパ西部が高緯度のわりに温暖なのはなぜ？",opts:["赤道に近いから","北大西洋海流と偏西風の影響","標高が低いから","雨が少ないから"],a:1,e:"暖流の北大西洋海流の上を吹く偏西風が暖かい空気を運ぶため。"},
+     {q:"EUの多くの加盟国で使われている共通通貨は？",opts:["ドル","ポンド","ユーロ","フラン"],a:2,e:"ユーロ。両替が不要になり国境をこえた買い物や貿易がしやすい。"},
+     {q:"アフリカに直線的な国境線が多い理由は？",opts:["山脈に沿っているから","植民地時代に緯線・経線で分割されたから","川に沿っているから","住民が話し合って決めたから"],a:1,e:"ヨーロッパ諸国が植民地分割の際、民族の分布を無視して緯線・経線で境界を引いたため。現在も民族問題の原因。"},
+     {q:"特定の農産物や資源の輸出に頼る経済を何という？",opts:["プランテーション経済","モノカルチャー経済","混合経済","自給自足経済"],a:1,e:"モノカルチャー経済。価格変動の影響を受けやすく、国の収入が不安定になりやすい。"}
+   ]},
+  {id:"g5", grade:"中1", title:"世界の諸地域③ 南北アメリカ・オセアニア",
+   points:[
+     "アメリカ合衆国の農業：地域の環境に合わせた<span class='kw'>適地適作</span>。大型機械を使う<span class='kw'>企業的な農業</span>で「世界の食料庫」。",
+     "アメリカの工業：北緯37度以南の<span class='kw'>サンベルト</span>で先端技術産業が発達。サンフランシスコ近郊の<span class='kw'>シリコンバレー</span>にICT企業が集中。世界に拠点を持つ<span class='kw'>多国籍企業</span>。",
+     "ヒスパニック（スペイン語圏からの移民）が増加。",
+     "ブラジル：<span class='kw'>アマゾン川</span>流域の熱帯林伐採が環境問題に。さとうきびから作る<span class='kw'>バイオ燃料（バイオエタノール）</span>。コーヒー・鉄鉱石の輸出。",
+     "オーストラリア：<span class='kw'>鉄鉱石</span>（西部）・<span class='kw'>石炭</span>（東部）を露天掘りで産出し日本へ輸出。羊の飼育。先住民は<span class='kw'>アボリジニ</span>。かつての白豪主義をやめ<span class='kw'>多文化社会</span>へ。"
+   ],
+   notes:["オーストラリアの貿易相手は「イギリス中心→日本・中国などアジア中心」に変化した、というグラフ読み取りが頻出"],
+   quiz:[
+     {q:"アメリカで、それぞれの土地の気候や土壌に合った作物を栽培する農業のあり方を何という？",opts:["混合農業","適地適作","地中海式農業","焼畑農業"],a:1,e:"適地適作。グレートプレーンズの小麦、中西部のとうもろこしなど。"},
+     {q:"アメリカの北緯37度以南に広がる、先端技術産業が発達した地域は？",opts:["シリコンバレー","サンベルト","ラストベルト","メガロポリス"],a:1,e:"サンベルト。温暖で土地が安く労働力が得やすい。シリコンバレーはその中の一地区。"},
+     {q:"ブラジルでさとうきびを原料に生産される燃料は？",opts:["天然ガス","バイオ燃料（バイオエタノール）","石炭","水素"],a:1,e:"バイオエタノール。植物由来のため大気中の二酸化炭素を増やしにくいとされる。"},
+     {q:"オーストラリアの先住民は？",opts:["マオリ","イヌイット","アボリジニ","ヒスパニック"],a:2,e:"アボリジニ。ニュージーランドの先住民マオリと区別する。"}
+   ]},
+  {id:"g6", grade:"中2", title:"日本の姿（領域・都道府県）",
+   points:[
+     "国の領域＝<span class='kw'>領土・領海（12海里）・領空</span>。",
+     "<span class='kw'>排他的経済水域</span>：海岸線から<span class='kw'>200海里</span>以内（領海を除く）。水産資源・鉱産資源を沿岸国が利用できる。日本は島国のため排他的経済水域が国土面積より広い。",
+     "日本の東西南北の端：北＝<span class='kw'>択捉島</span>、東＝<span class='kw'>南鳥島</span>、南＝<span class='kw'>沖ノ鳥島</span>、西＝<span class='kw'>与那国島</span>。沖ノ鳥島は水没を防ぐため護岸工事が行われた。",
+     "領土問題：<span class='kw'>北方領土</span>（択捉島・国後島・色丹島・歯舞群島、ロシアが不法占拠）、<span class='kw'>竹島</span>（島根県、韓国が不法占拠）。<span class='kw'>尖閣諸島</span>（沖縄県）は解決すべき領有権の問題は存在しない。",
+     "47都道府県、<span class='kw'>7地方区分</span>（北海道・東北・関東・中部・近畿・中国四国・九州）。千葉県は<span class='kw'>関東地方</span>。"
+   ],
+   notes:["記述頻出：「沖ノ鳥島の護岸工事の理由」→ 島が水没すると約40万km²の排他的経済水域が失われるから"],
+   quiz:[
+     {q:"排他的経済水域は海岸線から何海里以内（領海を除く）？",opts:["12海里","24海里","100海里","200海里"],a:3,e:"200海里（約370km）。水産資源や海底資源を沿岸国が利用する権利を持つ。"},
+     {q:"日本の最南端の島は？",opts:["与那国島","沖ノ鳥島","南鳥島","択捉島"],a:1,e:"最南端は沖ノ鳥島。北＝択捉島、東＝南鳥島、西＝与那国島。"},
+     {q:"北方領土に含まれないものは？",opts:["択捉島","国後島","色丹島","竹島"],a:3,e:"北方領土は択捉島・国後島・色丹島・歯舞群島。竹島は島根県に属する別の領土問題。"},
+     {q:"日本の国土面積より排他的経済水域の方が広い理由は？",opts:["領土が大陸にあるから","離島が多く海岸線から200海里の範囲が広いから","海が浅いから","条約で特別に認められたから"],a:1,e:"日本は多くの島々からなる島国で、離れた島の周囲にも200海里の水域が設定できるため。"}
+   ]},
+  {id:"g7", grade:"中2", title:"日本の自然環境と気候・災害",
+   points:[
+     "日本列島は<span class='kw'>環太平洋造山帯</span>に属し、地震や火山が多い。本州中央部には<span class='kw'>フォッサマグナ</span>、飛驒・木曽・赤石山脈は<span class='kw'>日本アルプス</span>。",
+     "日本の川は世界の川に比べ<span class='kw'>短くて流れが急</span>。川が山地から平地に出る所に<span class='kw'>扇状地</span>（水はけがよい→果樹園）、河口に<span class='kw'>三角州</span>ができる。",
+     "出入りの複雑な<span class='kw'>リアス海岸</span>（三陸海岸・志摩半島・若狭湾）。波が静かで養殖に適するが、津波の被害を受けやすい。",
+     "気候区分：①北海道（冷帯・梅雨がない）②<span class='kw'>日本海側（冬に雪が多い）</span>③<span class='kw'>太平洋側（夏に雨が多い）</span>④内陸（中央高地）性（気温差大・少雨）⑤<span class='kw'>瀬戸内（一年中少雨）</span>⑥南西諸島（亜熱帯）。",
+     "<span class='kw'>季節風（モンスーン）</span>：冬は北西から吹き日本海側に雪、夏は南東から吹き太平洋側に雨を降らせる。",
+     "災害への備え：被害予測地図＝<span class='kw'>ハザードマップ</span>、公助・自助・共助。"
+   ],
+   notes:["雨温図の見分け：冬の降水量が多い→日本海側／夏に多い→太平洋側／一年中少ない→瀬戸内・中央高地（気温差で区別）／冬の気温が0度以下→北海道"],
+   quiz:[
+     {q:"冬の日本海側に雪を降らせる風は？",opts:["南東の季節風","北西の季節風","偏西風","台風"],a:1,e:"北西の季節風が日本海の上で水蒸気を含み、山地にぶつかって日本海側に大雪を降らせる。"},
+     {q:"川が山地から平地に出る所に土砂が積もってできる、水はけのよい地形は？",opts:["三角州","扇状地","台地","リアス海岸"],a:1,e:"扇状地。水はけがよいため果樹園などに利用される。河口にできるのは三角州。"},
+     {q:"瀬戸内の気候で一年中降水量が少ない理由は？",opts:["海から遠いから","中国山地と四国山地に季節風がさえぎられるから","偏西風が吹かないから","暖流が流れていないから"],a:1,e:"冬の北西季節風は中国山地に、夏の南東季節風は四国山地にさえぎられるため。"},
+     {q:"自然災害の被害が予測される区域や避難場所を示した地図を何という？",opts:["ルートマップ","ハザードマップ","ロードマップ","グリーンマップ"],a:1,e:"ハザードマップ（防災マップ）。市区町村などが作成する。"}
+   ]},
+  {id:"g8", grade:"中2", title:"日本の人口・資源・産業",
+   points:[
+     "日本は<span class='kw'>少子高齢化</span>が進行。人口ピラミッドは「富士山型→つりがね型→<span class='kw'>つぼ型</span>」へ変化。",
+     "三大都市圏（東京・大阪・名古屋）に人口集中＝<span class='kw'>過密</span>。農村・山間部や離島では<span class='kw'>過疎</span>が進む。",
+     "農業：大都市周辺の<span class='kw'>近郊農業</span>（千葉県・茨城県など）、宮崎平野・高知平野の<span class='kw'>促成栽培</span>（ビニールハウスで出荷時期を早める）、長野県・群馬県の高原での<span class='kw'>抑制栽培</span>（高冷地の気候で出荷を遅らせる）。",
+     "漁業：とる漁業から<span class='kw'>育てる漁業</span>（養殖業・栽培漁業）へ。",
+     "工業：関東から九州北部の臨海部に連なる<span class='kw'>太平洋ベルト</span>。<span class='kw'>中京工業地帯</span>（豊田の自動車、生産額日本一）、京浜・阪神工業地帯、<span class='kw'>京葉工業地域</span>（千葉県・化学工業の割合が高い）。",
+     "工場の海外移転による<span class='kw'>産業の空洞化</span>。就業者は<span class='kw'>第3次産業</span>が最多。",
+     "資源の大部分を輸入に依存。<span class='kw'>成田国際空港</span>（千葉県）は貿易額日本一。小型軽量で高価な品（半導体など）は航空輸送、重い品は海上輸送。"
+   ],
+   notes:["千葉県がらみの頻出：近郊農業（ねぎ・ほうれんそう、らっかせいは全国一）、京葉工業地域（石油化学・鉄鋼）、成田国際空港（貿易額日本一）"],
+   quiz:[
+     {q:"宮崎平野や高知平野で、ビニールハウスを使って野菜の出荷時期を早める栽培方法は？",opts:["抑制栽培","促成栽培","近郊農業","混合農業"],a:1,e:"促成栽培。冬でも温暖な気候を利用し、ピーマンやなすを他の産地が少ない時期に出荷する。"},
+     {q:"自動車工業がさかんで、工業生産額が日本一の工業地帯は？",opts:["京浜工業地帯","阪神工業地帯","中京工業地帯","北九州工業地域"],a:2,e:"中京工業地帯。愛知県豊田市の自動車工業が中心。"},
+     {q:"千葉県の東京湾岸に広がる、化学工業の割合が高い工業地域は？",opts:["鹿島臨海工業地域","京葉工業地域","東海工業地域","瀬戸内工業地域"],a:1,e:"京葉工業地域。石油化学コンビナートや製鉄所が立ち並び、化学工業の割合が全国でも特に高い。"},
+     {q:"工場が海外に移転し、国内の産業が衰退する現象を何という？",opts:["産業の空洞化","ドーナツ化現象","過疎化","貿易摩擦"],a:0,e:"産業の空洞化。安い労働力を求めて工場が海外へ移ることで起こる。"},
+     {q:"貿易額が日本一の貿易港（空港・港）は？",opts:["東京港","名古屋港","成田国際空港","横浜港"],a:2,e:"成田国際空港（千葉県）。半導体など小型軽量で高価な品物の輸出入が中心。"}
+   ]},
+  {id:"g9", grade:"中2", title:"日本の諸地域と千葉県",
+   points:[
+     "九州：<span class='kw'>シラス台地</span>（火山灰・畜産と畑作）、宮崎平野の促成栽培、水俣病からの環境再生。",
+     "中国・四国：<span class='kw'>瀬戸内工業地域</span>（石油化学コンビナート）、本州四国連絡橋、山間部・離島の<span class='kw'>過疎</span>と町おこし。高知平野の促成栽培。",
+     "近畿：<span class='kw'>阪神工業地帯</span>（中小工場が多い）、日本最大の湖<span class='kw'>琵琶湖</span>（近畿の水がめ）、京都・奈良の伝統的な町並みと<span class='kw'>伝統的工芸品</span>。",
+     "中部：<span class='kw'>中京工業地帯</span>・東海工業地域、甲府盆地の扇状地（ぶどう・もも）、中央高地の<span class='kw'>高原野菜</span>、北陸は<span class='kw'>水田単作</span>地帯と地場産業。",
+     "関東：<span class='kw'>関東ローム</span>（火山灰の赤土）、近郊農業、<span class='kw'>京浜工業地帯・京葉工業地域</span>、都心の<span class='kw'>ヒートアイランド現象</span>、昼間人口と夜間人口の差。",
+     "東北：夏の冷たい北東風<span class='kw'>やませ</span>→<span class='kw'>冷害</span>、さくらんぼ（山形）・りんご（青森）、伝統行事（ねぶた祭など）。",
+     "北海道：石狩平野（<span class='kw'>客土</span>で稲作地帯に）、十勝平野の<span class='kw'>畑作</span>、根釧台地の<span class='kw'>酪農</span>、先住民族<span class='kw'>アイヌ</span>の文化。",
+     "<span class='kw'>千葉県</span>：全国有数の農業県（ねぎ・ほうれんそうなど近郊農業、<span class='kw'>らっかせい</span>は全国一）。京葉工業地域・成田国際空港・幕張新都心。房総半島は温暖で花の栽培。"
+   ],
+   notes:["「やませ→冷害」「シラス台地→畜産」「客土→石狩平野」「高原野菜→長野県（レタス・キャベツ）」の組み合わせは頻出"],
+   quiz:[
+     {q:"夏に東北地方の太平洋側に吹く冷たい北東風を何という？",opts:["からっ風","やませ","偏西風","フェーン"],a:1,e:"やませ。日照不足と低温をもたらし、稲が育たない冷害の原因になる。"},
+     {q:"九州南部に広がる、火山灰が積もってできた台地は？",opts:["関東ローム","シラス台地","カルスト台地","根釧台地"],a:1,e:"シラス台地。水もちが悪く稲作に不向きなため、畜産や畑作（さつまいも・茶）がさかん。"},
+     {q:"北海道の根釧台地でさかんな農業は？",opts:["稲作","果樹栽培","酪農","促成栽培"],a:2,e:"酪農。夏でも涼しく稲作に不向きな気候を生かし、乳牛を飼育している。"},
+     {q:"千葉県の農業について正しいものは？",opts:["促成栽培が中心である","らっかせいの生産量が全国一である","水田単作地帯である","高原野菜の栽培がさかんである"],a:1,e:"千葉県はらっかせいの生産量全国一。大消費地東京に近く、ねぎ・ほうれんそうなどの近郊農業もさかん。"},
+     {q:"東京の都心部で、昼間人口が夜間人口より多くなる理由は？",opts:["観光客が多いから","周辺から通勤・通学で人が集まるから","出生率が高いから","工場が多いから"],a:1,e:"都心には会社や学校が集中し、周辺の県（千葉・埼玉・神奈川）から通勤・通学者が集まるため。"}
+   ]},
+  {id:"g10", grade:"中2", title:"地形図の読み取り",
+   points:[
+     "実際の距離＝<span class='kw'>地図上の長さ×縮尺の分母</span>。例：2万5千分の1の地図で4cm → 4cm×25000＝100000cm＝<span class='kw'>1km</span>。",
+     "等高線（主曲線）：2万5千分の1では<span class='kw'>10m</span>ごと、5万分の1では<span class='kw'>20m</span>ごと。",
+     "等高線の間隔が<span class='kw'>せまい→傾斜が急</span>、広い→傾斜がゆるやか。",
+     "方位は特に示されていなければ<span class='kw'>上が北</span>。8方位（北東・南西など）で答える問題が多い。",
+     "主な地図記号：田（II）・畑（V）・果樹園（○にへた）・広葉樹林・針葉樹林・<span class='kw'>市役所（◎）</span>・町村役場（○）・<span class='kw'>郵便局（〒）</span>・交番（X）・警察署（Xを○で囲む）・消防署（さすまた）・神社（鳥居）・寺院（卍）・学校（文）・病院（十字）・図書館（本）・博物館（建物）・<span class='kw'>老人ホーム（家に杖）</span>・風車・記念碑。"
+   ],
+   notes:["縮尺計算のコツ：cmで計算してから km に直す（100000cm＝1km）。2万5千分の1で「4cm＝1km」を覚えておくと速い"],
+   quiz:[
+     {q:"2万5千分の1の地形図上で8cmの長さは、実際には何km？",opts:["0.5km","1km","2km","4km"],a:2,e:"8cm×25000＝200000cm＝2000m＝2km。"},
+     {q:"2万5千分の1の地形図で、主曲線（細い等高線）は何mごとに引かれる？",opts:["5m","10m","20m","50m"],a:1,e:"2万5千分の1は10mごと、5万分の1は20mごと。"},
+     {q:"等高線の間隔がせまい場所の土地のようすは？",opts:["傾斜が急","傾斜がゆるやか","平地","必ず谷になっている"],a:0,e:"間隔がせまい＝短い距離で高度が変わる＝傾斜が急。"},
+     {q:"地図記号「卍」が表すものは？",opts:["神社","寺院","病院","記念碑"],a:1,e:"卍は寺院。神社は鳥居の形の記号。"}
+   ]}
+]},
+his:{ name:"歴史", color:"var(--his)", units:[
+  {id:"h1", grade:"中1", title:"文明のおこりと日本のはじまり",
+   points:[
+     "四大文明：<span class='kw'>エジプト文明</span>（ナイル川・ピラミッド・象形文字）、<span class='kw'>メソポタミア文明</span>（チグリス・ユーフラテス川・くさび形文字）、<span class='kw'>インダス文明</span>（モヘンジョ・ダロ）、<span class='kw'>中国文明</span>（黄河・<span class='kw'>甲骨文字</span>）。いずれも大河のほとりでおこった。",
+     "中国：<span class='kw'>秦の始皇帝</span>が初めて中国を統一し万里の長城を築く。次の<span class='kw'>漢</span>の時代、西方と結ぶ<span class='kw'>シルクロード（絹の道）</span>で交易。",
+     "旧石器時代：<span class='kw'>打製石器</span>を使用。群馬県<span class='kw'>岩宿遺跡</span>の発見で日本にも旧石器時代があったと判明。",
+     "縄文時代：縄文土器・<span class='kw'>土偶</span>・<span class='kw'>貝塚</span>・たて穴住居。青森県三内丸山遺跡。",
+     "弥生時代：<span class='kw'>稲作</span>が広まり、<span class='kw'>高床倉庫</span>に米を保存。金属器（青銅器・鉄器）。佐賀県<span class='kw'>吉野ヶ里遺跡</span>。むらからくにへ。",
+     "<span class='kw'>邪馬台国</span>の女王<span class='kw'>卑弥呼</span>が239年、魏に使いを送る（「魏志」倭人伝）。",
+     "古墳時代：<span class='kw'>前方後円墳</span>（最大は大仙古墳）。<span class='kw'>大和政権</span>が国土を統一へ。<span class='kw'>渡来人</span>が漢字・仏教・須恵器などを伝える。"
+   ],
+   notes:["時代の順番と代表アイテム：旧石器（打製石器）→縄文（土偶・貝塚）→弥生（稲作・高床倉庫）→古墳（前方後円墳・埴輪）"],
+   quiz:[
+     {q:"甲骨文字が使われた文明は？",opts:["エジプト文明","メソポタミア文明","インダス文明","中国文明"],a:3,e:"中国文明。甲骨文字は漢字のもとになった。エジプトは象形文字、メソポタミアはくさび形文字。"},
+     {q:"「魏志」倭人伝に記された邪馬台国の女王は？",opts:["推古天皇","卑弥呼","持統天皇","額田王"],a:1,e:"卑弥呼。239年に魏へ使いを送り、「親魏倭王」の称号と金印・銅鏡を授かった。"},
+     {q:"弥生時代に米をたくわえるために作られた建物は？",opts:["たて穴住居","高床倉庫","正倉院","土蔵"],a:1,e:"高床倉庫。湿気やねずみを防ぐため床を高くした。"},
+     {q:"縄文時代の遺物でないものは？",opts:["土偶","貝塚","銅鐸","縄文土器"],a:2,e:"銅鐸は弥生時代の青銅器。土偶・貝塚・縄文土器は縄文時代。"}
+   ]},
+  {id:"h2", grade:"中1", title:"飛鳥・奈良時代",
+   points:[
+     "<span class='kw'>聖徳太子</span>（厩戸皇子）：<span class='kw'>冠位十二階</span>（才能で役人登用）、<span class='kw'>十七条の憲法</span>（役人の心構え）、<span class='kw'>遣隋使</span>（小野妹子）を派遣。<span class='kw'>法隆寺</span>は現存する世界最古の木造建築（飛鳥文化）。",
+     "<span class='kw'>大化の改新</span>（645年）：<span class='kw'>中大兄皇子</span>と<span class='kw'>中臣鎌足</span>が蘇我氏をたおし、土地と人民を国家のものとする<span class='kw'>公地公民</span>を目指した政治改革。",
+     "<span class='kw'>大宝律令</span>（701年）：唐にならった律令国家のしくみが完成。",
+     "710年、奈良に<span class='kw'>平城京</span>。戸籍に基づき6歳以上に口分田を与える<span class='kw'>班田収授法</span>。税は<span class='kw'>租（稲）・調（特産物）・庸（布）</span>と労役・兵役。",
+     "口分田の不足から<span class='kw'>墾田永年私財法</span>（743年）→開墾した土地の永久私有を認める→<span class='kw'>荘園</span>の始まり（公地公民がくずれる）。",
+     "<span class='kw'>聖武天皇</span>：仏教の力で国を守ろうと国分寺・国分尼寺と<span class='kw'>東大寺の大仏</span>をつくらせた。<span class='kw'>天平文化</span>（正倉院・「古事記」「日本書紀」「万葉集」）。唐から<span class='kw'>鑑真</span>が来日（唐招提寺）。"
+   ],
+   notes:["奈良時代の税：租＝稲（地方へ）、調＝特産物、庸＝布（都へ運ぶ）。防人は九州北部の警備"],
+   quiz:[
+     {q:"聖徳太子が役人の心構えを示したものは？",opts:["冠位十二階","十七条の憲法","大宝律令","御成敗式目"],a:1,e:"十七条の憲法。冠位十二階は家柄によらず才能ある人を役人に取り立てる制度。"},
+     {q:"645年に中大兄皇子と中臣鎌足が始めた政治改革は？",opts:["大化の改新","建武の新政","大宝律令","班田収授"],a:0,e:"大化の改新。蘇我氏をたおし、公地公民を目指した。"},
+     {q:"開墾した土地の永久私有を認めた743年の法令は？",opts:["班田収授法","墾田永年私財法","楽市・楽座","公地公民"],a:1,e:"墾田永年私財法。これにより貴族や寺社の私有地（荘園）が広がり、公地公民の原則がくずれた。"},
+     {q:"仏教の力で国家を守ろうと、東大寺に大仏をつくらせた天皇は？",opts:["天武天皇","桓武天皇","聖武天皇","推古天皇"],a:2,e:"聖武天皇。都に東大寺、国ごとに国分寺・国分尼寺を建てさせた。"},
+     {q:"奈良時代の税のうち、地方の特産物を納めるものは？",opts:["租","調","庸","防人"],a:1,e:"調。租は稲、庸は労役の代わりの布。"}
+   ]},
+  {id:"h3", grade:"中1", title:"平安時代",
+   points:[
+     "<span class='kw'>桓武天皇</span>が794年、<span class='kw'>平安京</span>（京都）に都を移す。<span class='kw'>坂上田村麻呂</span>を征夷大将軍に任命し東北へ。",
+     "新しい仏教：<span class='kw'>最澄</span>（天台宗・比叡山延暦寺）と<span class='kw'>空海</span>（真言宗・高野山金剛峯寺）。",
+     "<span class='kw'>摂関政治</span>：藤原氏が娘を天皇のきさきにし、摂政・関白として実権をにぎる。<span class='kw'>藤原道長</span>・頼通の時に全盛（「この世をば わが世とぞ思ふ 望月の…」）。",
+     "894年、<span class='kw'>菅原道真</span>の意見で<span class='kw'>遣唐使を停止</span>→日本風の<span class='kw'>国風文化</span>が発達：<span class='kw'>かな文字</span>、紫式部「<span class='kw'>源氏物語</span>」、清少納言「<span class='kw'>枕草子</span>」、寝殿造、大和絵。",
+     "念仏を唱え極楽浄土を願う<span class='kw'>浄土信仰</span>→藤原頼通の<span class='kw'>平等院鳳凰堂</span>。",
+     "1086年、白河上皇が<span class='kw'>院政</span>を開始。やがて武士が台頭し、<span class='kw'>平清盛</span>が武士として初めて<span class='kw'>太政大臣</span>に（1167年）。<span class='kw'>日宋貿易</span>のため兵庫の港を整備。"
+   ],
+   notes:["文化の流れ：飛鳥文化（法隆寺）→天平文化（正倉院・万葉集）→国風文化（かな文字・源氏物語）→院政期。「遣唐使停止→国風文化」の因果は記述でも頻出"],
+   quiz:[
+     {q:"894年に遣唐使の停止を提案した人物は？",opts:["菅原道真","藤原道長","坂上田村麻呂","小野妹子"],a:0,e:"菅原道真。唐のおとろえと航海の危険を理由に停止を提案。これ以降、国風文化が発達した。"},
+     {q:"「源氏物語」の作者は？",opts:["清少納言","紫式部","小野小町","和泉式部"],a:1,e:"紫式部。清少納言は随筆「枕草子」の作者。"},
+     {q:"藤原氏が摂政・関白の地位を独占して行った政治を何という？",opts:["院政","執権政治","摂関政治","律令政治"],a:2,e:"摂関政治。藤原道長・頼通父子の時に最も栄えた。"},
+     {q:"武士として初めて太政大臣となり、日宋貿易を行った人物は？",opts:["源頼朝","平清盛","足利義満","北条時宗"],a:1,e:"平清盛。娘を天皇のきさきにし、一族で高い地位を独占した。"}
+   ]},
+  {id:"h4", grade:"中1", title:"鎌倉時代",
+   points:[
+     "<span class='kw'>源頼朝</span>：1185年、国ごとに<span class='kw'>守護</span>・荘園などに<span class='kw'>地頭</span>を設置。1192年、<span class='kw'>征夷大将軍</span>に。",
+     "将軍と御家人は土地を仲立ちとした<span class='kw'>御恩と奉公</span>の主従関係（封建制度）。",
+     "頼朝の死後は北条氏が<span class='kw'>執権</span>として実権をにぎる（執権政治）。",
+     "<span class='kw'>承久の乱</span>（1221年）：後鳥羽上皇が倒幕をくわだて敗北→京都に<span class='kw'>六波羅探題</span>を設置し朝廷を監視。",
+     "<span class='kw'>御成敗式目</span>（1232年、北条泰時）：武士の慣習をまとめた最初の武家法。",
+     "<span class='kw'>元寇</span>：フビライ・ハンの要求を執権<span class='kw'>北条時宗</span>が拒否→文永の役（1274年）・弘安の役（1281年）。恩賞が不十分で御家人が困窮→<span class='kw'>徳政令</span>→幕府の力がおとろえる。",
+     "鎌倉文化：<span class='kw'>金剛力士像</span>（運慶ら）、軍記物「<span class='kw'>平家物語</span>」（琵琶法師が広める）、「新古今和歌集」。",
+     "鎌倉仏教：<span class='kw'>法然（浄土宗）・親鸞（浄土真宗）</span>・一遍（時宗）・<span class='kw'>日蓮（日蓮宗）</span>・栄西（臨済宗）・道元（曹洞宗）。わかりやすく実行しやすい教えが民衆に広まる。"
+   ],
+   notes:["御恩＝将軍が御家人の領地を保護し新しい領地を与える／奉公＝御家人が命がけで戦う。この関係の説明は記述頻出"],
+   quiz:[
+     {q:"1185年に源頼朝が国ごとに置いた役職は？",opts:["地頭","守護","国司","六波羅探題"],a:1,e:"国ごとに守護（軍事・警察）、荘園や公領ごとに地頭（年貢の取り立て）を置いた。"},
+     {q:"承久の乱の後、朝廷を監視するために京都に置かれた機関は？",opts:["問注所","侍所","六波羅探題","京都所司代"],a:2,e:"六波羅探題。承久の乱（1221年）で後鳥羽上皇を破った後に設置。"},
+     {q:"1232年に御成敗式目を定めた執権は？",opts:["北条時宗","北条泰時","北条政子","北条時政"],a:1,e:"北条泰時。武士の社会の慣習をまとめた最初の武家法で、長く武家法の手本となった。"},
+     {q:"元寇のときの鎌倉幕府の執権は？",opts:["北条泰時","北条時宗","足利尊氏","源実朝"],a:1,e:"北条時宗。フビライ・ハンの服属要求を拒否し、文永の役・弘安の役で元軍と戦った。"},
+     {q:"元寇の後に幕府の力がおとろえた理由は？",opts:["将軍が戦死したから","恩賞を十分に与えられず御家人の信頼を失ったから","都を移したから","外国に支配されたから"],a:1,e:"防衛戦だったため新しい領地を得られず、命がけで戦った御家人に恩賞を十分与えられなかった。"}
+   ]},
+  {id:"h5", grade:"中1", title:"室町時代",
+   points:[
+     "<span class='kw'>後醍醐天皇</span>の<span class='kw'>建武の新政</span>（1334年）は公家重視で武士の不満を招き2年余りで崩壊→<span class='kw'>足利尊氏</span>が京都に幕府を開く（1338年）。朝廷が南北に分裂（<span class='kw'>南北朝時代</span>）。",
+     "3代将軍<span class='kw'>足利義満</span>：南北朝を統一（1392年）。<span class='kw'>勘合貿易（日明貿易）</span>を開始——<span class='kw'>倭寇</span>と区別するため勘合（合い札）を使用。",
+     "義満の<span class='kw'>金閣</span>＝北山文化。<span class='kw'>能</span>を大成した<span class='kw'>観阿弥・世阿弥</span>。",
+     "8代将軍足利義政の<span class='kw'>銀閣</span>＝<span class='kw'>東山文化</span>。<span class='kw'>書院造</span>（床の間・畳→和室のもと）、<span class='kw'>雪舟</span>の水墨画。",
+     "産業と自治：定期市、運送業の馬借、金融業の土倉・酒屋。農村では<span class='kw'>惣</span>という自治組織、<span class='kw'>土一揆</span>で徳政令を要求。",
+     "<span class='kw'>応仁の乱</span>（1467年）：将軍のあとつぎ争いなどから11年間の戦乱→<span class='kw'>下剋上</span>の風潮が広まり<span class='kw'>戦国時代</span>へ。戦国大名は<span class='kw'>分国法</span>で領国を支配。",
+     "沖縄では<span class='kw'>琉球王国</span>が成立し、<span class='kw'>中継貿易</span>で栄えた。"
+   ],
+   notes:["金閣（義満・北山文化）と銀閣（義政・東山文化・書院造）の対比は超頻出"],
+   quiz:[
+     {q:"勘合貿易で「勘合」という合い札を使った理由は？",opts:["税を集めるため","倭寇と正式な貿易船を区別するため","キリスト教を禁止するため","銀の密輸を防ぐため"],a:1,e:"明が倭寇（海賊）の取りしまりを求めたため、正式な貿易船の証明として勘合を持たせた。"},
+     {q:"書院造や水墨画が生まれた、足利義政のころの文化は？",opts:["北山文化","東山文化","桃山文化","元禄文化"],a:1,e:"東山文化。銀閣・書院造・雪舟の水墨画など、簡素で深みのある文化。"},
+     {q:"1467年に起こり、戦国時代のきっかけとなった戦乱は？",opts:["承久の乱","壬申の乱","応仁の乱","島原・天草一揆"],a:2,e:"応仁の乱。将軍足利義政のあとつぎ争いに守護大名の対立がからみ、京都を中心に11年続いた。"},
+     {q:"室町時代の農村で作られた自治組織を何という？",opts:["惣","座","五人組","講"],a:0,e:"惣。寄合を開いて村のおきてを定め、団結して土一揆を起こすこともあった。"}
+   ]},
+  {id:"h6", grade:"中2", title:"ヨーロッパ人の来航と安土桃山時代",
+   points:[
+     "大航海時代：<span class='kw'>コロンブス</span>（アメリカ大陸到達）・バスコ・ダ・ガマ（インド航路）・マゼラン船隊（世界一周）。宗教改革（<span class='kw'>ルター</span>）に対抗し、カトリックの<span class='kw'>イエズス会</span>が海外布教。",
+     "<span class='kw'>鉄砲伝来</span>（1543年）：ポルトガル人が<span class='kw'>種子島</span>に伝える。<span class='kw'>キリスト教伝来</span>（1549年）：イエズス会の<span class='kw'>フランシスコ・ザビエル</span>。南蛮貿易。",
+     "<span class='kw'>織田信長</span>：桶狭間の戦い→室町幕府を滅ぼす（1573年）→<span class='kw'>長篠の戦い</span>（1575年、鉄砲を大量使用し武田軍を破る）→安土城下で<span class='kw'>楽市・楽座</span>（市の税を免除し座を廃止、商工業を活発に）。仏教勢力（延暦寺・一向一揆）を弾圧、キリスト教は保護。<span class='kw'>本能寺の変</span>（1582年）で自害。",
+     "<span class='kw'>豊臣秀吉</span>：全国統一（1590年）。<span class='kw'>太閤検地</span>（ものさし・ますを統一し田畑を測量、石高で表す）と<span class='kw'>刀狩</span>（百姓から武器を取り上げる）→武士と百姓の身分を分ける<span class='kw'>兵農分離</span>。バテレン追放令。<span class='kw'>朝鮮出兵</span>（文禄・慶長の役）は失敗。",
+     "<span class='kw'>桃山文化</span>：壮大な天守を持つ<span class='kw'>姫路城</span>、<span class='kw'>狩野永徳</span>のふすま絵、<span class='kw'>千利休</span>のわび茶、出雲の阿国のかぶきおどり。"
+   ],
+   notes:["信長＝楽市・楽座／秀吉＝太閤検地・刀狩（兵農分離）。政策と人物の組み合わせを確実に"],
+   quiz:[
+     {q:"1543年、ポルトガル人が鉄砲を伝えた場所は？",opts:["平戸","種子島","長崎","堺"],a:1,e:"種子島（鹿児島県）。その後、堺や国友などで国産化された。"},
+     {q:"織田信長が安土城下で行った、市の税を免除し座を廃止した政策は？",opts:["楽市・楽座","太閤検地","刀狩","株仲間の奨励"],a:0,e:"楽市・楽座。だれでも自由に商売できるようにして城下町の商工業を活発にした。"},
+     {q:"豊臣秀吉が刀狩を行った目的は？",opts:["武器を輸出するため","一揆を防ぎ、百姓を耕作に専念させるため","鉄砲を集めるため","寺院を保護するため"],a:1,e:"百姓から武器を取り上げて一揆を防ぎ、武士と百姓の身分の区別を明確にした（兵農分離）。"},
+     {q:"わび茶を大成した人物は？",opts:["狩野永徳","千利休","雪舟","世阿弥"],a:1,e:"千利休。桃山文化を代表する茶人。狩野永徳は障壁画、雪舟は水墨画（東山文化）。"}
+   ]},
+  {id:"h7", grade:"中2", title:"江戸時代前期（幕藩体制と鎖国）",
+   points:[
+     "<span class='kw'>関ヶ原の戦い</span>（1600年）に勝った<span class='kw'>徳川家康</span>が1603年、江戸幕府を開く。幕府と藩が全国を支配する<span class='kw'>幕藩体制</span>。大名を親藩・譜代・外様に区別して配置。",
+     "<span class='kw'>武家諸法度</span>で大名を統制。3代将軍<span class='kw'>徳川家光</span>が<span class='kw'>参勤交代</span>を制度化（1635年）——大名は1年おきに江戸と領地を往復し、妻子は江戸に住む。往復の費用と江戸での生活費が藩の大きな負担に。",
+     "身分制度：武士・百姓・町人。百姓には<span class='kw'>五人組</span>を作らせ年貢納入に連帯責任。",
+     "<span class='kw'>島原・天草一揆</span>（1637年、天草四郎）→キリスト教禁止を強化、絵踏。<span class='kw'>ポルトガル船の来航禁止</span>（1639年）→<span class='kw'>鎖国</span>体制完成。長崎の<span class='kw'>出島</span>で<span class='kw'>オランダ</span>・中国とのみ貿易。",
+     "鎖国下の窓口：対馬藩（朝鮮・<span class='kw'>朝鮮通信使</span>）、薩摩藩（琉球王国）、松前藩（アイヌ・シャクシャインの戦い）。",
+     "産業：新田開発、<span class='kw'>備中ぐわ・千歯こき</span>などの農具、五街道、菱垣廻船・樽廻船、東・西廻り航路。「天下の台所」大阪の蔵屋敷。",
+     "<span class='kw'>元禄文化</span>（17世紀末〜、上方中心）：<span class='kw'>井原西鶴</span>（浮世草子）、<span class='kw'>近松門左衛門</span>（人形浄瑠璃の脚本）、<span class='kw'>松尾芭蕉</span>（俳諧「奥の細道」）、菱川師宣（浮世絵）。"
+   ],
+   notes:["元禄文化＝上方（大阪・京都）の町人文化／化政文化＝江戸の町人文化。場所と担い手をセットで覚える"],
+   quiz:[
+     {q:"参勤交代を制度として定めた将軍は？",opts:["徳川家康","徳川秀忠","徳川家光","徳川吉宗"],a:2,e:"3代将軍徳川家光。武家諸法度に追加し、大名に1年おきの江戸と領地の往復を義務づけた。"},
+     {q:"鎖国下でオランダとの貿易が行われた場所は？",opts:["平戸","出島","対馬","浦賀"],a:1,e:"長崎港内の人工島・出島。オランダはキリスト教の布教を行わなかったため貿易を許された。"},
+     {q:"将軍の代がわりごとなどに朝鮮から日本へ派遣された使節は？",opts:["遣唐使","朝鮮通信使","勘合船","琉球使節"],a:1,e:"朝鮮通信使。対馬藩が朝鮮との交流の窓口となった。"},
+     {q:"「奥の細道」を著し、俳諧を芸術に高めた人物は？",opts:["井原西鶴","近松門左衛門","松尾芭蕉","十返舎一九"],a:2,e:"松尾芭蕉。元禄文化を代表する俳人。"}
+   ]},
+  {id:"h8", grade:"中2", title:"江戸時代後期（三大改革と化政文化）",
+   points:[
+     "5代将軍徳川綱吉：<span class='kw'>生類憐みの令</span>、朱子学の奨励。貨幣の質を落とし物価上昇。",
+     "<span class='kw'>享保の改革</span>（8代将軍<span class='kw'>徳川吉宗</span>）：<span class='kw'>目安箱</span>の設置、裁判の基準<span class='kw'>公事方御定書</span>、上げ米の制、新田開発。",
+     "老中<span class='kw'>田沼意次</span>：<span class='kw'>株仲間</span>を奨励し税を取る（商業重視）→わいろ政治と批判される。",
+     "<span class='kw'>寛政の改革</span>（老中<span class='kw'>松平定信</span>）：ききんに備え米を蓄えさせる、朱子学以外の学問を禁止。厳しすぎて失敗。",
+     "<span class='kw'>大塩平八郎の乱</span>（1837年）：天保のききんへの幕府の対応を批判し、元役人が大阪で反乱→幕府に衝撃。",
+     "<span class='kw'>天保の改革</span>（老中<span class='kw'>水野忠邦</span>）：<span class='kw'>株仲間の解散</span>（物価引き下げねらい）、倹約令。2年余りで失敗。",
+     "<span class='kw'>化政文化</span>（19世紀初め、江戸中心）：<span class='kw'>葛飾北斎・歌川広重</span>の浮世絵（錦絵）、十返舎一九「東海道中膝栗毛」、川柳・狂歌。",
+     "学問：<span class='kw'>本居宣長</span>の<span class='kw'>国学</span>（「古事記伝」）、<span class='kw'>杉田玄白</span>らの「<span class='kw'>解体新書</span>」（<span class='kw'>蘭学</span>）、<span class='kw'>伊能忠敬</span>の正確な日本地図。教育：藩校と<span class='kw'>寺子屋</span>。"
+   ],
+   notes:["三大改革の順番と人物：享保（吉宗・目安箱）→寛政（定信・倹約）→天保（忠邦・株仲間解散）。間に田沼意次（株仲間奨励）。「奨励」と「解散」の逆方向に注意"],
+   quiz:[
+     {q:"目安箱を設置し、公事方御定書を定めた改革は？",opts:["寛政の改革","天保の改革","享保の改革","建武の新政"],a:2,e:"享保の改革（8代将軍徳川吉宗）。江戸の三大改革の最初。"},
+     {q:"株仲間を「奨励」した人物と「解散」させた人物の組み合わせで正しいものは？",opts:["田沼意次と水野忠邦","松平定信と田沼意次","徳川吉宗と松平定信","水野忠邦と田沼意次"],a:0,e:"田沼意次は株仲間に特権を与え税を取り、水野忠邦（天保の改革）は物価上昇の原因として解散させた。"},
+     {q:"「解体新書」を出版し、蘭学の基礎を築いた人物は？",opts:["本居宣長","杉田玄白","伊能忠敬","平賀源内"],a:1,e:"杉田玄白（前野良沢ら）。オランダ語の人体解剖書を翻訳した。"},
+     {q:"1837年、ききんに苦しむ人々を救おうと大阪で乱を起こした元幕府の役人は？",opts:["天草四郎","大塩平八郎","由井正雪","高野長英"],a:1,e:"大塩平八郎。幕府の元役人（陽明学者）による反乱は幕府に大きな衝撃を与えた。"}
+   ]},
+  {id:"h9", grade:"中2", title:"開国と明治維新",
+   points:[
+     "<span class='kw'>ペリー</span>が浦賀に来航（1853年）→<span class='kw'>日米和親条約</span>（1854年、下田・函館を開港）で開国。",
+     "<span class='kw'>日米修好通商条約</span>（1858年、大老<span class='kw'>井伊直弼</span>）：<span class='kw'>領事裁判権を認め、関税自主権がない</span>不平等条約。貿易開始で物価上昇、生糸輸出。",
+     "安政の大獄→<span class='kw'>桜田門外の変</span>（井伊直弼暗殺）。<span class='kw'>尊王攘夷運動</span>→薩英戦争・下関戦争で攘夷の限界を知る→<span class='kw'>薩長同盟</span>（1866年、<span class='kw'>坂本龍馬</span>の仲介）。",
+     "15代将軍<span class='kw'>徳川慶喜</span>が<span class='kw'>大政奉還</span>（1867年）→<span class='kw'>王政復古の大号令</span>→戊辰戦争（1868〜69年）。",
+     "明治新政府：<span class='kw'>五箇条の御誓文</span>（1868年）で新政治の方針。<span class='kw'>版籍奉還</span>（1869年）→<span class='kw'>廃藩置県</span>（1871年、藩を廃止し県を置き中央集権化）。四民平等。",
+     "三大改革：<span class='kw'>学制</span>（1872年）・<span class='kw'>徴兵令</span>（1873年、満20歳以上の男子）・<span class='kw'>地租改正</span>（1873年、<span class='kw'>地価の3%を現金で</span>納めさせ税収を安定させる）。",
+     "<span class='kw'>富国強兵</span>・<span class='kw'>殖産興業</span>：官営模範工場の<span class='kw'>富岡製糸場</span>（群馬県）。<span class='kw'>文明開化</span>：<span class='kw'>福沢諭吉</span>「学問のすゝめ」、太陽暦、ガス灯。"
+   ],
+   notes:["不平等条約の2点セット：①領事裁判権（治外法権）を認めた ②関税自主権がない——記述で書けるように"],
+   quiz:[
+     {q:"日米修好通商条約が不平等とされる内容の組み合わせは？",opts:["領事裁判権を認め、関税自主権がない","賠償金の支払いと領土の割譲","キリスト教の強制と開港","参勤交代と貿易の独占"],a:0,e:"外国人の犯罪を日本の法律で裁けず（領事裁判権）、輸入品の関税率を自主的に決められなかった。"},
+     {q:"1867年に政権を朝廷に返した15代将軍は？",opts:["徳川家茂","徳川慶喜","徳川家定","徳川斉昭"],a:1,e:"徳川慶喜。大政奉還により約260年続いた江戸幕府が終わった。"},
+     {q:"1871年、藩を廃止して府・県を置いた改革は？",opts:["版籍奉還","廃藩置県","大政奉還","地租改正"],a:1,e:"廃藩置県。政府が任命した府知事・県令を派遣し、中央集権国家の基礎を固めた。"},
+     {q:"地租改正で税を「地価の3%の現金」にした目的は？",opts:["農民の負担を軽くするため","毎年一定の税収を確保するため","米の生産を増やすため","外国への支払いのため"],a:1,e:"収穫量に左右される米での納税をやめ、豊作・凶作に関係なく一定の税収を得られるようにした。"},
+     {q:"群馬県に建てられた官営模範工場は？",opts:["八幡製鉄所","富岡製糸場","大阪紡績会社","足尾銅山"],a:1,e:"富岡製糸場。フランスの技術を導入した製糸（生糸）工場。殖産興業の代表例。"}
+   ]},
+  {id:"h10", grade:"中3", title:"明治時代（憲法・日清日露戦争）",
+   points:[
+     "征韓論に敗れた<span class='kw'>西郷隆盛</span>が<span class='kw'>西南戦争</span>（1877年）→以後、政府批判は言論中心に。",
+     "<span class='kw'>自由民権運動</span>：<span class='kw'>板垣退助</span>が民撰議院設立建白書（1874年）→国会開設の勅諭→板垣が<span class='kw'>自由党</span>、<span class='kw'>大隈重信</span>が立憲改進党を結成。",
+     "<span class='kw'>伊藤博文</span>がドイツ（プロイセン）の憲法を学び、内閣制度創設（1885年、初代内閣総理大臣）。<span class='kw'>大日本帝国憲法</span>（1889年）：天皇が国の元首として統治。翌年、第1回帝国議会。教育勅語。",
+     "条約改正：ノルマントン号事件で世論高まる→<span class='kw'>陸奥宗光</span>が<span class='kw'>領事裁判権の撤廃</span>（1894年）、<span class='kw'>小村寿太郎</span>が<span class='kw'>関税自主権の完全回復</span>（1911年）。",
+     "<span class='kw'>日清戦争</span>（1894年）→<span class='kw'>下関条約</span>：清は朝鮮の独立を認め、<span class='kw'>遼東半島・台湾</span>などを譲り、賠償金2億両→<span class='kw'>三国干渉</span>（露仏独）で遼東半島を返還。賠償金で<span class='kw'>八幡製鉄所</span>を建設（1901年操業）。",
+     "<span class='kw'>日英同盟</span>（1902年）→<span class='kw'>日露戦争</span>（1904年）→<span class='kw'>ポーツマス条約</span>（1905年）：韓国での優越権、南満州鉄道の利権、樺太の南半分。<span class='kw'>賠償金が得られず</span>日比谷焼き打ち事件。与謝野晶子「君死にたまふことなかれ」。",
+     "<span class='kw'>韓国併合</span>（1910年）。産業革命の進展、<span class='kw'>足尾銅山鉱毒事件</span>（<span class='kw'>田中正造</span>）。文化：夏目漱石・樋口一葉、<span class='kw'>北里柴三郎</span>・野口英世。"
+   ],
+   notes:["下関条約（賠償金あり）とポーツマス条約（賠償金なし→国民の不満）の対比は超頻出。条約改正は「陸奥（日清戦争直前）→小村（1911完成）」の順"],
+   quiz:[
+     {q:"民撰議院設立建白書を提出し、自由民権運動の中心となった人物は？",opts:["大隈重信","板垣退助","伊藤博文","西郷隆盛"],a:1,e:"板垣退助。のちに自由党を結成。大隈重信は立憲改進党。"},
+     {q:"大日本帝国憲法の手本となった国は？",opts:["イギリス","フランス","アメリカ","ドイツ（プロイセン）"],a:3,e:"君主権の強いドイツ（プロイセン）の憲法。伊藤博文がヨーロッパで学んだ。"},
+     {q:"1911年に関税自主権の完全回復を実現した外務大臣は？",opts:["陸奥宗光","小村寿太郎","井上馨","岩倉具視"],a:1,e:"小村寿太郎。陸奥宗光は1894年に領事裁判権の撤廃を実現。"},
+     {q:"ポーツマス条約に不満を持った国民が日比谷焼き打ち事件を起こした理由は？",opts:["領土を全て失ったから","賠償金が得られなかったから","戦争に敗れたから","増税されたから"],a:1,e:"日露戦争では多くの犠牲と重税に耐えたのに、賠償金が全く得られなかったため。"},
+     {q:"足尾銅山鉱毒事件を帝国議会で追及した人物は？",opts:["田中正造","北里柴三郎","幸徳秋水","内村鑑三"],a:0,e:"田中正造。衆議院議員を辞職して天皇に直訴しようとした。日本の公害問題の原点。"}
+   ]},
+  {id:"h11", grade:"中3", title:"第一次世界大戦と大正・昭和初期",
+   points:[
+     "<span class='kw'>第一次世界大戦</span>（1914〜18年）：三国同盟vs三国協商の対立、<span class='kw'>サラエボ事件</span>がきっかけ。日本は<span class='kw'>日英同盟</span>を理由に参戦し、中国に<span class='kw'>二十一か条の要求</span>。大戦景気（成金）。",
+     "<span class='kw'>ロシア革命</span>（1917年、レーニン）→列強が<span class='kw'>シベリア出兵</span>→米の買いしめで<span class='kw'>米騒動</span>（1918年）→<span class='kw'>原敬</span>が本格的な<span class='kw'>政党内閣</span>を組織。",
+     "<span class='kw'>ベルサイユ条約</span>（1919年）。<span class='kw'>国際連盟</span>発足（1920年、新渡戸稲造が事務局次長）。ワシントン会議で軍縮。",
+     "<span class='kw'>大正デモクラシー</span>：<span class='kw'>吉野作造</span>の<span class='kw'>民本主義</span>、護憲運動。<span class='kw'>平塚らいてう</span>（女性運動）、<span class='kw'>全国水平社</span>（部落差別からの解放）。",
+     "<span class='kw'>普通選挙法</span>（1925年）：<span class='kw'>満25歳以上のすべての男子</span>に選挙権（納税額の制限廃止）。同時に<span class='kw'>治安維持法</span>で社会主義を取りしまり。",
+     "<span class='kw'>世界恐慌</span>（1929年、ニューヨーク株価大暴落）→イギリス・フランスは<span class='kw'>ブロック経済</span>、アメリカは<span class='kw'>ニューディール政策</span>（ローズベルト）、ドイツ・イタリアは<span class='kw'>ファシズム</span>。",
+     "<span class='kw'>満州事変</span>（1931年、柳条湖事件）→満州国建国→国際連盟の勧告を拒否し<span class='kw'>脱退</span>（1933年）。<span class='kw'>五・一五事件</span>（1932年、犬養毅首相暗殺→政党政治の終わり）、<span class='kw'>二・二六事件</span>（1936年）。",
+     "<span class='kw'>日中戦争</span>（1937年、盧溝橋事件）→<span class='kw'>国家総動員法</span>（1938年）。"
+   ],
+   notes:["昭和初期の事件は年代順に：満州事変(1931)→五・一五(1932)→連盟脱退(1933)→二・二六(1936)→日中戦争(1937)→国家総動員法(1938)。並べかえ頻出"],
+   quiz:[
+     {q:"1918年の米騒動のきっかけは？",opts:["凶作","シベリア出兵を見こした米の買いしめ","戦争による輸入停止","地租の増税"],a:1,e:"シベリア出兵を見こした商人の買いしめで米価が急上昇し、富山県から全国に騒動が広がった。"},
+     {q:"1925年の普通選挙法で選挙権を得たのは？",opts:["満20歳以上の男女","満25歳以上のすべての男子","満25歳以上の納税者","満18歳以上の男子"],a:1,e:"納税額による制限が廃止され、満25歳以上のすべての男子に選挙権。女性参政権は戦後（1945年）。"},
+     {q:"普通選挙法と同じ年に制定された、社会主義運動を取りしまる法律は？",opts:["治安維持法","国家総動員法","集会条例","保安条例"],a:0,e:"治安維持法（1925年）。普通選挙法とセットで出題される。"},
+     {q:"世界恐慌への対策としてアメリカが行った政策は？",opts:["ブロック経済","ニューディール政策","ファシズム","五か年計画"],a:1,e:"ローズベルト大統領のニューディール（新規まき直し）政策。公共事業で失業者に仕事を与えた。"},
+     {q:"五・一五事件で暗殺された首相は？",opts:["原敬","犬養毅","浜口雄幸","東条英機"],a:1,e:"犬養毅。海軍の青年将校らによって暗殺され、政党政治が終わった。"}
+   ]},
+  {id:"h12", grade:"中3", title:"第二次世界大戦と戦後の日本",
+   points:[
+     "<span class='kw'>第二次世界大戦</span>（1939年、ドイツのポーランド侵攻で開始）。日本は<span class='kw'>日独伊三国同盟</span>（1940年）。",
+     "<span class='kw'>太平洋戦争</span>（1941年12月8日、<span class='kw'>ハワイ真珠湾攻撃</span>とマレー半島上陸）。戦局悪化で学徒出陣・勤労動員・<span class='kw'>集団疎開</span>。",
+     "1945年：3月東京大空襲、<span class='kw'>沖縄戦</span>（地上戦）、<span class='kw'>8月6日広島・8月9日長崎に原子爆弾</span>、ソ連参戦、<span class='kw'>ポツダム宣言</span>を受諾し降伏（8月15日）。",
+     "<span class='kw'>GHQ</span>（マッカーサー）の占領下で民主化：<span class='kw'>財閥解体</span>、<span class='kw'>農地改革</span>（地主の土地を小作人に安く売り渡し<span class='kw'>自作農</span>を増やす）、労働組合法、教育基本法、<span class='kw'>選挙法改正（満20歳以上の男女）</span>——女性参政権の実現。",
+     "<span class='kw'>日本国憲法</span>：1946年11月3日公布・1947年5月3日施行。国民主権・基本的人権の尊重・平和主義。",
+     "<span class='kw'>冷戦</span>（アメリカ陣営vsソ連陣営）。<span class='kw'>朝鮮戦争</span>（1950年）→<span class='kw'>特需景気</span>・警察予備隊（のちの自衛隊）。",
+     "<span class='kw'>サンフランシスコ平和条約</span>（1951年、<span class='kw'>吉田茂</span>）で独立回復、同時に<span class='kw'>日米安全保障条約</span>。<span class='kw'>日ソ共同宣言</span>（1956年）→<span class='kw'>国際連合に加盟</span>。",
+     "<span class='kw'>高度経済成長</span>（1950年代後半〜1973年）：三種の神器、<span class='kw'>東京オリンピック</span>（1964年）と東海道新幹線。<span class='kw'>公害問題</span>（四大公害病）→公害対策基本法。<span class='kw'>石油危機</span>（1973年）で終わる。",
+     "<span class='kw'>沖縄返還</span>（1972年）、<span class='kw'>日中共同声明</span>（1972年、国交正常化）→日中平和友好条約（1978年）。<span class='kw'>冷戦終結</span>（1989年、ベルリンの壁崩壊・マルタ会談）→ソ連解体（1991年）。バブル経済とその崩壊。"
+   ],
+   notes:["戦後改革は「農地改革＝自作農を増やす」「財閥解体」「20歳以上の男女に選挙権」の3点セット。国連加盟は「日ソ共同宣言でソ連と国交回復→ソ連の反対がなくなり加盟」という因果が記述頻出"],
+   quiz:[
+     {q:"農地改革の内容として正しいものは？",opts:["地主の土地を政府が買い上げ、小作人に安く売り渡した","農民から土地を取り上げ国有化した","新田開発を奨励した","農地を工場用地に変えた"],a:0,e:"地主・小作制を改め自作農を大幅に増やした。農村の民主化が目的。"},
+     {q:"日本国憲法の公布日と施行日の組み合わせは？",opts:["1945年8月15日公布・1946年5月3日施行","1946年11月3日公布・1947年5月3日施行","1947年5月3日公布・1948年11月3日施行","1946年1月1日公布・1947年4月1日施行"],a:1,e:"公布1946年11月3日（文化の日）、施行1947年5月3日（憲法記念日）。"},
+     {q:"1951年にサンフランシスコ平和条約を結んだ日本の首相は？",opts:["佐藤栄作","吉田茂","岸信介","池田勇人"],a:1,e:"吉田茂。48か国と結び独立を回復、同時に日米安全保障条約も締結した。"},
+     {q:"日本が国際連合に加盟できたのは何がきっかけ？",opts:["サンフランシスコ平和条約","日ソ共同宣言","日中共同声明","日米安全保障条約"],a:1,e:"1956年の日ソ共同宣言でソ連と国交が回復し、ソ連の反対がなくなったため同年加盟できた。"},
+     {q:"高度経済成長が終わるきっかけとなった1973年のできごとは？",opts:["バブル崩壊","石油危機（オイル・ショック）","朝鮮戦争","リーマン・ショック"],a:1,e:"第四次中東戦争をきっかけとする石油危機で原油価格が高騰し、高度経済成長が終わった。"}
+   ]}
+]},
+civ:{ name:"公民", color:"var(--civ)", units:[
+  {id:"c1", grade:"中3", title:"現代社会と私たち",
+   points:[
+     "<span class='kw'>グローバル化</span>：人・もの・お金・情報が国境をこえて移動。国際競争と<span class='kw'>国際分業</span>が進む。",
+     "<span class='kw'>情報化</span>：情報を正しく活用する力＝<span class='kw'>情報リテラシー</span>、情報を扱う責任・態度＝情報モラルが必要。人工知能（AI）の活用。",
+     "<span class='kw'>少子高齢化</span>：出生率の低下と平均寿命ののび。労働人口の減少、<span class='kw'>社会保障</span>の費用を支える現役世代の負担増が課題。核家族世帯や単独世帯が増加。",
+     "文化の役割：科学・宗教・芸術。<span class='kw'>年中行事</span>（正月・七五三など）などの伝統文化の継承。異文化理解・<span class='kw'>多文化共生</span>。",
+     "社会集団の中で対立が起きたときは、<span class='kw'>効率</span>（むだを省く）と<span class='kw'>公正</span>（手続き・機会や結果の公正さ）の観点から<span class='kw'>合意</span>を目指す。決まりを作る方法には全会一致や多数決（<span class='kw'>少数意見の尊重</span>が必要）がある。"
+   ],
+   notes:["「効率と公正」は資料問題で頻出：効率＝みんなの時間やお金にむだがないか／公正＝立場が変わっても受け入れられるか"],
+   quiz:[
+     {q:"人・もの・お金・情報が国境をこえてさかんに移動するようになることを何という？",opts:["情報化","グローバル化","少子高齢化","都市化"],a:1,e:"グローバル化。国際分業や国際競争が進み、国際協力の必要性も高まる。"},
+     {q:"大量の情報の中から必要な情報を選び、正しく活用する力を何という？",opts:["情報モラル","情報リテラシー","メディア","人工知能"],a:1,e:"情報リテラシー（メディアリテラシー）。情報化社会で必要な能力。"},
+     {q:"多数決で物事を決めるときに大切なことは？",opts:["早く決めること","少数意見を尊重すること","全員が賛成するまで待つこと","くじで決め直すこと"],a:1,e:"多数決は効率的だが、決定の前に少数意見を十分に聞き尊重することが公正の観点から必要。"},
+     {q:"少子高齢化が進むと課題となることは？",opts:["学校が不足する","現役世代の社会保障の負担が重くなる","住宅が不足する","食料が余る"],a:1,e:"高齢者を支える年金・医療などの費用が増える一方、支える現役世代（生産年齢人口）が減るため。"}
+   ]},
+  {id:"c2", grade:"中3", title:"人権思想と日本国憲法",
+   points:[
+     "人権思想の発展：<span class='kw'>ロック</span>「統治二論」（抵抗権）、<span class='kw'>モンテスキュー</span>「法の精神」（<span class='kw'>三権分立</span>）、<span class='kw'>ルソー</span>「社会契約論」（人民主権）。",
+     "アメリカ独立宣言（1776年）・フランス人権宣言（1789年）→<span class='kw'>ワイマール憲法</span>（1919年、世界で初めて<span class='kw'>社会権</span>を保障）→世界人権宣言（1948年）。",
+     "<span class='kw'>立憲主義</span>：憲法によって政治権力を制限する考え方。憲法は<span class='kw'>国の最高法規</span>。",
+     "日本国憲法の三大原理：<span class='kw'>国民主権・基本的人権の尊重・平和主義</span>。",
+     "天皇は日本国と日本国民統合の<span class='kw'>象徴</span>。内閣の助言と承認により<span class='kw'>国事行為</span>のみを行う。",
+     "<span class='kw'>平和主義</span>（第9条）：戦争の放棄・戦力の不保持・交戦権の否認。<span class='kw'>非核三原則</span>（持たず・つくらず・持ちこませず）。",
+     "<span class='kw'>憲法改正</span>：各議院の<span class='kw'>総議員の3分の2以上</span>の賛成で国会が発議→<span class='kw'>国民投票で過半数</span>の賛成→天皇が公布。通常の法律より厳しい手続き。"
+   ],
+   notes:["思想家3人の対応：ロック＝抵抗権／モンテスキュー＝三権分立／ルソー＝人民主権。「社会権を初めて保障＝ワイマール憲法」も頻出"],
+   quiz:[
+     {q:"「法の精神」で三権分立を唱えた思想家は？",opts:["ロック","ルソー","モンテスキュー","リンカン"],a:2,e:"モンテスキュー。ロックは抵抗権（統治二論）、ルソーは人民主権（社会契約論）。"},
+     {q:"世界で初めて社会権を保障した憲法は？",opts:["アメリカ合衆国憲法","ワイマール憲法","大日本帝国憲法","フランス人権宣言"],a:1,e:"1919年のドイツのワイマール憲法。人間らしい生活を保障する社会権を初めて明記した。"},
+     {q:"日本国憲法の三大原理に含まれないものは？",opts:["国民主権","基本的人権の尊重","平和主義","三権分立"],a:3,e:"三大原理は国民主権・基本的人権の尊重・平和主義。三権分立は権力分立のしくみ。"},
+     {q:"憲法改正の発議に必要な賛成数は？",opts:["各議院の出席議員の過半数","各議院の総議員の3分の2以上","各議院の出席議員の3分の2以上","国民投票の3分の2以上"],a:1,e:"各議院の総議員の3分の2以上で国会が発議し、国民投票で有効投票の過半数の賛成が必要。"}
+   ]},
+  {id:"c3", grade:"中3", title:"基本的人権",
+   points:[
+     "<span class='kw'>平等権</span>：法の下の平等。男女雇用機会均等法・<span class='kw'>男女共同参画社会基本法</span>、障害者差別解消法、アイヌ施策推進法など。",
+     "<span class='kw'>自由権</span>：①精神の自由（思想・信教・表現）②<span class='kw'>身体の自由</span>（奴隷的拘束の禁止・令状主義）③経済活動の自由（職業選択・財産権）。",
+     "<span class='kw'>社会権</span>：人間らしい生活を営む権利。<span class='kw'>生存権</span>（第25条「<span class='kw'>健康で文化的な最低限度の生活</span>を営む権利」）、教育を受ける権利、勤労の権利、<span class='kw'>労働基本権（労働三権）</span>＝団結権・団体交渉権・団体行動権。",
+     "人権を守るための権利：<span class='kw'>参政権</span>（選挙権・被選挙権・国民投票など）、<span class='kw'>請求権</span>（裁判を受ける権利など）。",
+     "<span class='kw'>新しい人権</span>（憲法に明記なし）：<span class='kw'>環境権</span>（日照権など・環境アセスメント）、<span class='kw'>知る権利</span>（情報公開制度）、<span class='kw'>プライバシーの権利</span>（個人情報保護制度）、<span class='kw'>自己決定権</span>（インフォームド・コンセント）。",
+     "人権は<span class='kw'>公共の福祉</span>（社会全体の利益）により制限されることがある。国民の三大義務：<span class='kw'>普通教育を受けさせる義務・勤労の義務・納税の義務</span>。"
+   ],
+   notes:["新しい人権と関連制度の組み合わせ：知る権利↔情報公開制度／プライバシー↔個人情報保護／環境権↔環境アセスメント／自己決定権↔インフォームド・コンセント"],
+   quiz:[
+     {q:"憲法第25条が保障する「健康で文化的な最低限度の生活を営む権利」は？",opts:["自由権","生存権","参政権","請求権"],a:1,e:"生存権。社会権の中心となる権利で、生活保護制度などの根拠。"},
+     {q:"労働三権に含まれないものは？",opts:["団結権","団体交渉権","団体行動権","財産権"],a:3,e:"労働三権は団結権・団体交渉権・団体行動権。財産権は経済活動の自由（自由権）。"},
+     {q:"「知る権利」を保障するために整備された制度は？",opts:["個人情報保護制度","情報公開制度","環境アセスメント","国民審査"],a:1,e:"情報公開制度。国や地方公共団体に情報の開示を請求できる。"},
+     {q:"医師から十分な説明を受けた上で治療方法に同意することを何という？",opts:["インフォームド・コンセント","バリアフリー","セーフティネット","クーリング・オフ"],a:0,e:"インフォームド・コンセント。自己決定権の尊重の例。"},
+     {q:"人権が制限される場合の理由となる、社会全体の利益を表す言葉は？",opts:["公共の福祉","法の支配","国民主権","立憲主義"],a:0,e:"公共の福祉。例：表現の自由があっても他人の名誉を傷つけることは許されない。"}
+   ]},
+  {id:"c4", grade:"中3", title:"国会と内閣",
+   points:[
+     "国会は<span class='kw'>国権の最高機関</span>であり、<span class='kw'>唯一の立法機関</span>。",
+     "<span class='kw'>二院制</span>：衆議院（任期<span class='kw'>4年</span>・<span class='kw'>解散あり</span>・被選挙権25歳以上）と参議院（任期<span class='kw'>6年</span>・3年ごとに半数改選・解散なし・被選挙権30歳以上）。",
+     "<span class='kw'>衆議院の優越</span>：予算の先議権、内閣不信任の決議、法律案の再可決（出席議員の<span class='kw'>3分の2以上</span>）など。理由＝任期が短く解散もあり、<span class='kw'>国民の意思をより反映する</span>から。",
+     "国会の仕事：法律の制定、<span class='kw'>予算の議決</span>、条約の承認、<span class='kw'>内閣総理大臣の指名</span>、憲法改正の発議、<span class='kw'>弾劾裁判所</span>の設置、国政調査権。",
+     "内閣は行政の最高機関。<span class='kw'>内閣総理大臣</span>（国会議員の中から国会が指名）と<span class='kw'>国務大臣</span>（過半数は国会議員）で構成。<span class='kw'>閣議</span>は全会一致。",
+     "<span class='kw'>議院内閣制</span>：内閣は国会の信任に基づいて成立し、国会に対し<span class='kw'>連帯して責任</span>を負う。衆議院で<span class='kw'>内閣不信任案が可決</span>→内閣は<span class='kw'>10日以内に衆議院を解散</span>するか<span class='kw'>総辞職</span>。",
+     "内閣の仕事：法律の執行、<span class='kw'>条約の締結</span>、<span class='kw'>予算の作成</span>、政令の制定、天皇の国事行為への助言と承認、最高裁判所長官の指名。"
+   ],
+   notes:["国会と内閣の仕事の対応：条約は内閣が「締結」し国会が「承認」／予算は内閣が「作成」し国会が「議決」——主語の入れかえに注意"],
+   quiz:[
+     {q:"衆議院の優越が認められている理由は？",opts:["議員数が多いから","任期が短く解散もあり、国民の意思をより反映すると考えられるから","歴史が古いから","参議院より権威があるから"],a:1,e:"衆議院は任期4年で解散もあるため、選挙を通じて国民の意思をより反映しやすい。記述でも頻出。"},
+     {q:"条約について、国会と内閣の役割の正しい組み合わせは？",opts:["国会が締結し、内閣が承認する","内閣が締結し、国会が承認する","内閣が締結し、天皇が承認する","国会が締結し、最高裁が承認する"],a:1,e:"条約の締結は内閣の仕事、その承認は国会の仕事。予算は内閣が作成し国会が議決する。"},
+     {q:"衆議院で内閣不信任案が可決された場合、内閣はどうしなければならない？",opts:["ただちに総辞職する","10日以内に衆議院を解散するか総辞職する","30日以内に総選挙を行う","参議院の同意を求める"],a:1,e:"議院内閣制のしくみ。10日以内に衆議院を解散しない場合は総辞職しなければならない。"},
+     {q:"内閣総理大臣について正しいものは？",opts:["国民の直接選挙で選ばれる","国会議員の中から国会が指名する","天皇が自由に任命する","最高裁判所が指名する"],a:1,e:"国会議員の中から国会の議決で指名され、天皇が任命する。国務大臣の過半数も国会議員でなければならない。"}
+   ]},
+  {id:"c5", grade:"中3", title:"裁判所と三権分立",
+   points:[
+     "<span class='kw'>司法権の独立</span>：裁判官は自らの良心に従い、憲法と法律にのみ拘束される。",
+     "<span class='kw'>三審制</span>：第一審→（<span class='kw'>控訴</span>）→第二審→（<span class='kw'>上告</span>）→第三審。裁判を慎重に行い人権を守るため。",
+     "<span class='kw'>民事裁判</span>：私人間の争い（原告と被告）。<span class='kw'>刑事裁判</span>：犯罪について<span class='kw'>検察官</span>が<span class='kw'>被告人</span>を起訴。<span class='kw'>推定無罪の原則</span>、黙秘権、弁護人を頼む権利。えん罪の防止。",
+     "<span class='kw'>違憲審査権</span>：法律などが憲法に違反していないか審査する権限。すべての裁判所が持つが、最終決定権を持つ最高裁判所は「<span class='kw'>憲法の番人</span>」と呼ばれる。",
+     "<span class='kw'>裁判員制度</span>（2009年〜）：<span class='kw'>重大な刑事事件の第一審</span>に国民から選ばれた<span class='kw'>裁判員6人</span>が<span class='kw'>裁判官3人</span>とともに参加し、有罪・無罪と刑罰を決める。国民の感覚を裁判に反映させ、司法への理解と信頼を深めることが目的。",
+     "<span class='kw'>三権分立</span>：立法（国会）・行政（内閣）・司法（裁判所）が互いに<span class='kw'>抑制と均衡</span>（チェック・アンド・バランス）を保ち、権力の集中と乱用を防ぐ。国民は選挙（立法）・世論（行政）・<span class='kw'>国民審査</span>（司法＝最高裁判所裁判官を審査）で関わる。"
+   ],
+   notes:["三権の矢印：国会→内閣（不信任決議）／内閣→国会（解散）／国会→裁判所（弾劾裁判）／裁判所→国会・内閣（違憲審査）／内閣→裁判所（最高裁長官の指名）。図で確認"],
+   quiz:[
+     {q:"同一の事件について3回まで裁判を受けられるしくみを設けている理由は？",opts:["裁判官を増やすため","裁判を慎重に行い、誤りを防いで人権を守るため","裁判を早く終わらせるため","費用を安くするため"],a:1,e:"三審制。慎重に判断することで裁判の誤り（えん罪など）を防ぐ。"},
+     {q:"刑事裁判で被疑者を起訴するのは？",opts:["警察官","裁判官","検察官","弁護士"],a:2,e:"検察官。起訴された人は被告人と呼ばれる。民事裁判の「原告・被告」と区別。"},
+     {q:"最高裁判所が「憲法の番人」と呼ばれる理由は？",opts:["憲法を制定したから","違憲審査の最終決定権を持つから","天皇を補佐するから","国会を監視するから"],a:1,e:"法律などが合憲か違憲かの最終的な判断を下す権限を持つため。"},
+     {q:"裁判員制度の対象となる裁判は？",opts:["すべての民事裁判","重大な刑事事件の第一審","行政裁判の控訴審","少年事件のすべて"],a:1,e:"殺人など重大な刑事事件の第一審（地方裁判所）。裁判員6人と裁判官3人で審理する。"},
+     {q:"国民が最高裁判所の裁判官を辞めさせるかどうか判断する制度は？",opts:["国民投票","国民審査","住民投票","弾劾裁判"],a:1,e:"国民審査。衆議院議員総選挙のときに行われる。国民投票は憲法改正のときのもの。"}
+   ]},
+  {id:"c6", grade:"中3", title:"選挙・政党と地方自治",
+   points:[
+     "選挙の4原則：<span class='kw'>普通選挙</span>（18歳以上のすべての国民）・<span class='kw'>平等選挙</span>（一人一票）・<span class='kw'>直接選挙</span>・<span class='kw'>秘密選挙</span>。2016年から選挙権年齢が<span class='kw'>満18歳以上</span>に。",
+     "衆議院は<span class='kw'>小選挙区比例代表並立制</span>：小選挙区制（1選挙区から1人・大政党に有利・死票が多い）＋比例代表制（得票に応じて議席配分・死票が少ないが小党分立になりやすい）。",
+     "課題：投票率の低下（棄権の増加）、<span class='kw'>一票の格差</span>（議員一人あたりの有権者数の差→平等選挙に反する）。",
+     "<span class='kw'>政党</span>：政権を担当する<span class='kw'>与党</span>と、それ以外の<span class='kw'>野党</span>。複数政党で組織する<span class='kw'>連立政権</span>。<span class='kw'>世論</span>とマスメディア、メディアリテラシー。",
+     "地方自治は「<span class='kw'>民主主義の学校</span>」。住民が<span class='kw'>首長</span>（知事・市町村長）と<span class='kw'>地方議会議員</span>の両方を直接選挙で選ぶ＝<span class='kw'>二元代表制</span>。地方議会は<span class='kw'>条例</span>を制定できる。",
+     "<span class='kw'>直接請求権</span>：条例の制定・改廃（有権者の<span class='kw'>50分の1</span>以上→首長へ）、監査請求（50分の1以上）、議会の解散・首長や議員の解職＝<span class='kw'>リコール</span>（<span class='kw'>3分の1</span>以上→選挙管理委員会へ）。",
+     "地方財政：自主財源の<span class='kw'>地方税</span>のほか、格差を減らすための<span class='kw'>地方交付税交付金</span>（使いみち自由）、特定の仕事のための<span class='kw'>国庫支出金</span>（使いみち指定）、借金の地方債。"
+   ],
+   notes:["直接請求の数字：50分の1（条例・監査）と3分の1（解散・解職）。請求先もセットで（条例→首長／解職→選挙管理委員会）"],
+   quiz:[
+     {q:"現在の日本の選挙権年齢は？",opts:["満16歳以上","満18歳以上","満20歳以上","満25歳以上"],a:1,e:"2016年から満18歳以上。被選挙権は衆議院25歳・参議院30歳以上。"},
+     {q:"小選挙区制の特徴として正しいものは？",opts:["死票が少ない","小さな政党も議席を得やすい","大きな政党に有利で死票が多い","得票率に応じて議席が配分される"],a:2,e:"1選挙区から1人しか当選しないため、落選者への票（死票）が多く、大政党に有利。"},
+     {q:"「一票の格差」が問題とされる理由は？",opts:["投票率が下がるから","選挙区によって一票の価値に差が生じ、平等選挙に反するから","開票に時間がかかるから","若者が投票しないから"],a:1,e:"議員一人あたりの有権者数が選挙区で大きく異なると、一票の価値が不平等になる。"},
+     {q:"有権者の50分の1以上の署名で請求できるものは？",opts:["議会の解散","首長の解職","条例の制定・改廃","議員の解職"],a:2,e:"条例の制定・改廃と監査請求は50分の1以上。解散・解職（リコール）は3分の1以上が必要。"},
+     {q:"地方公共団体間の財政格差をおさえるために国から配分されるお金は？",opts:["国庫支出金","地方交付税交付金","地方債","地方税"],a:1,e:"地方交付税交付金。使いみちは自由。国庫支出金は使いみちが指定されている点で異なる。"}
+   ]},
+  {id:"c7", grade:"中3", title:"消費生活と市場経済",
+   points:[
+     "家計の支出：消費支出・非消費支出（税金など）・貯蓄。商品には<span class='kw'>財</span>（形あるもの）と<span class='kw'>サービス</span>がある。",
+     "<span class='kw'>契約自由の原則</span>：契約は当事者の合意で成立し、一方的に取り消せないのが原則。",
+     "消費者保護：ケネディ大統領の「消費者の四つの権利」、<span class='kw'>クーリング・オフ</span>（訪問販売などで<span class='kw'>8日以内</span>なら無条件で契約解除）、<span class='kw'>製造物責任法（PL法）</span>（欠陥商品の被害は企業の過失を証明しなくても賠償請求できる）、消費者契約法、<span class='kw'>消費者庁</span>。",
+     "流通：卸売業・小売業。流通の合理化（直接仕入れ・POSシステム）。",
+     "<span class='kw'>市場経済</span>：価格は<span class='kw'>需要量</span>（買いたい量）と<span class='kw'>供給量</span>（売りたい量）の関係で決まる。<span class='kw'>需要量＞供給量→価格は上がる</span>、供給量＞需要量→価格は下がる。つり合う価格＝<span class='kw'>均衡価格</span>。",
+     "<span class='kw'>独占・寡占</span>：少数の企業が市場を支配すると価格が不当に高く維持されるおそれ→<span class='kw'>独占禁止法</span>を<span class='kw'>公正取引委員会</span>が運用。",
+     "生活に大きく影響する電気・ガス・水道などの料金は<span class='kw'>公共料金</span>として国や地方公共団体が決定・認可。"
+   ],
+   notes:["需要・供給グラフの読み：需要曲線（右下がり）と供給曲線（右上がり）の交点が均衡価格。「価格が高いと買う人が減る＝需要曲線」"],
+   quiz:[
+     {q:"訪問販売で商品を購入した場合、一定期間内なら無条件で契約を解除できる制度は？",opts:["クーリング・オフ","リコール","インフォームド・コンセント","セーフティネット"],a:0,e:"クーリング・オフ制度。訪問販売などでは8日以内。冷静に考え直す期間を消費者に保障する。"},
+     {q:"欠陥商品で被害を受けたとき、企業の過失を証明しなくても賠償を求められる法律は？",opts:["消費者契約法","製造物責任法（PL法）","独占禁止法","労働基準法"],a:1,e:"製造物責任法（PL法）。製品の欠陥を証明すれば損害賠償を請求できる。"},
+     {q:"ある商品の需要量が供給量を上回っているとき、価格はどうなる？",opts:["下がる","上がる","変わらない","ゼロになる"],a:1,e:"買いたい量が売りたい量より多い（品不足）ので価格は上がる。逆なら売れ残りで下がる。"},
+     {q:"独占禁止法を運用する機関は？",opts:["消費者庁","公正取引委員会","日本銀行","会計検査院"],a:1,e:"公正取引委員会。企業間の自由な競争を確保し、消費者の利益を守る。"}
+   ]},
+  {id:"c8", grade:"中3", title:"生産・企業と労働",
+   points:[
+     "企業は<span class='kw'>私企業</span>（利潤を目的）と公企業（公共の目的）に分けられる。",
+     "<span class='kw'>株式会社</span>：<span class='kw'>株式</span>を発行して多くの人から資金を集める。<span class='kw'>株主</span>は<span class='kw'>配当</span>を受け取り、<span class='kw'>株主総会</span>で議決に参加。会社が倒産しても出資額以上の責任は負わない＝<span class='kw'>有限責任</span>。",
+     "企業の競争と革新（技術革新＝イノベーション）、ベンチャー企業。日本の企業の約99%は<span class='kw'>中小企業</span>。",
+     "企業の<span class='kw'>社会的責任（CSR）</span>：利潤の追求だけでなく、環境保全や地域文化への貢献など。",
+     "<span class='kw'>労働三法</span>：<span class='kw'>労働基準法</span>（労働条件の最低基準：<span class='kw'>1日8時間・週40時間</span>以内、男女同一賃金など）、<span class='kw'>労働組合法</span>、労働関係調整法。",
+     "労働の課題：<span class='kw'>非正規雇用</span>（アルバイト・派遣など）の増加と待遇格差、長時間労働、<span class='kw'>ワーク・ライフ・バランス</span>（仕事と生活の調和）。<span class='kw'>男女雇用機会均等法</span>、育児・介護休業法。終身雇用・年功序列から成果主義への変化。"
+   ],
+   notes:["株式会社の3点：株主総会（最高機関）・配当（利潤の分配）・有限責任（出資額まで）。有限責任の意味を説明できるように"],
+   quiz:[
+     {q:"株式会社が株式を発行する目的は？",opts:["税金を減らすため","多くの人から広く資金を集めるため","従業員を増やすため","広告のため"],a:1,e:"少額に分けた株式を多くの人に買ってもらうことで、大きな資金を集められる。"},
+     {q:"株主の「有限責任」とは？",opts:["会社の借金をすべて返す責任","出資した金額以上の責任は負わないこと","経営に必ず参加する責任","配当を受け取る義務"],a:1,e:"会社が倒産しても、株主は出資額を失うだけで、それ以上の責任は負わない。"},
+     {q:"労働時間の上限を1日8時間・週40時間と定めている法律は？",opts:["労働組合法","労働関係調整法","労働基準法","男女雇用機会均等法"],a:2,e:"労働基準法。労働条件の最低基準を定める。労働三法の中心。"},
+     {q:"仕事と家庭生活などを両立させる考え方を何という？",opts:["ワーク・ライフ・バランス","インフォームド・コンセント","バリアフリー","セーフティネット"],a:0,e:"ワーク・ライフ・バランス。長時間労働の見直しや育児休業の取得促進などが進められている。"}
+   ]},
+  {id:"c9", grade:"中3", title:"金融・財政と社会保障",
+   points:[
+     "金融：資金に余裕のある人から不足する人へ融通すること。銀行を仲立ちとする<span class='kw'>間接金融</span>と、株式・債券発行による<span class='kw'>直接金融</span>。銀行は貸出金利＞預金金利の差で利益を得る。",
+     "<span class='kw'>日本銀行</span>（中央銀行）の三つの役割：<span class='kw'>発券銀行</span>（紙幣の発行）・<span class='kw'>政府の銀行</span>・<span class='kw'>銀行の銀行</span>。",
+     "<span class='kw'>金融政策</span>（日本銀行）：<span class='kw'>公開市場操作</span>が中心。<span class='kw'>不景気のとき→銀行から国債を買い</span>、世の中に出回るお金を増やす（買いオペ）。好景気のとき→国債を売る。",
+     "<span class='kw'>円高・円安</span>：円高（例 1ドル100円→80円）は<span class='kw'>輸出に不利</span>・輸入に有利。円安はその逆。",
+     "<span class='kw'>財政</span>：政府の経済活動。歳入の中心は税金。<span class='kw'>直接税</span>（所得税・法人税など）と<span class='kw'>間接税</span>（消費税など、負担者と納税者が異なる）。所得税は所得が多いほど税率が高い<span class='kw'>累進課税</span>（所得の格差を調整）。消費税は所得が低い人ほど負担感が重い<span class='kw'>逆進性</span>。",
+     "<span class='kw'>財政政策</span>（政府）：<span class='kw'>不景気のとき→公共投資を増やし減税</span>する。好景気のとき→公共投資を減らし増税。財源不足を補う<span class='kw'>国債</span>の発行残高の増加が課題。",
+     "<span class='kw'>社会保障の四つの柱</span>：<span class='kw'>社会保険</span>（医療・年金・<span class='kw'>介護保険</span>など）・<span class='kw'>公的扶助</span>（生活保護）・<span class='kw'>社会福祉</span>（高齢者・障がい者などの支援）・<span class='kw'>公衆衛生</span>（感染症予防など）。少子高齢化で費用が増大。",
+     "公害：四大公害病（水俣病・イタイイタイ病・四日市ぜんそく・新潟水俣病）→公害対策基本法→<span class='kw'>環境基本法</span>（1993年）、環境省。<span class='kw'>循環型社会</span>（3R＝リデュース・リユース・リサイクル）。"
+   ],
+   notes:["景気対策の整理（不景気のとき）：日銀＝国債を買ってお金を増やす／政府＝公共投資を増やし減税。「どちらも世の中のお金を増やす方向」と理解する"],
+   quiz:[
+     {q:"日本銀行の役割でないものは？",opts:["紙幣を発行する","政府のお金を管理する","一般の銀行にお金を貸す","個人から預金を受け入れる"],a:3,e:"日本銀行は個人や一般企業とは取引しない。発券銀行・政府の銀行・銀行の銀行の三つの役割。"},
+     {q:"不景気のとき、日本銀行が行う金融政策は？",opts:["銀行へ国債を売る","銀行から国債を買う","増税する","公共投資を増やす"],a:1,e:"国債を買って代金を銀行に支払うことで、銀行の資金を増やし貸し出しをうながす。増税・公共投資は政府の財政政策。"},
+     {q:"1ドル＝100円から1ドル＝80円になった。これはどんな状態？",opts:["円安で輸出に有利","円高で輸出に不利","円安で輸入に不利","円高で輸出に有利"],a:1,e:"少ない円でドルと交換できる＝円の価値が上がった＝円高。日本製品の海外での価格が上がり輸出に不利。"},
+     {q:"所得が多い人ほど高い税率が適用されるしくみは？",opts:["逆進性","累進課税","間接税","定率課税"],a:1,e:"累進課税。所得税などに適用され、所得の格差を調整する働きがある。"},
+     {q:"生活に困っている人に生活費などを支給する社会保障制度の柱は？",opts:["社会保険","公的扶助","社会福祉","公衆衛生"],a:1,e:"公的扶助（生活保護法に基づく）。社会保険は保険料を払い、病気や老齢時に給付を受けるしくみ。"}
+   ]},
+  {id:"c10", grade:"中3", title:"国際社会と地球規模の課題",
+   points:[
+     "<span class='kw'>主権国家</span>：主権・領域（領土・領海・領空）・国民が国家の三要素。国どうしのルール＝<span class='kw'>国際法</span>。",
+     "<span class='kw'>国際連合</span>（1945年発足、本部ニューヨーク）：<span class='kw'>総会</span>（全加盟国・一国一票）、<span class='kw'>安全保障理事会</span>——常任理事国5か国（<span class='kw'>アメリカ・イギリス・フランス・ロシア・中国</span>）は<span class='kw'>拒否権</span>を持つ＋非常任理事国10か国。",
+     "国連の機関・活動：UNESCO（教育科学文化）・UNICEF（児童）・WHO（保健）。<span class='kw'>PKO（平和維持活動）</span>に日本の自衛隊も参加。",
+     "地域主義（地域統合）：<span class='kw'>EU・ASEAN・APEC</span>、自由貿易協定（FTA）・経済連携協定（EPA）。",
+     "経済格差：先進国と発展途上国の<span class='kw'>南北問題</span>、途上国間の<span class='kw'>南南問題</span>。<span class='kw'>フェアトレード</span>（公正な貿易）やマイクロクレジット。",
+     "地球環境問題：<span class='kw'>地球温暖化</span>（温室効果ガス）→京都議定書→<span class='kw'>パリ協定</span>（2015年、すべての参加国が削減目標）。再生可能エネルギーへの転換。",
+     "核軍縮：<span class='kw'>非核三原則</span>、核拡散防止条約（NPT）。",
+     "<span class='kw'>SDGs（持続可能な開発目標）</span>：2030年までに達成を目指す<span class='kw'>17の目標</span>。「<span class='kw'>人間の安全保障</span>」の考え方。日本の国際貢献：<span class='kw'>ODA（政府開発援助）</span>・NGO（非政府組織）。"
+   ],
+   notes:["安保理の拒否権：常任理事国が1か国でも反対すると重要な議題は決定できない——ここが記述・正誤で頻出"],
+   quiz:[
+     {q:"国連の安全保障理事会の常任理事国でない国は？",opts:["アメリカ","ロシア","ドイツ","中国"],a:2,e:"常任理事国は米・英・仏・露・中の5か国。ドイツと日本は含まれない。"},
+     {q:"安全保障理事会で常任理事国が持つ、1か国の反対で決議を否決できる権限は？",opts:["国政調査権","拒否権","違憲審査権","自衛権"],a:1,e:"拒否権。常任理事国5か国のうち1か国でも反対すると重要な問題は決定できない。"},
+     {q:"2015年に採択された、発展途上国を含むすべての参加国が温室効果ガスの削減に取り組む協定は？",opts:["京都議定書","パリ協定","ラムサール条約","ワシントン条約"],a:1,e:"パリ協定。先進国のみに削減義務があった京都議定書と異なり、すべての参加国が対象。"},
+     {q:"発展途上国の農産物などを公正な価格で取り引きするしくみは？",opts:["フェアトレード","マイクロクレジット","ODA","セーフガード"],a:0,e:"フェアトレード。生産者の生活を支える公正な貿易のしくみ。"},
+     {q:"SDGsとは？",opts:["国連の平和維持活動","2030年までに達成を目指す17の持続可能な開発目標","自由貿易協定の一種","温室効果ガス削減の条約"],a:1,e:"持続可能な開発目標。貧困の解消・質の高い教育・気候変動対策など17の目標からなる。"}
+   ]}
+]}
+};
+
+/* ================= 状態管理（localStorage） ================= */
+const LS_KEY="chiba_shakai_progress_v1";
+let progress = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+function save(){localStorage.setItem(LS_KEY, JSON.stringify(progress));}
+
+function allUnits(){
+  return Object.keys(DATA).flatMap(f=>DATA[f].units.map(u=>u.id));
+}
+function updateProgress(){
+  const all=allUnits();
+  const done=all.filter(id=>progress[id]).length;
+  const pct=all.length? Math.round(done/all.length*100):0;
+  document.getElementById('progFill').style.width=pct+"%";
+  document.getElementById('progText').textContent=`${done} / ${all.length} 単元 完了`;
+}
+
+/* ================= 描画 ================= */
+function renderField(fkey){
+  const f=DATA[fkey];
+  let html=`<section id="sec-${fkey}" class="${fkey==='geo'?'active':''}">`;
+  html+=`<div class="field-head"><span class="field-dot" style="background:${f.color}"></span><h2>${f.name}</h2><span class="cnt">${f.units.length}単元</span></div>`;
+  f.units.forEach(u=>{
+    const done=progress[u.id];
+    html+=`<div class="unit" data-uid="${u.id}">
+      <div class="unit-head">
+        <span class="unit-grade">${u.grade}</span>
+        <span class="unit-title">${u.title}</span>
+        <span class="unit-check">${done?'✅':'⬜'}</span>
+        <span class="unit-arrow">▶</span>
+      </div>
+      <div class="unit-body">
+        <h3 class="sec">📘 要点整理</h3>
+        <ul class="points">${u.points.map(p=>`<li>${p}</li>`).join('')}</ul>
+        ${u.notes && u.notes.length?`<h3 class="sec">🗂 整理のコツ</h3>${u.notes.map(n=>`<div class="fm">${n}</div>`).join('')}`:''}
+        <h3 class="sec">✏️ 確認問題</h3>
+        <div class="quiz-box">${u.quiz.map((q,qi)=>renderQuiz(u.id,qi,q)).join('')}</div>
+        <div class="row">
+          <button class="btn primary mark-btn" data-uid="${u.id}">${done?'✅ 学習済み（解除）':'この単元を学習済みにする'}</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  html+=`</section>`;
+  return html;
+}
+function renderQuiz(uid,qi,q){
+  return `<div class="q" data-uid="${uid}" data-qi="${qi}">
+    <div class="q-txt"><span class="num">Q${qi+1}.</span>${q.q}</div>
+    <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
+    <div class="expl"><b>解説：</b>${q.e}</div>
+  </div>`;
+}
+
+function buildAll(){
+  const c=document.getElementById('content');
+  c.innerHTML = Object.keys(DATA).map(renderField).join('');
+  updateProgress();
+  bindEvents();
+}
+
+/* ================= イベント ================= */
+function bindEvents(){
+  // タブ
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.onclick=()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+      t.classList.add('active');
+      const f=t.dataset.f;
+      if(f==='test'){document.getElementById('sec-test').classList.add('active'); renderTestIntro();}
+      else if(f==='qa'){document.getElementById('sec-qa').classList.add('active'); if(!qaState)renderQAIntro();}
+      else if(f==='nendai'){document.getElementById('sec-nendai').classList.add('active'); if(!ordState)renderNendaiIntro();}
+      else if(f==='kijutsu'){document.getElementById('sec-kijutsu').classList.add('active'); renderKijutsu();}
+      else document.getElementById('sec-'+f).classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+    };
+  });
+  // 単元の開閉
+  document.querySelectorAll('.unit-head').forEach(h=>{
+    h.onclick=()=>h.parentElement.classList.toggle('open');
+  });
+  // クイズ回答
+  document.querySelectorAll('.q').forEach(qEl=>{
+    const uid=qEl.dataset.uid, qi=+qEl.dataset.qi;
+    const ans=findQuiz(uid,qi).a;
+    qEl.querySelectorAll('.opt').forEach(opt=>{
+      opt.onclick=()=>{
+        if(qEl.classList.contains('answered'))return;
+        qEl.classList.add('answered');
+        const chosen=+opt.dataset.oi;
+        qEl.querySelectorAll('.opt').forEach((o,i)=>{
+          o.classList.add('disabled');
+          if(i===ans)o.classList.add('correct');
+          if(i===chosen&&chosen!==ans)o.classList.add('wrong');
+        });
+        qEl.querySelector('.expl').classList.add('show');
+      };
+    });
+  });
+  // 学習済みボタン
+  document.querySelectorAll('.mark-btn').forEach(b=>{
+    b.onclick=(e)=>{
+      e.stopPropagation();
+      const uid=b.dataset.uid;
+      progress[uid]=!progress[uid];
+      save(); updateProgress();
+      const unit=document.querySelector(`.unit[data-uid="${uid}"]`);
+      unit.querySelector('.unit-check').textContent=progress[uid]?'✅':'⬜';
+      b.textContent=progress[uid]?'✅ 学習済み（解除）':'この単元を学習済みにする';
+    };
+  });
+}
+function findQuiz(uid,qi){
+  for(const f of Object.values(DATA)){
+    const u=f.units.find(u=>u.id===uid);
+    if(u)return u.quiz[qi];
+  }
+}
+
+/* ================= 模試モード ================= */
+let testState=null;
+function renderTestIntro(){
+  const area=document.getElementById('testArea');
+  area.innerHTML=`
+    <div class="test-intro">
+      <h2>📝 実力チェック模試</h2>
+      <p>全分野からランダムに出題します。千葉県の入試は地理・歴史・公民がほぼ均等に出るので、3分野バランスよく解けるようにしよう。分野をしぼることもできます。</p>
+      <div class="chips" id="fieldChips">
+        <div class="chip on" data-f="geo">地理</div>
+        <div class="chip on" data-f="his">歴史</div>
+        <div class="chip on" data-f="civ">公民</div>
+      </div>
+      <div class="row">
+        <span style="font-size:13px;color:var(--sub)">問題数：</span>
+        <div class="chips" id="countChips" style="margin:0">
+          <div class="chip on" data-n="10">10問</div>
+          <div class="chip" data-n="20">20問</div>
+          <div class="chip" data-n="0">全問</div>
+        </div>
+      </div>
+      <div class="row"><button class="btn primary" id="startTest">模試スタート</button></div>
+    </div>`;
+  area.querySelectorAll('#fieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+  area.querySelectorAll('#countChips .chip').forEach(c=>c.onclick=()=>{
+    area.querySelectorAll('#countChips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');
+  });
+  document.getElementById('startTest').onclick=startTest;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function startTest(){
+  const fields=[...document.querySelectorAll('#fieldChips .chip.on')].map(c=>c.dataset.f);
+  if(!fields.length){alert('分野を1つ以上選んでください');return;}
+  const n=+document.querySelector('#countChips .chip.on').dataset.n;
+  let pool=[];
+  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach(q=>pool.push({...q,field:DATA[fk].name}))));
+  pool=shuffle(pool);
+  if(n>0)pool=pool.slice(0,n);
+  testState={pool,answers:new Array(pool.length).fill(null),submitted:false};
+  renderTestQuestions();
+}
+function renderTestQuestions(){
+  const {pool}=testState;
+  const area=document.getElementById('testArea');
+  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p></div>`;
+  pool.forEach((q,i)=>{
+    html+=`<div class="q" data-i="${i}">
+      <div class="qcount">${q.field}</div>
+      <div class="q-txt"><span class="num">問${i+1}.</span>${q.q}</div>
+      <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
+      <div class="expl"><b>解説：</b>${q.e}</div>
+    </div>`;
+  });
+  html+=`<div class="row"><button class="btn primary" id="submitTest">採点する</button><button class="btn" id="cancelTest">やめる</button></div>`;
+  area.innerHTML=html;
+  area.querySelectorAll('.q').forEach(qEl=>{
+    const i=+qEl.dataset.i;
+    qEl.querySelectorAll('.opt').forEach(opt=>{
+      opt.onclick=()=>{
+        if(testState.submitted)return;
+        qEl.querySelectorAll('.opt').forEach(o=>o.style.borderColor='');
+        opt.style.borderColor='var(--accent)';
+        testState.answers[i]=+opt.dataset.oi;
+      };
+    });
+  });
+  document.getElementById('submitTest').onclick=gradeTest;
+  document.getElementById('cancelTest').onclick=renderTestIntro;
+}
+function gradeTest(){
+  const {pool,answers}=testState;
+  const unanswered=answers.filter(a=>a===null).length;
+  if(unanswered>0 && !confirm(`未回答が${unanswered}問あります。このまま採点しますか？`))return;
+  testState.submitted=true;
+  let correct=0;
+  document.querySelectorAll('#testArea .q').forEach(qEl=>{
+    const i=+qEl.dataset.i;const q=pool[i];
+    if(answers[i]===q.a)correct++;
+    qEl.querySelectorAll('.opt').forEach((o,oi)=>{
+      o.classList.add('disabled');o.style.borderColor='';
+      if(oi===q.a)o.classList.add('correct');
+      if(oi===answers[i]&&answers[i]!==q.a)o.classList.add('wrong');
+    });
+    qEl.querySelector('.expl').classList.add('show');
+  });
+  const pct=Math.round(correct/pool.length*100);
+  let msg;
+  if(pct>=90)msg='素晴らしい！合格圏内。この調子で苦手分野を仕上げよう。';
+  else if(pct>=70)msg='good！あと一歩。まちがえた単元の要点を読み直そう。';
+  else if(pct>=50)msg='基礎はついてきた。解説をよく読んで復習しよう。';
+  else msg='まずは各単元の「要点整理」から。くり返せば必ず伸びる！';
+  const card=document.createElement('div');
+  card.className='result-card';
+  card.innerHTML=`<div class="result-score">${correct} / ${pool.length}</div>
+    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%</div>
+    <div class="result-msg">${msg}</div>
+    <div class="row" style="justify-content:center;margin-top:14px">
+      <button class="btn primary" id="retryTest">もう一度</button>
+    </div>`;
+  const area=document.getElementById('testArea');
+  area.insertBefore(card, area.firstChild);
+  document.getElementById('retryTest').onclick=renderTestIntro;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ================= 一問一答（フラッシュカード） ================= */
+const QA={
+ geo:[
+  {q:"三大洋のうち最も大きい海洋は？",a:"太平洋"},
+  {q:"経度0度の本初子午線が通るイギリスの都市は？",a:"ロンドン"},
+  {q:"経度何度ごとに1時間の時差が生じる？",a:"15度"},
+  {q:"日本の標準時子午線は東経何度？",a:"東経135度（兵庫県明石市）"},
+  {q:"夏に乾燥し冬に雨が降る、オリーブ栽培がさかんな気候は？",a:"地中海性気候"},
+  {q:"特定の農産物や資源の輸出に頼る経済は？",a:"モノカルチャー経済"},
+  {q:"EUの多くの国で使われる共通通貨は？",a:"ユーロ"},
+  {q:"海岸線から200海里以内で沿岸国が資源を利用できる水域は？",a:"排他的経済水域"},
+  {q:"日本の最南端の島は？",a:"沖ノ鳥島"},
+  {q:"川が山地から平地に出る所にできる水はけのよい地形は？",a:"扇状地"},
+  {q:"三陸海岸などに見られる出入りの複雑な海岸は？",a:"リアス海岸"},
+  {q:"大都市の近くで野菜などを作る農業は？",a:"近郊農業"},
+  {q:"ビニールハウスで野菜の出荷時期を早める栽培は？",a:"促成栽培"},
+  {q:"工業生産額が日本一の工業地帯は？",a:"中京工業地帯"},
+  {q:"千葉県の臨海部に広がる化学工業中心の工業地域は？",a:"京葉工業地域"},
+  {q:"貿易額日本一の千葉県にある空港は？",a:"成田国際空港"},
+  {q:"夏に東北地方の太平洋側に吹き、冷害の原因となる風は？",a:"やませ"},
+  {q:"2万5千分の1地形図の主曲線は何mごと？",a:"10mごと"},
+  {q:"災害の被害予測や避難場所を示した地図は？",a:"ハザードマップ"}
+ ],
+ his:[
+  {q:"「魏志」倭人伝に記された邪馬台国の女王は？",a:"卑弥呼"},
+  {q:"十七条の憲法を定めた人物は？",a:"聖徳太子"},
+  {q:"645年に中大兄皇子らが始めた政治改革は？",a:"大化の改新"},
+  {q:"開墾地の永久私有を認めた743年の法令は？",a:"墾田永年私財法"},
+  {q:"東大寺の大仏をつくらせた天皇は？",a:"聖武天皇"},
+  {q:"「源氏物語」の作者は？",a:"紫式部"},
+  {q:"将軍と御家人の土地を仲立ちとした主従関係を何という？",a:"御恩と奉公"},
+  {q:"1221年に後鳥羽上皇が起こした乱は？",a:"承久の乱"},
+  {q:"元寇のときの鎌倉幕府の執権は？",a:"北条時宗"},
+  {q:"勘合貿易（日明貿易）を始めた室町幕府の将軍は？",a:"足利義満"},
+  {q:"1467年に起こり戦国時代のきっかけとなった戦乱は？",a:"応仁の乱"},
+  {q:"楽市・楽座を行った戦国武将は？",a:"織田信長"},
+  {q:"太閤検地と刀狩を行った人物は？",a:"豊臣秀吉"},
+  {q:"参勤交代を制度化した3代将軍は？",a:"徳川家光"},
+  {q:"享保の改革を行った8代将軍は？",a:"徳川吉宗"},
+  {q:"「解体新書」を出版した人物は？",a:"杉田玄白"},
+  {q:"1853年に浦賀に来航したアメリカの使節は？",a:"ペリー"},
+  {q:"1867年に大政奉還を行った15代将軍は？",a:"徳川慶喜"},
+  {q:"地租改正では何を基準に税を納めた？",a:"地価（の3%を現金で）"},
+  {q:"大日本帝国憲法が発布された年は？",a:"1889年"},
+  {q:"1894年に領事裁判権の撤廃に成功した外務大臣は？",a:"陸奥宗光"},
+  {q:"民本主義を唱え大正デモクラシーを支えた人物は？",a:"吉野作造"},
+  {q:"1925年の普通選挙法で選挙権を得たのは？",a:"満25歳以上のすべての男子"},
+  {q:"1931年、柳条湖事件から始まった軍事行動は？",a:"満州事変"},
+  {q:"戦後、地主の土地を小作人に売り渡した改革は？",a:"農地改革"},
+  {q:"1951年に日本が独立を回復した条約は？",a:"サンフランシスコ平和条約"},
+  {q:"1964年にアジアで初めて開かれた国際的なスポーツ大会は？",a:"東京オリンピック"}
+ ],
+ civ:[
+  {q:"日本国憲法の三大原理は？",a:"国民主権・基本的人権の尊重・平和主義"},
+  {q:"「健康で文化的な最低限度の生活」を保障する憲法第25条の権利は？",a:"生存権"},
+  {q:"私生活をみだりに公開されない新しい人権は？",a:"プライバシーの権利"},
+  {q:"三権分立を「法の精神」で唱えた思想家は？",a:"モンテスキュー"},
+  {q:"国権の最高機関であり唯一の立法機関は？",a:"国会"},
+  {q:"内閣が国会の信任に基づき、連帯して責任を負うしくみは？",a:"議院内閣制"},
+  {q:"違憲審査の最終決定権を持つ最高裁判所の別名は？",a:"憲法の番人"},
+  {q:"重大な刑事事件の第一審に国民が参加する制度は？",a:"裁判員制度"},
+  {q:"現在の選挙権年齢は満何歳以上？",a:"満18歳以上"},
+  {q:"条例の制定・改廃の直接請求に必要な署名数は？",a:"有権者の50分の1以上"},
+  {q:"地方公共団体間の財政格差を減らすため国が配分するお金は？",a:"地方交付税交付金"},
+  {q:"需要量と供給量がつり合ったときの価格は？",a:"均衡価格"},
+  {q:"独占禁止法を運用する機関は？",a:"公正取引委員会"},
+  {q:"日本銀行の三つの役割は？",a:"発券銀行・政府の銀行・銀行の銀行"},
+  {q:"所得が多いほど税率が高くなるしくみは？",a:"累進課税"},
+  {q:"訪問販売などで一定期間内なら契約を解除できる制度は？",a:"クーリング・オフ"},
+  {q:"労働条件の最低基準を定めた法律は？",a:"労働基準法"},
+  {q:"社会保障制度の四つの柱は？",a:"社会保険・公的扶助・社会福祉・公衆衛生"},
+  {q:"安全保障理事会の常任理事国5か国は？",a:"アメリカ・イギリス・フランス・ロシア・中国"},
+  {q:"常任理事国が持つ、1か国の反対で否決できる権限は？",a:"拒否権"},
+  {q:"2030年までに達成を目指す17の国際目標は？",a:"SDGs（持続可能な開発目標）"}
+ ]
+};
+const QA_FIELDS={geo:"地理",his:"歴史",civ:"公民"};
+let qaState=null;
+function renderQAIntro(){
+  const area=document.getElementById('qaArea');
+  area.innerHTML=`
+    <div class="test-intro">
+      <h2>🃏 一問一答</h2>
+      <p>重要用語をフラッシュカードで暗記しよう。問題を見て頭の中で答えてから「答えを見る」。覚えたカードは消え、まちがえたカードはくり返し出てきます。</p>
+      <div class="chips" id="qaFieldChips">
+        <div class="chip on" data-f="geo">地理</div>
+        <div class="chip on" data-f="his">歴史</div>
+        <div class="chip on" data-f="civ">公民</div>
+      </div>
+      <div class="row"><button class="btn primary" id="startQA">スタート</button></div>
+    </div>`;
+  area.querySelectorAll('#qaFieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+  document.getElementById('startQA').onclick=startQA;
+}
+function startQA(){
+  const fields=[...document.querySelectorAll('#qaFieldChips .chip.on')].map(c=>c.dataset.f);
+  if(!fields.length){alert('分野を1つ以上選んでください');return;}
+  let deck=[];
+  fields.forEach(f=>QA[f].forEach(c=>deck.push({...c,field:QA_FIELDS[f]})));
+  deck=shuffle(deck);
+  qaState={deck,total:deck.length,ok:0,ng:0,revealed:false};
+  renderQACard();
+}
+function renderQACard(){
+  const s=qaState, area=document.getElementById('qaArea');
+  if(s.deck.length===0){
+    area.innerHTML=`<div class="result-card">
+      <div class="result-score">🎉</div>
+      <div style="font-size:18px;font-weight:700;margin-top:6px">全${s.total}枚 コンプリート！</div>
+      <div class="result-msg">くり返して定着させよう。</div>
+      <div class="row" style="justify-content:center;margin-top:14px"><button class="btn primary" id="qaAgain">もう一度</button></div>
+    </div>`;
+    document.getElementById('qaAgain').onclick=renderQAIntro;
+    return;
+  }
+  const card=s.deck[0];
+  area.innerHTML=`
+    <div class="qa-stat">
+      <div class="s-rem">のこり<b>${s.deck.length}</b></div>
+      <div class="s-ok">覚えた<b>${s.ok}</b></div>
+      <div class="s-ng">要復習<b>${s.ng}</b></div>
+    </div>
+    <div class="card" id="qaCard">
+      <div class="card-field">${card.field}</div>
+      <div class="card-q">${card.q}</div>
+      <div class="card-a">${card.a}</div>
+      <div class="card-hint" id="qaHint">タップして答えを見る</div>
+    </div>
+    <div id="qaControls"></div>`;
+  const cardEl=document.getElementById('qaCard');
+  const reveal=()=>{
+    if(s.revealed)return; s.revealed=true;
+    cardEl.classList.add('revealed');
+    document.getElementById('qaHint').style.display='none';
+    document.getElementById('qaControls').innerHTML=`
+      <div class="grade-row">
+        <button class="btn ng" id="qaNG">× もう一度</button>
+        <button class="btn ok" id="qaOK">✓ 覚えた</button>
+      </div>`;
+    document.getElementById('qaOK').onclick=()=>gradeCard(true);
+    document.getElementById('qaNG').onclick=()=>gradeCard(false);
+  };
+  cardEl.onclick=reveal;
+}
+function gradeCard(ok){
+  const s=qaState;
+  const card=s.deck.shift();
+  s.revealed=false;
+  if(ok){s.ok++;}
+  else{s.ng++; s.deck.push(card);} // まちがえたら山の最後へ戻す
+  renderQACard();
+}
+
+/* ================= 年代（重要年代リスト＋並べかえ演習） ================= */
+const NENDAI={
+ kodai:{name:"古代（〜平安）", ev:[
+   {y:239,e:"卑弥呼が魏に使いを送る"},
+   {y:593,e:"聖徳太子が摂政となる"},
+   {y:645,e:"大化の改新",g:"むしご（645）飛ばして改新だ"},
+   {y:701,e:"大宝律令が完成"},
+   {y:710,e:"平城京に都を移す",g:"なんと（710）大きな平城京"},
+   {y:743,e:"墾田永年私財法"},
+   {y:794,e:"平安京に都を移す",g:"鳴くよ（794）ウグイス平安京"},
+   {y:894,e:"遣唐使の停止",g:"白紙（894）に戻す遣唐使"},
+   {y:1086,e:"白河上皇が院政を始める"},
+   {y:1167,e:"平清盛が太政大臣となる"}
+ ]},
+ chusei:{name:"中世（鎌倉・室町）", ev:[
+   {y:1185,e:"守護・地頭を設置（壇ノ浦の戦い）",g:"いい箱（1185）作ろう鎌倉幕府"},
+   {y:1192,e:"源頼朝が征夷大将軍となる",g:"いい国（1192）作ろう鎌倉幕府"},
+   {y:1221,e:"承久の乱"},
+   {y:1232,e:"御成敗式目"},
+   {y:1274,e:"文永の役（1度目の元寇）"},
+   {y:1281,e:"弘安の役（2度目の元寇）"},
+   {y:1334,e:"建武の新政"},
+   {y:1338,e:"足利尊氏が征夷大将軍となる"},
+   {y:1392,e:"南北朝の統一"},
+   {y:1404,e:"勘合貿易（日明貿易）開始"},
+   {y:1467,e:"応仁の乱",g:"人の世むな（1467）しい応仁の乱"}
+ ]},
+ kinsei:{name:"近世（安土桃山・江戸）", ev:[
+   {y:1543,e:"鉄砲伝来（種子島）",g:"以後よさん（1543）ばん鉄砲伝来"},
+   {y:1549,e:"キリスト教伝来（ザビエル）",g:"以後よく（1549）広まるキリスト教"},
+   {y:1573,e:"室町幕府が滅びる"},
+   {y:1575,e:"長篠の戦い"},
+   {y:1582,e:"本能寺の変・太閤検地開始"},
+   {y:1588,e:"刀狩令"},
+   {y:1590,e:"豊臣秀吉が全国統一"},
+   {y:1600,e:"関ヶ原の戦い",g:"ヒーローお（1600）おいに戦う関ヶ原"},
+   {y:1603,e:"江戸幕府が開かれる"},
+   {y:1635,e:"参勤交代の制度化"},
+   {y:1637,e:"島原・天草一揆"},
+   {y:1639,e:"ポルトガル船来航禁止（鎖国完成）"},
+   {y:1716,e:"享保の改革（〜45）"},
+   {y:1787,e:"寛政の改革（〜93）"},
+   {y:1837,e:"大塩平八郎の乱"},
+   {y:1841,e:"天保の改革（〜43）"}
+ ]},
+ kindai:{name:"近代（幕末〜第二次世界大戦）", ev:[
+   {y:1853,e:"ペリー来航",g:"いやでござん（1853）すペリーさん"},
+   {y:1854,e:"日米和親条約"},
+   {y:1858,e:"日米修好通商条約"},
+   {y:1867,e:"大政奉還"},
+   {y:1868,e:"五箇条の御誓文・戊辰戦争"},
+   {y:1871,e:"廃藩置県"},
+   {y:1873,e:"地租改正・徴兵令"},
+   {y:1877,e:"西南戦争"},
+   {y:1885,e:"内閣制度の創設"},
+   {y:1889,e:"大日本帝国憲法発布",g:"いち早く（1889）憲法発布"},
+   {y:1894,e:"日清戦争・領事裁判権の撤廃"},
+   {y:1902,e:"日英同盟"},
+   {y:1904,e:"日露戦争"},
+   {y:1910,e:"韓国併合"},
+   {y:1911,e:"関税自主権の完全回復"},
+   {y:1914,e:"第一次世界大戦（〜18）",g:"行く意思（1914）固めて世界大戦"},
+   {y:1918,e:"米騒動・原敬内閣"},
+   {y:1920,e:"国際連盟発足"},
+   {y:1925,e:"普通選挙法・治安維持法"},
+   {y:1929,e:"世界恐慌"},
+   {y:1931,e:"満州事変"},
+   {y:1932,e:"五・一五事件"},
+   {y:1933,e:"国際連盟を脱退"},
+   {y:1937,e:"日中戦争（〜45）"},
+   {y:1941,e:"太平洋戦争開始（〜45）"}
+ ]},
+ gendai:{name:"現代（戦後）", ev:[
+   {y:1945,e:"ポツダム宣言受諾・終戦"},
+   {y:1946,e:"日本国憲法公布"},
+   {y:1950,e:"朝鮮戦争（特需景気）"},
+   {y:1951,e:"サンフランシスコ平和条約・日米安全保障条約"},
+   {y:1956,e:"日ソ共同宣言・国際連合に加盟"},
+   {y:1964,e:"東京オリンピック・東海道新幹線"},
+   {y:1972,e:"沖縄返還・日中共同声明"},
+   {y:1973,e:"石油危機（高度経済成長の終わり）"},
+   {y:1978,e:"日中平和友好条約"},
+   {y:1989,e:"ベルリンの壁崩壊・冷戦終結へ"},
+   {y:1995,e:"阪神・淡路大震災"},
+   {y:2011,e:"東日本大震災"}
+ ]}
+};
+let ordState=null;
+function renderNendaiIntro(){
+  const area=document.getElementById('nendaiArea');
+  let html=`
+    <div class="test-intro">
+      <h2>⏳ 年代並べかえ演習</h2>
+      <p>千葉県入試の歴史では「できごとを年代の古い順に並べる」問題が毎年出ます。4つのできごとを古い順にタップしよう。時代をしぼって練習できます。</p>
+      <div class="chips" id="ordChips">
+        <div class="chip on" data-g="kodai">古代</div>
+        <div class="chip on" data-g="chusei">中世</div>
+        <div class="chip on" data-g="kinsei">近世</div>
+        <div class="chip on" data-g="kindai">近代</div>
+        <div class="chip on" data-g="gendai">現代</div>
+      </div>
+      <div class="row"><button class="btn primary" id="startOrd">演習スタート</button></div>
+    </div>
+    <div class="field-head"><span class="field-dot" style="background:var(--his)"></span><h2 style="font-size:15px">重要年代リスト</h2><span class="cnt">タップで開閉</span></div>`;
+  Object.keys(NENDAI).forEach(g=>{
+    const grp=NENDAI[g];
+    html+=`<div class="tl-group">
+      <div class="tl-head">${grp.name}<span class="cnt">${grp.ev.length}件</span><span class="unit-arrow">▶</span></div>
+      <div class="tl-body">${grp.ev.map(ev=>`<div class="tl"><span class="tl-y">${ev.y}</span><span class="tl-e">${ev.e}${ev.g?`<span class="tl-g">🎵 ${ev.g}</span>`:''}</span></div>`).join('')}</div>
+    </div>`;
+  });
+  area.innerHTML=html;
+  area.querySelectorAll('.tl-head').forEach(h=>{
+    h.onclick=()=>h.parentElement.classList.toggle('open');
+  });
+  area.querySelectorAll('#ordChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+  document.getElementById('startOrd').onclick=startOrd;
+}
+function startOrd(){
+  const groups=[...document.querySelectorAll('#ordChips .chip.on')].map(c=>c.dataset.g);
+  if(!groups.length){alert('時代を1つ以上選んでください');return;}
+  let pool=[];
+  groups.forEach(g=>NENDAI[g].ev.forEach(ev=>pool.push(ev)));
+  if(pool.length<4){alert('できごとが足りません。時代を増やしてください');return;}
+  ordState={pool,ok:0,total:0};
+  nextOrdQuestion();
+}
+function nextOrdQuestion(){
+  const s=ordState;
+  // 年が異なる4つのできごとを選ぶ
+  let picked=[];
+  const cand=shuffle([...s.pool]);
+  for(const ev of cand){
+    if(picked.every(p=>p.y!==ev.y))picked.push(ev);
+    if(picked.length===4)break;
+  }
+  s.q={events:shuffle(picked), chosen:[]};
+  renderOrdQuestion();
+}
+function renderOrdQuestion(){
+  const s=ordState, q=s.q;
+  const area=document.getElementById('nendaiArea');
+  area.innerHTML=`
+    <div class="ord-score">
+      <div>正解<b>${s.ok}</b></div>
+      <div>挑戦<b>${s.total}</b></div>
+    </div>
+    <div class="test-intro" style="padding:14px 18px;margin:12px 0">
+      <h2 style="font-size:15px">古い順にタップしよう</h2>
+      <p style="margin:0">できごとを年代の古い順（1→4）に選ぼう。選び直すときはもう一度タップ。</p>
+    </div>
+    <div id="ordList">${q.events.map((ev,i)=>`
+      <div class="ord-item" data-i="${i}"><span class="badge">・</span><span>${ev.e}</span><span class="ord-y">${ev.y}年</span></div>`).join('')}
+    </div>
+    <div class="row" id="ordControls">
+      <button class="btn primary" id="ordJudge" disabled style="opacity:.5">判定する</button>
+      <button class="btn" id="ordQuit">やめる</button>
+    </div>`;
+  const judgeBtn=document.getElementById('ordJudge');
+  const refresh=()=>{
+    area.querySelectorAll('.ord-item').forEach(el=>{
+      const i=+el.dataset.i;
+      const pos=q.chosen.indexOf(i);
+      el.classList.toggle('sel',pos>=0);
+      el.querySelector('.badge').textContent=pos>=0?String(pos+1):'・';
+    });
+    const ready=q.chosen.length===4;
+    judgeBtn.disabled=!ready;
+    judgeBtn.style.opacity=ready?'1':'.5';
+  };
+  area.querySelectorAll('.ord-item').forEach(el=>{
+    el.onclick=()=>{
+      if(q.judged)return;
+      const i=+el.dataset.i;
+      const pos=q.chosen.indexOf(i);
+      if(pos>=0)q.chosen.splice(pos,1);
+      else if(q.chosen.length<4)q.chosen.push(i);
+      refresh();
+    };
+  });
+  judgeBtn.onclick=()=>{
+    if(q.chosen.length!==4||q.judged)return;
+    q.judged=true;
+    s.total++;
+    const correctOrder=[...q.events].map((ev,i)=>i).sort((a,b)=>q.events[a].y-q.events[b].y);
+    const isCorrect=q.chosen.every((v,idx)=>v===correctOrder[idx]);
+    if(isCorrect)s.ok++;
+    document.getElementById('ordList').classList.add('show-years');
+    area.querySelectorAll('.ord-item').forEach(el=>{
+      const i=+el.dataset.i;
+      const userPos=q.chosen.indexOf(i);
+      const rightPos=correctOrder.indexOf(i);
+      el.classList.add(userPos===rightPos?'right':'wrongo');
+      el.querySelector('.badge').textContent=String(rightPos+1);
+    });
+    document.getElementById('ordControls').innerHTML=`
+      <div style="font-weight:800;font-size:16px;color:${isCorrect?'var(--good)':'var(--bad)'}">${isCorrect?'⭕ 正解！':'❌ ざんねん…正しい順番を確認しよう'}</div>
+      <button class="btn primary" id="ordNext">次の問題</button>
+      <button class="btn" id="ordQuit2">やめる</button>`;
+    document.getElementById('ordNext').onclick=nextOrdQuestion;
+    document.getElementById('ordQuit2').onclick=()=>{ordState=null;renderNendaiIntro();};
+  };
+  document.getElementById('ordQuit').onclick=()=>{ordState=null;renderNendaiIntro();};
+}
+
+/* ================= 記述対策 ================= */
+const KIJUTSU={
+ geo:[
+  {q:"排他的経済水域とはどのような水域か、簡潔に説明せよ。",a:"海岸線から200海里以内の領海を除く水域で、水産資源や鉱産資源を沿岸国が利用する権利を持つ水域。",p:"「200海里」「沿岸国が資源を利用できる」の2点。"},
+  {q:"宮崎平野や高知平野で促成栽培がさかんな理由を、「出荷」の語を使って説明せよ。",a:"冬でも温暖な気候を利用して野菜の生育を早め、他の産地からの出荷量が少ない時期に高い価格で出荷できるから。",p:"「出荷時期をずらす→高く売れる」が採点ポイント。"},
+  {q:"千葉県などで近郊農業がさかんな理由を説明せよ。",a:"大消費地である東京に近く、野菜などを新鮮なうちに、輸送費を安くおさえて出荷できるから。",p:"「大消費地に近い」「新鮮」「輸送費が安い」。"},
+  {q:"日本の川が世界の川と比べて短く、流れが急である理由を説明せよ。",a:"国土がせまく山地が海岸近くまでせまっているため、山から海までの距離が短く標高差が大きいから。",p:"「山地が海岸近くまでせまる」＝距離が短く傾きが急。"},
+  {q:"瀬戸内地方で一年を通して降水量が少ない理由を説明せよ。",a:"夏の南東季節風は四国山地に、冬の北西季節風は中国山地にさえぎられ、しめった空気が届きにくいから。",p:"2つの山地と季節風の関係を書く。"},
+  {q:"沖ノ鳥島で護岸工事が行われた理由を説明せよ。",a:"島が水没すると、その周囲の広大な排他的経済水域が失われてしまうから。",p:"「排他的経済水域を守るため」が核心。"}
+ ],
+ his:[
+  {q:"織田信長が楽市・楽座を行った目的を説明せよ。",a:"市場の税を免除し座の特権を廃止することで、だれでも自由に商売できるようにし、城下町の商工業を活発にするため。",p:"「税・座の特権をなくす」→「商工業をさかんに」。"},
+  {q:"豊臣秀吉が刀狩を行った目的を説明せよ。",a:"百姓から武器を取り上げることで一揆を防ぎ、百姓を耕作に専念させて武士と百姓の身分の区別を明確にするため。",p:"「一揆を防ぐ」「兵農分離」の2点。"},
+  {q:"参勤交代が大名にとって大きな負担となった理由を説明せよ。",a:"1年おきに領地と江戸を往復する費用や、江戸での生活費に多くの出費を強いられたから。",p:"「往復の費用」「江戸での生活費」。"},
+  {q:"日米修好通商条約が日本にとって不平等といわれる理由を2つ答えよ。",a:"外国人の犯罪を日本の法律で裁けない領事裁判権を認め、輸入品の関税率を自主的に決める関税自主権がなかったから。",p:"「領事裁判権を認めた」「関税自主権がない」の両方を必ず。"},
+  {q:"地租改正によって政府の収入が安定した理由を説明せよ。",a:"収穫量に左右される米ではなく、地価を基準とした税（地租）を現金で納めさせたため、豊作・凶作に関係なく毎年一定の収入を得られるようになったから。",p:"「地価基準」「現金」「収入が一定」。"},
+  {q:"戦後の農地改革の内容を、「地主」「小作人」の語を使って説明せよ。",a:"政府が地主の農地を強制的に買い上げ、小作人に安く売り渡したことで、多くの自作農が生まれた。",p:"「地主から買い上げ→小作人へ売り渡す→自作農が増える」。"},
+  {q:"日本が1956年に国際連合へ加盟できた理由を説明せよ。",a:"日ソ共同宣言によってソ連との国交が回復し、それまで加盟に反対していたソ連の反対がなくなったから。",p:"「日ソ共同宣言→ソ連の反対がなくなる」の因果。"}
+ ],
+ civ:[
+  {q:"国会で衆議院の優越が認められている理由を説明せよ。",a:"衆議院は参議院より任期が短く解散もあるため、選挙を通じて国民の意思をより反映すると考えられるから。",p:"「任期が短い」「解散がある」→「国民の意思を反映」。"},
+  {q:"三権分立を採用している目的を説明せよ。",a:"国の権力を立法・行政・司法の三つに分けて互いに抑制と均衡を保たせることで、権力の集中と乱用を防ぎ、国民の自由と権利を守るため。",p:"「権力の集中・乱用を防ぐ」が必須。"},
+  {q:"累進課税とはどのようなしくみか、その目的とともに説明せよ。",a:"所得が多くなるほど高い税率が適用されるしくみで、所得の格差を調整する働きがある。",p:"「所得が多いほど税率が高い」＋「格差の調整」。"},
+  {q:"地方交付税交付金が国から配分される目的を説明せよ。",a:"地方公共団体の間にある財政収入の格差をおさえるため。",p:"「財政格差を減らす」。使いみち自由という点も加点。"},
+  {q:"裁判員制度が導入された目的を説明せよ。",a:"国民の視点や感覚を裁判に反映させるとともに、国民の司法への理解と信頼を深めるため。",p:"「国民の感覚を反映」「司法への理解・信頼」。"},
+  {q:"円高が日本の輸出企業にとって不利になる理由を説明せよ。",a:"円の価値が上がると外国での日本製品の価格が高くなり、売れにくくなるから。",p:"「海外での販売価格が上がる→売れにくい」。"},
+  {q:"不景気のときに政府が行う財政政策を、「公共投資」「税」の語を使って説明せよ。",a:"公共投資を増やして企業の仕事を増やすとともに、減税をして家計や企業のお金を増やし、経済を活発にする。",p:"「公共投資を増やす」「減税」の2点セット。"}
+ ]
+};
+function renderKijutsu(){
+  const area=document.getElementById('kijutsuArea');
+  let html=`<div class="test-intro" style="padding:16px 18px">
+     <h2>✍️ 記述対策</h2>
+     <p style="margin:0">千葉県入試で差がつく「理由・説明」問題。まずノートに自分の言葉で書いてから模範解答を確認しよう。太字の<b>採点ポイント</b>が入っていれば正解に近い。</p>
+   </div>`;
+  Object.keys(KIJUTSU).forEach(f=>{
+    html+=`<div class="field-head"><span class="field-dot" style="background:var(--${f})"></span><h2 style="font-size:15px">${QA_FIELDS[f]}</h2></div>`;
+    KIJUTSU[f].forEach((k,i)=>{
+      html+=`<div class="kj">
+        <div class="kj-q"><span class="num">問${i+1}.</span> ${k.q}</div>
+        <button class="btn kj-btn" data-f="${f}" data-i="${i}">模範解答を見る</button>
+        <div class="kj-a" id="kj-${f}-${i}">
+          <span class="lbl">模範解答</span>${k.a}
+          <div class="kj-point">🔑 ${k.p}</div>
+        </div>
+      </div>`;
+    });
+  });
+  area.innerHTML=html;
+  area.querySelectorAll('.kj-btn').forEach(b=>{
+    b.onclick=()=>{
+      const box=document.getElementById(`kj-${b.dataset.f}-${b.dataset.i}`);
+      const open=box.classList.toggle('show');
+      b.textContent=open?'解答を隠す':'模範解答を見る';
+    };
+  });
+}
+
+/* ================= リセット ================= */
+document.getElementById('resetBtn').onclick=()=>{
+  if(confirm('学習の進捗をすべてリセットしますか？')){
+    progress={};save();buildAll();
+  }
+};
+
+buildAll();
+</script>
+</body>
+</html>
