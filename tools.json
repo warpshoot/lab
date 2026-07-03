@@ -21,6 +21,11 @@
       "description": "千葉県公立高校入試 理科の要点整理と確認テスト"
     },
     {
+      "path": "./chiba-sugaku/",
+      "title": "千葉県 数学対策",
+      "description": "千葉県公立高校入試 数学の要点整理と確認テスト"
+    },
+    {
       "path": "./color-inspiration/",
       "title": "Color Inspiration",
       "description": "Generate color palettes with various harmony modes"
