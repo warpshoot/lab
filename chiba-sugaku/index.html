@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>千葉県公立高校 数学 対策</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3441;
+    --txt:#e6edf3; --sub:#8b98a9; --accent:#4fc3f7; --accent2:#66d9a8;
+    --warn:#ffb454; --bad:#ff6b6b; --good:#66d9a8;
+    --suu:#4fc3f7; --eq:#c792ea; --fn:#66d9a8; --zu:#ffb454; --dat:#f78fb3;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Kaku Gothic ProN','Yu Gothic',Meiryo,sans-serif;
+    background:var(--bg); color:var(--txt); line-height:1.7; padding-bottom:80px;
+  }
+  a{color:inherit}
+  .wrap{max-width:860px;margin:0 auto;padding:0 18px}
+
+  header{
+    background:linear-gradient(135deg,#14263a,#0d1117);
+    border-bottom:1px solid var(--line); padding:26px 0 22px; margin-bottom:8px;
+  }
+  header h1{font-size:20px;font-weight:700;letter-spacing:.02em}
+  header p{color:var(--sub);font-size:13px;margin-top:4px}
+  .prog-wrap{margin-top:16px}
+  .prog-bar{height:8px;background:var(--panel2);border-radius:6px;overflow:hidden}
+  .prog-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .5s}
+  .prog-label{font-size:12px;color:var(--sub);margin-top:6px;display:flex;justify-content:space-between}
+
+  /* 出題傾向 */
+  details.keiko{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:12px 0 4px;overflow:hidden}
+  details.keiko summary{padding:12px 16px;font-size:13px;font-weight:700;cursor:pointer;user-select:none;color:var(--warn)}
+  details.keiko .keiko-body{padding:0 16px 14px;font-size:13px;color:var(--txt)}
+  details.keiko .keiko-body li{margin:6px 0 6px 18px}
+  details.keiko .keiko-body b{color:var(--warn)}
+
+  /* nav tabs */
+  .tabs{display:flex;gap:6px;position:sticky;top:0;background:var(--bg);padding:12px 0;z-index:20;flex-wrap:wrap}
+  .tab{
+    flex:1;min-width:64px;text-align:center;padding:9px 4px;border-radius:10px;
+    background:var(--panel);border:1px solid var(--line);font-size:13px;font-weight:600;
+    color:var(--sub);cursor:pointer;transition:.15s;user-select:none;
+  }
+  .tab.active{color:var(--txt);border-color:var(--accent)}
+  .tab[data-f="suu"].active{border-color:var(--suu);color:var(--suu)}
+  .tab[data-f="eq"].active{border-color:var(--eq);color:var(--eq)}
+  .tab[data-f="fn"].active{border-color:var(--fn);color:var(--fn)}
+  .tab[data-f="zu"].active{border-color:var(--zu);color:var(--zu)}
+  .tab[data-f="dat"].active{border-color:var(--dat);color:var(--dat)}
+  .tab[data-f="test"].active{border-color:#fff;color:#fff}
+
+  section{display:none;animation:fade .3s}
+  section.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .field-head{display:flex;align-items:center;gap:10px;margin:18px 0 10px}
+  .field-dot{width:12px;height:12px;border-radius:50%}
+  .field-head h2{font-size:17px}
+  .field-head .cnt{margin-left:auto;font-size:12px;color:var(--sub)}
+
+  .unit{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
+  .unit-head{display:flex;align-items:center;gap:10px;padding:15px 16px;cursor:pointer;user-select:none}
+  .unit-head:hover{background:var(--panel2)}
+  .unit-grade{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--panel2);color:var(--sub);white-space:nowrap}
+  .unit-title{font-weight:700;font-size:15px;flex:1}
+  .unit-check{font-size:16px;width:22px;text-align:center}
+  .unit-arrow{color:var(--sub);transition:transform .2s;font-size:12px}
+  .unit.open .unit-arrow{transform:rotate(90deg)}
+  .unit-body{display:none;padding:0 16px 16px;border-top:1px solid var(--line)}
+  .unit.open .unit-body{display:block}
+
+  h3.sec{font-size:13px;color:var(--accent);margin:16px 0 8px;font-weight:700;letter-spacing:.03em}
+  .points{list-style:none}
+  .points li{padding:7px 0 7px 22px;position:relative;font-size:14px;border-bottom:1px dashed var(--line)}
+  .points li:last-child{border-bottom:none}
+  .points li::before{content:"▸";position:absolute;left:2px;color:var(--accent2)}
+  .kw{color:var(--warn);font-weight:700}
+  .fm{background:var(--panel2);border-left:3px solid var(--accent);padding:8px 12px;border-radius:6px;margin:8px 0;font-size:14px;font-family:ui-monospace,'SF Mono',Menlo,'Hiragino Kaku Gothic ProN',monospace}
+
+  /* quiz */
+  .q{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
+  .q-txt{font-size:14px;font-weight:600;margin-bottom:10px}
+  .q-txt .num{color:var(--accent);margin-right:6px}
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opt{padding:10px 13px;border-radius:9px;background:var(--panel);border:1px solid var(--line);cursor:pointer;font-size:14px;transition:.12s}
+  .opt:hover{border-color:var(--accent)}
+  .opt.correct{background:rgba(102,217,168,.18);border-color:var(--good)}
+  .opt.wrong{background:rgba(255,107,107,.16);border-color:var(--bad)}
+  .opt.disabled{cursor:default;pointer-events:none;opacity:.55}
+  .opt.disabled.correct,.opt.disabled.wrong{opacity:1}
+  .expl{display:none;margin-top:10px;padding:10px 12px;background:var(--panel);border-radius:8px;font-size:13px;border-left:3px solid var(--accent2)}
+  .expl.show{display:block}
+  .expl b{color:var(--accent2)}
+
+  .btn{display:inline-block;padding:9px 16px;border-radius:9px;background:var(--panel);border:1px solid var(--line);color:var(--txt);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent);color:#04222f;border-color:var(--accent)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0}
+
+  /* test mode */
+  .test-intro{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0}
+  .test-intro h2{font-size:18px;margin-bottom:8px}
+  .test-intro p{color:var(--sub);font-size:14px;margin-bottom:14px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .chip{padding:7px 14px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);font-size:13px;cursor:pointer;font-weight:600}
+  .chip.on{background:var(--accent);color:#04222f;border-color:var(--accent)}
+  .result-card{text-align:center;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:14px;margin:16px 0}
+  .result-score{font-size:44px;font-weight:800;color:var(--accent)}
+  .result-msg{color:var(--sub);margin-top:6px}
+  .qcount{font-size:12px;color:var(--sub);text-align:right;margin-bottom:4px}
+
+  /* flashcard (一問一答) */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px 20px;margin:14px 0;min-height:200px;display:flex;flex-direction:column;justify-content:center;text-align:center}
+  .card-field{font-size:12px;color:var(--sub);margin-bottom:12px;font-weight:700}
+  .card-q{font-size:19px;font-weight:700;line-height:1.6}
+  .card-a{font-size:24px;font-weight:800;color:var(--accent2);margin-top:18px;display:none}
+  .card.revealed .card-a{display:block;animation:fade .25s}
+  .card-hint{font-size:12px;color:var(--sub);margin-top:16px}
+  .grade-row{display:flex;gap:10px;margin:10px 0}
+  .grade-row .btn{flex:1;text-align:center;padding:13px}
+  .btn.ng{border-color:var(--bad);color:var(--bad)}
+  .btn.ok{border-color:var(--good);color:var(--good)}
+  .qa-stat{display:flex;justify-content:space-around;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;font-size:13px}
+  .qa-stat b{display:block;font-size:22px;font-weight:800}
+  .qa-stat .s-rem b{color:var(--accent)} .qa-stat .s-ok b{color:var(--good)} .qa-stat .s-ng b{color:var(--warn)}
+  /* 証明・記述 */
+  .kj{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+  .kj-q{font-size:15px;font-weight:700;margin-bottom:6px}
+  .kj-q .num{color:var(--zu)}
+  .kj-field{font-size:11px;color:var(--sub);font-weight:700;margin-bottom:8px}
+  .kj-a{display:none;margin-top:12px;padding:12px 14px;background:var(--panel2);border-radius:9px;border-left:3px solid var(--good);font-size:14px;line-height:1.8}
+  .kj-a.show{display:block;animation:fade .25s}
+  .kj-a .lbl{color:var(--good);font-weight:700;font-size:12px;display:block;margin-bottom:4px}
+  .kj-point{color:var(--sub);font-size:13px;margin-top:8px}
+  footer{text-align:center;color:var(--sub);font-size:12px;margin-top:30px}
+  .reset{color:var(--sub);text-decoration:underline;cursor:pointer;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>📐 千葉県公立高校 数学 対策</h1>
+    <p>数と式・方程式・関数・図形・データの全単元｜要点整理と確認テスト</p>
+    <div class="prog-wrap">
+      <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+      <div class="prog-label">
+        <span>学習の進み具合</span>
+        <span id="progText">0 / 0 単元</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <details class="keiko">
+    <summary>🎯 千葉県入試 数学の出題傾向と得点戦略（まず読もう）</summary>
+    <div class="keiko-body">
+      <ul>
+        <li><b>大問1（計算・小問集合）だけで配点約50点。</b>正負の数・平方根・方程式・関数・確率などの基本問題。ここを落とさないことが合格への最短ルート。</li>
+        <li><b>作図がほぼ毎年出題。</b>コンパスと定規の基本作図（垂直二等分線・角の二等分線・垂線）を「等距離の言いかえ」で使いこなせるように。</li>
+        <li>大問2は<b>関数</b>（放物線と直線）、大問3は<b>図形の証明</b>（穴うめ＋記述）、大問4は<b>規則性・思考力</b>の問題が定番。</li>
+        <li>戦略：①大問1・2の基本を確実に → ②証明は途中まででも部分点 → ③難しい最終小問は後回し。50分の時間配分を模試モードで体感しよう。</li>
+      </ul>
+    </div>
+  </details>
+
+  <div class="tabs">
+    <div class="tab active" data-f="suu">数と式</div>
+    <div class="tab" data-f="eq">方程式</div>
+    <div class="tab" data-f="fn">関数</div>
+    <div class="tab" data-f="zu">図形</div>
+    <div class="tab" data-f="dat">データ</div>
+    <div class="tab" data-f="qa">一問一答</div>
+    <div class="tab" data-f="kijutsu">証明</div>
+    <div class="tab" data-f="test">模試</div>
+  </div>
+
+  <div id="content"></div>
+
+  <section id="sec-qa">
+    <div id="qaArea"></div>
+  </section>
+
+  <section id="sec-kijutsu">
+    <div id="kijutsuArea"></div>
+  </section>
+
+  <section id="sec-test">
+    <div id="testArea"></div>
+  </section>
+
+  <footer>
+    千葉県公立高校入試（数学）学習教材 ・ 全範囲対応<br>
+    進捗はこの端末に自動保存されます ・ <span class="reset" id="resetBtn">進捗をリセット</span>
+  </footer>
+</div>
+
+<script>
+/* =========================================================================
+   千葉県公立高校 数学 教材データ
+   分野: suu(数と式) eq(方程式) fn(関数) zu(図形) dat(データの活用)
+   各単元: grade, title, points[], formulas[], quiz[{q,opts,a,e}]
+   ========================================================================= */
+const DATA = {
+suu:{ name:"数と式", color:"var(--suu)", units:[
+  {id:"s1", grade:"中1", title:"正負の数",
+   points:[
+     "数直線上で、0からの距離を<span class='kw'>絶対値</span>という（符号をとった数）。",
+     "加法：同符号は絶対値の和に共通の符号。異符号は絶対値の差に、<span class='kw'>絶対値の大きい方の符号</span>。",
+     "乗除：同符号どうしは＋、異符号は−。負の数が<span class='kw'>奇数個</span>あれば答えは−。",
+     "<span class='kw'>（−3）²＝9</span> と <span class='kw'>−3²＝−9</span> のちがいに注意（−3²は「3²に−をつけた数」）。",
+     "計算の順序：<span class='kw'>累乗・かっこ → 乗除 → 加減</span>。乗除どうしは左から順に。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"−3²＋（−3）² の値は？",opts:["−18","0","18","−6"],a:1,e:"−3²は−(3×3)＝−9、（−3）²は(−3)×(−3)＝9。よって −9＋9＝0。この区別は超頻出。"},
+     {q:"−6＋4−（−5） の値は？",opts:["−7","−15","3","7"],a:2,e:"−(−5)＝+5 なので −6＋4＋5＝3。"},
+     {q:"12÷（−4）×3 の値は？",opts:["−1","−9","1","9"],a:1,e:"乗除は左から順に。12÷(−4)＝−3、−3×3＝−9。先に(−4)×3を計算して12÷(−12)＝−1とするのはまちがい。"},
+     {q:"2＋3×（−4） の値は？",opts:["−20","−10","−14","10"],a:1,e:"乗法が先。3×(−4)＝−12、2＋(−12)＝−10。"}
+   ]},
+  {id:"s2", grade:"中1", title:"文字と式",
+   points:[
+     "文字式のルール：×は省く、数字は文字の前、同じ文字の積は<span class='kw'>累乗</span>で（a×a×b＝a²b）、÷は<span class='kw'>分数</span>の形に。",
+     "<span class='kw'>代入</span>：負の数を代入するときは必ずかっこをつける（x＝−3 のとき 2x²＝2×(−3)²＝18）。",
+     "割合：a円の2割引き→<span class='kw'>0.8a円</span>、a％→a/100。",
+     "速さ：<span class='kw'>道のり＝速さ×時間</span>。時速a kmでb時間→ab km。",
+     "単位をそろえてから式をつくる（分→時間 は ÷60）。"
+   ],
+   formulas:["道のり＝速さ×時間　　速さ＝道のり÷時間"],
+   quiz:[
+     {q:"a×a×b を文字式のルールにしたがって表すと？",opts:["2ab","a²b","ab²","(ab)²"],a:1,e:"同じ文字aの積は累乗にして a²b。"},
+     {q:"x＝−3 のとき 2x² の値は？",opts:["−18","18","36","−36"],a:1,e:"2×(−3)²＝2×9＝18。かっこをつけて代入すれば符号ミスを防げる。"},
+     {q:"定価a円の商品を2割引きで買うときの代金は？",opts:["0.2a円","0.8a円","(a−2)円","(a−0.2)円"],a:1,e:"2割引き＝定価の8割なので 0.8a円（a−0.2a でもよい）。"},
+     {q:"時速a kmでb時間歩いたときの道のりは？",opts:["(a＋b) km","ab km","a/b km","b/a km"],a:1,e:"道のり＝速さ×時間＝a×b＝ab km。"}
+   ]},
+  {id:"s3", grade:"中2", title:"式の計算",
+   points:[
+     "文字の部分が同じ項（<span class='kw'>同類項</span>）はまとめられる。かっこの前の−は<span class='kw'>全部の項の符号を変えて</span>はずす。",
+     "単項式の乗除：係数どうし・文字どうしを計算。÷は<span class='kw'>逆数のかけ算</span>に直すと安全。",
+     "<span class='kw'>等式変形</span>：解きたい文字だけを左辺に残すように移項・両辺を割る。",
+     "偶数は<span class='kw'>2n</span>、奇数は<span class='kw'>2n＋1</span>、連続する3つの整数は<span class='kw'>n−1, n, n＋1</span> と表す（説明問題の道具）。",
+     "2けたの自然数は<span class='kw'>10a＋b</span>（十の位a、一の位b）と表す。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"3(2x−y)−2(x−3y) を計算すると？",opts:["4x−9y","4x＋3y","8x＋3y","4x−3y"],a:1,e:"6x−3y−2x＋6y＝4x＋3y。−2( )のかっこをはずすとき、−3yが＋6yになる符号に注意。"},
+     {q:"6a²b÷3ab を計算すると？",opts:["2a","2b","2ab","3a"],a:0,e:"係数6÷3＝2、a²÷a＝a、b÷b＝1。よって2a。"},
+     {q:"等式 3x＋y＝9 を y について解くと？",opts:["y＝3x−9","y＝9−3x","y＝3−x","y＝9＋3x"],a:1,e:"3xを右辺へ移項して y＝9−3x。移項すると符号が変わる。"}
+   ]},
+  {id:"s4", grade:"中3", title:"展開と因数分解",
+   points:[
+     "乗法公式：<span class='kw'>(x＋a)(x＋b)＝x²＋(a＋b)x＋ab</span>",
+     "<span class='kw'>(a＋b)²＝a²＋2ab＋b²</span>、<span class='kw'>(a−b)²＝a²−2ab＋b²</span>（まん中の2abを忘れない）。",
+     "<span class='kw'>(a＋b)(a−b)＝a²−b²</span>（和と差の積）。",
+     "因数分解の手順：①まず<span class='kw'>共通因数</span>をくくり出す → ②乗法公式の逆を使う。",
+     "x²＋□x＋△ は「かけて△、たして□」になる2数を探す。",
+     "数の計算にも利用：101²−99²＝(101＋99)(101−99) のように<span class='kw'>工夫して計算</span>。"
+   ],
+   formulas:["(x＋a)(x＋b)＝x²＋(a＋b)x＋ab","(a±b)²＝a²±2ab＋b²","(a＋b)(a−b)＝a²−b²"],
+   quiz:[
+     {q:"(x＋3)(x−5) を展開すると？",opts:["x²＋2x−15","x²−2x−15","x²−2x＋15","x²−15"],a:1,e:"x²＋(3−5)x＋3×(−5)＝x²−2x−15。"},
+     {q:"x²−16 を因数分解すると？",opts:["(x−4)²","(x＋4)(x−4)","(x＋2)(x−8)","(x−16)(x＋1)"],a:1,e:"a²−b²＝(a＋b)(a−b) の形。x²−4²＝(x＋4)(x−4)。"},
+     {q:"x²＋6x＋9 を因数分解すると？",opts:["(x＋3)²","(x−3)²","(x＋9)(x−3)","(x＋3)(x−3)"],a:0,e:"かけて9、たして6になる2数は3と3。よって(x＋3)²。"},
+     {q:"101²−99² を工夫して計算すると？",opts:["400","200","40000","4"],a:0,e:"(101＋99)(101−99)＝200×2＝400。和と差の積の逆利用。"}
+   ]},
+  {id:"s5", grade:"中3", title:"平方根",
+   points:[
+     "2乗するとaになる数がaの<span class='kw'>平方根</span>。正の数aの平方根は<span class='kw'>±√a の2つ</span>。",
+     "√の中を小さく：<span class='kw'>√48＝√(16×3)＝4√3</span>（2乗の因数を外に出す）。",
+     "乗除：√a×√b＝√(ab)、√a÷√b＝√(a/b)。",
+     "加減は√の中が同じもの同士だけ：<span class='kw'>2√2＋3√2＝5√2</span>（√2＋√3は計算できない）。",
+     "<span class='kw'>分母の有理化</span>：分母と分子に同じ√をかける。a/√b＝a√b/b。",
+     "大小比較：<span class='kw'>2乗して比べる</span>（3と√10 → 9＜10 なので 3＜√10）。",
+     "近似値：√2≒1.414、√3≒1.732、√5≒2.236。"
+   ],
+   formulas:["√a×√b＝√(ab)","a/√b＝a√b/b（有理化）"],
+   quiz:[
+     {q:"√48 を簡単にすると？",opts:["2√12","4√3","3√4","16√3"],a:1,e:"48＝16×3 なので √48＝4√3。√の中の2乗の因数（16＝4²）を外に出す。"},
+     {q:"√8＋√18 を計算すると？",opts:["√26","5√2","6√2","5√6"],a:1,e:"√8＝2√2、√18＝3√2。同じ√2どうしなので 2√2＋3√2＝5√2。√26としない。"},
+     {q:"6/√3 の分母を有理化すると？",opts:["2√3","3√2","6√3","√2"],a:0,e:"分母分子に√3をかけて 6√3/3＝2√3。"},
+     {q:"3 と √10 の大小関係は？",opts:["3＞√10","3＜√10","等しい","比べられない"],a:1,e:"2乗して比べる。3²＝9、(√10)²＝10。9＜10 なので 3＜√10。"}
+   ]},
+  {id:"s6", grade:"暗記", title:"計算ミス撲滅・公式暗記シート",
+   points:[
+     "<b>■ 符号ミス 三大注意ポイント</b>",
+     "① <span class='kw'>−3²＝−9</span>、（−3）²＝9。②かっこの前の−は<span class='kw'>全部の項に</span>かける：−(2x−5)＝−2x＋5。③移項したら符号が変わる。",
+     "<b>■ 乗法公式（展開⇔因数分解 両方向で使えるように）</b>",
+     "(x＋a)(x＋b)＝x²＋(a＋b)x＋ab ／ (a＋b)²＝a²＋2ab＋b² ／ (a−b)²＝a²−2ab＋b² ／ (a＋b)(a−b)＝<span class='kw'>a²−b²</span>",
+     "<b>■ 暗記しておく平方数・近似値</b>",
+     "11²＝121、12²＝144、13²＝169、14²＝196、<span class='kw'>15²＝225</span>、16²＝256、25²＝625",
+     "√2≒<span class='kw'>1.414</span>（一夜一夜に人見ごろ）、√3≒<span class='kw'>1.732</span>（人なみにおごれや）、√5≒<span class='kw'>2.236</span>（富士山ろくオウム鳴く）",
+     "<b>■ 大問1の心がまえ（配点約50点）</b>",
+     "とちゅう式を必ず書く／符号を書いた瞬間に確認／答えが出たら<span class='kw'>代入して検算</span>（方程式）／√はこれ以上簡単にできないか確認。"
+   ],
+   formulas:[
+     "【解の公式】 ax²＋bx＋c＝0 のとき x＝{−b±√(b²−4ac)}／2a",
+     "【比例式】 a：b＝c：d ならば ad＝bc（外側の積＝内側の積）",
+     "【質量パーセント的な割合】 a％増→×(1＋a/100)、a％引き→×(1−a/100)"
+   ],
+   quiz:[
+     {q:"(a−b)² を展開すると？",opts:["a²−b²","a²−2ab＋b²","a²＋2ab＋b²","a²−2ab−b²"],a:1,e:"(a−b)²＝a²−2ab＋b²。まん中の−2abを忘れてa²−b²としない（それは(a＋b)(a−b)）。"},
+     {q:"x²＋5x＋3＝0 を解の公式で解くと？",opts:["x＝(−5±√13)/2","x＝(5±√13)/2","x＝(−5±√37)/2","x＝−5±√13"],a:0,e:"b²−4ac＝25−12＝13。x＝(−5±√13)/2。分母の2aを忘れない。"},
+     {q:"15² の値は？",opts:["215","225","235","245"],a:1,e:"15²＝225。平方数の暗記は√の変形や三平方の定理で効く。"},
+     {q:"−(2x−5) のかっこをはずすと？",opts:["−2x−5","−2x＋5","2x−5","2x＋5"],a:1,e:"−を全部の項にかけて −2x＋5。後ろの項の符号変えわすれが最多ミス。"},
+     {q:"√2 の近似値は？",opts:["1.414","1.732","2.236","1.618"],a:0,e:"√2≒1.414（一夜一夜に人見ごろ）。√3≒1.732、√5≒2.236。"}
+   ]},
+]},
+
+eq:{ name:"方程式", color:"var(--eq)", units:[
+  {id:"e1", grade:"中1", title:"一次方程式",
+   points:[
+     "<span class='kw'>移項</span>：＝をまたいで項を移すと符号が変わる。文字は左辺、数は右辺に集める。",
+     "係数に小数→両辺を<span class='kw'>10倍・100倍</span>。分数→<span class='kw'>分母の最小公倍数</span>を両辺にかける。",
+     "<span class='kw'>比例式</span> a：b＝c：d は <span class='kw'>ad＝bc</span>（外側の積＝内側の積）で解く。",
+     "解が出たら<span class='kw'>もとの式に代入して検算</span>する習慣を。"
+   ],
+   formulas:["a：b＝c：d ⇔ ad＝bc"],
+   quiz:[
+     {q:"方程式 4x−7＝2x＋5 の解は？",opts:["x＝1","x＝6","x＝−6","x＝3"],a:1,e:"2xを左へ、−7を右へ移項して 2x＝12、x＝6。"},
+     {q:"比例式 x：6＝3：2 を解くと？",opts:["x＝4","x＝9","x＝1","x＝12"],a:1,e:"外側の積＝内側の積より 2x＝18、x＝9。"},
+     {q:"方程式 x/2−1＝x/3 の解は？",opts:["x＝−6","x＝6","x＝3","x＝2"],a:1,e:"両辺に6（分母2と3の最小公倍数）をかけて 3x−6＝2x、x＝6。"}
+   ]},
+  {id:"e2", grade:"中2", title:"連立方程式",
+   points:[
+     "<span class='kw'>加減法</span>：どちらかの文字の係数の絶対値をそろえて、たすか引くかで1文字消す。",
+     "<span class='kw'>代入法</span>：y＝〜 の形の式があるときはそのまま代入すると速い。",
+     "係数をそろえるときは<span class='kw'>両辺全部に</span>同じ数をかける（右辺のかけ忘れに注意）。",
+     "求めた解は<span class='kw'>両方の式</span>に代入して検算。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"連立方程式 x＋y＝7、x−y＝1 の解は？",opts:["x＝4, y＝3","x＝3, y＝4","x＝5, y＝2","x＝6, y＝1"],a:0,e:"2式をたすと2x＝8、x＝4。x＋y＝7に代入してy＝3。"},
+     {q:"連立方程式 y＝2x、x＋y＝9 の解は？",opts:["x＝2, y＝4","x＝3, y＝6","x＝4, y＝8","x＝6, y＝3"],a:1,e:"y＝2xを代入して x＋2x＝9、3x＝9、x＝3、y＝6。代入法が速い。"},
+     {q:"連立方程式 2x＋3y＝12、x−y＝1 の解は？",opts:["x＝3, y＝2","x＝2, y＝3","x＝4, y＝3","x＝3, y＝4"],a:0,e:"x＝1＋yを代入：2(1＋y)＋3y＝12 → 5y＝10 → y＝2、x＝3。"}
+   ]},
+  {id:"e3", grade:"中3", title:"二次方程式",
+   points:[
+     "まず<span class='kw'>右辺を0</span>にして整理してから解く。",
+     "①<span class='kw'>因数分解</span>：AB＝0 ならば A＝0 または B＝0。",
+     "②<span class='kw'>平方根の考え</span>：(x＋m)²＝k なら x＋m＝±√k。",
+     "③<span class='kw'>解の公式</span>：x＝{−b±√(b²−4ac)}／2a（因数分解できないとき）。",
+     "x²＝5x は<span class='kw'>両辺をxで割ってはいけない</span>（x＝0の解が消える）。x(x−5)＝0とする。"
+   ],
+   formulas:["x＝{−b±√(b²−4ac)}／2a"],
+   quiz:[
+     {q:"x²−5x＋6＝0 の解は？",opts:["x＝2, 3","x＝−2, −3","x＝1, 6","x＝−1, −6"],a:0,e:"かけて6、たして−5 → −2と−3。(x−2)(x−3)＝0 より x＝2, 3。"},
+     {q:"(x−3)²＝5 の解は？",opts:["x＝3±√5","x＝−3±√5","x＝3±5","x＝√5±3のうち正のみ"],a:0,e:"x−3＝±√5 より x＝3±√5。平方根の考えで一発。"},
+     {q:"x²＋3x＋1＝0 の解は？",opts:["x＝(−3±√5)/2","x＝(3±√5)/2","x＝(−3±√13)/2","x＝−3±√5"],a:0,e:"解の公式で b²−4ac＝9−4＝5。x＝(−3±√5)/2。"},
+     {q:"x²＝5x の解は？",opts:["x＝5","x＝0, 5","x＝±5","x＝−5"],a:1,e:"x²−5x＝0 → x(x−5)＝0 → x＝0, 5。両辺をxで割るとx＝0が消えてしまう。"}
+   ]},
+  {id:"e4", grade:"総合", title:"方程式の文章題（入試頻出）",
+   points:[
+     "手順：①<span class='kw'>何をxにするか</span>決める → ②<span class='kw'>等しい数量関係</span>を見つけて式に → ③解が<span class='kw'>問題に合うか</span>確認（個数が負・小数はNG）。",
+     "代金：単価×個数の合計。合わせてn個→一方をx個、もう一方を<span class='kw'>(n−x)個</span>。",
+     "速さ：<span class='kw'>時間＝道のり÷速さ</span> で式を立てることが多い。単位（分⇔時間）をそろえる。",
+     "割合：昨年x人、今年5％増→<span class='kw'>1.05x人</span>。増えた人数なら0.05x人。",
+     "答えには<span class='kw'>単位</span>をつけ、「〜個買った」など問いに正しく答える。"
+   ],
+   formulas:["時間＝道のり÷速さ","a％増→×(1＋a/100)"],
+   quiz:[
+     {q:"1個120円のりんごと1個80円のみかんを合わせて10個買うと代金は1040円だった。りんごの個数は？",opts:["4個","5個","6個","7個"],a:2,e:"りんごx個とすると 120x＋80(10−x)＝1040 → 40x＝240 → x＝6。"},
+     {q:"A地からB地まで、時速6kmで行くより時速4kmで行く方が15分多くかかる。道のりは？",opts:["2 km","3 km","4 km","6 km"],a:1,e:"道のりd kmとすると d/4−d/6＝15/60＝1/4。両辺×12で 3d−2d＝3 → d＝3km。"},
+     {q:"昨年の生徒数は400人で、今年は昨年より5％増えた。今年の生徒数は？",opts:["405人","420人","380人","440人"],a:1,e:"400×(1＋0.05)＝400×1.05＝420人。"}
+   ]},
+]},
+
+fn:{ name:"関数", color:"var(--fn)", units:[
+  {id:"f1", grade:"中1", title:"比例・反比例",
+   points:[
+     "比例：<span class='kw'>y＝ax</span>。グラフは<span class='kw'>原点を通る直線</span>。a＞0で右上がり。",
+     "反比例：<span class='kw'>y＝a/x</span>。グラフは<span class='kw'>双曲線</span>（2本のなめらかな曲線）。",
+     "反比例では<span class='kw'>xy＝a（一定）</span>。対応する1組のx, yから aが求まる。",
+     "「yはxに比例し、x＝2のときy＝6」→ 6＝2a → a＝3 → <span class='kw'>y＝3x</span>。"
+   ],
+   formulas:["比例 y＝ax","反比例 y＝a/x（xy＝a）"],
+   quiz:[
+     {q:"yはxに比例し、x＝2のとき y＝−6。比例定数aは？",opts:["−3","3","−12","−4"],a:0,e:"−6＝a×2 より a＝−3。y＝−3x。"},
+     {q:"y＝12/x で x＝3 のときのyの値は？",opts:["3","4","36","9"],a:1,e:"y＝12÷3＝4。"},
+     {q:"反比例のグラフの形は？",opts:["原点を通る直線","放物線","双曲線","円"],a:2,e:"反比例y＝a/xのグラフは双曲線。比例は原点を通る直線、y＝ax²は放物線。"}
+   ]},
+  {id:"f2", grade:"中2", title:"一次関数",
+   points:[
+     "<span class='kw'>y＝ax＋b</span>。aは<span class='kw'>傾き（＝変化の割合）</span>、bは<span class='kw'>切片</span>（y軸との交点）。",
+     "変化の割合＝<span class='kw'>yの増加量÷xの増加量</span>。一次関数では常に一定でaに等しい。",
+     "直線の式の求め方：傾きと1点→代入してbを求める。2点→まず傾き、次にb。",
+     "2直線の交点＝<span class='kw'>連立方程式の解</span>。",
+     "平行な2直線は<span class='kw'>傾きが等しい</span>。"
+   ],
+   formulas:["y＝ax＋b","変化の割合＝yの増加量÷xの増加量"],
+   quiz:[
+     {q:"傾きが2で、点(1, 5)を通る直線の式は？",opts:["y＝2x＋3","y＝2x＋5","y＝2x−3","y＝5x＋2"],a:0,e:"y＝2x＋bに(1,5)を代入：5＝2＋b → b＝3。y＝2x＋3。"},
+     {q:"2点(1, 3)、(3, 7)を通る直線の傾きは？",opts:["1","2","3","4"],a:1,e:"傾き＝(7−3)÷(3−1)＝4÷2＝2。"},
+     {q:"直線 y＝2x＋1 と y＝−x＋7 の交点の座標は？",opts:["(2, 5)","(3, 7)","(1, 3)","(2, 4)"],a:0,e:"2x＋1＝−x＋7 → 3x＝6 → x＝2、y＝5。交点は連立方程式で求める。"}
+   ]},
+  {id:"f3", grade:"中3", title:"関数 y＝ax²",
+   points:[
+     "グラフは<span class='kw'>原点を頂点とする放物線</span>。a＞0で上に開き、aの絶対値が大きいほど<span class='kw'>細く</span>なる。",
+     "変化の割合は<span class='kw'>一定ではない</span>。xがpからqまで増加するときの変化の割合＝<span class='kw'>a(p＋q)</span>（時短公式）。",
+     "<span class='kw'>変域</span>：xの変域が0をまたぐとき、yの最小値（a＞0）または最大値（a＜0）は<span class='kw'>0</span>になる。端の値だけで決めない。",
+     "点(p, q)を通る→代入してaを求める。"
+   ],
+   formulas:["y＝ax²","xがp→qのときの変化の割合＝a(p＋q)"],
+   quiz:[
+     {q:"y＝2x² で x＝3 のときのyの値は？",opts:["12","18","36","6"],a:1,e:"y＝2×3²＝2×9＝18。"},
+     {q:"y＝x² で、xが1から3まで増加するときの変化の割合は？",opts:["2","3","4","8"],a:2,e:"(9−1)÷(3−1)＝8÷2＝4。時短公式ならa(p＋q)＝1×(1＋3)＝4。"},
+     {q:"y＝x² で、xの変域が −2≦x≦1 のときのyの変域は？",opts:["1≦y≦4","0≦y≦4","−4≦y≦1","0≦y≦1"],a:1,e:"xの変域が0をまたぐので最小値はx＝0のときy＝0。最大値はx＝−2のときy＝4。1≦y≦4は典型的なひっかけ。"},
+     {q:"y＝ax² のグラフが点(2, −8)を通るとき、aの値は？",opts:["−2","2","−4","−16"],a:0,e:"−8＝a×2²＝4a → a＝−2。"}
+   ]},
+  {id:"f4", grade:"中3", title:"放物線と直線（千葉・大問2型）",
+   points:[
+     "放物線と直線の交点→<span class='kw'>2式を連立</span>（ax²＝mx＋n の二次方程式を解く）。",
+     "時短：y＝ax²上の2点（x座標p, q）を通る直線の<span class='kw'>傾きはa(p＋q)</span>、切片は<span class='kw'>−apq</span>。",
+     "三角形の面積：<span class='kw'>座標軸に平行な辺を底辺</span>にとると計算しやすい。",
+     "<span class='kw'>等積変形</span>：底辺が共通なら、頂点を底辺と平行な直線上で動かしても面積は変わらない。",
+     "「面積を2等分する直線」→中点を通る、などの定石を覚える。"
+   ],
+   formulas:["y＝ax²上の2点(p, ap²), (q, aq²)を通る直線：傾きa(p＋q)、切片−apq"],
+   quiz:[
+     {q:"y＝x² 上の、x座標が−1と2の2点を通る直線の傾きは？",opts:["1","−1","2","3"],a:0,e:"時短公式 a(p＋q)＝1×(−1＋2)＝1。まじめに計算しても (4−1)÷(2−(−1))＝3÷3＝1。"},
+     {q:"放物線 y＝x² と直線 y＝x＋2 の交点のx座標は？",opts:["x＝−1, 2","x＝1, −2","x＝1, 2","x＝−1, −2"],a:0,e:"x²＝x＋2 → x²−x−2＝0 → (x−2)(x＋1)＝0 → x＝−1, 2。"},
+     {q:"3点 A(0, 4)、B(−2, 0)、C(4, 0) を頂点とする三角形の面積は？",opts:["8","12","24","6"],a:1,e:"底辺BC＝4−(−2)＝6、高さはAのy座標4。6×4÷2＝12。"}
+   ]},
+]},
+
+zu:{ name:"図形", color:"var(--zu)", units:[
+  {id:"z1", grade:"中1", title:"平面図形（作図・おうぎ形）★千葉頻出",
+   points:[
+     "<span class='kw'>垂直二等分線</span>＝2点から<span class='kw'>等距離</span>にある点の集まり。作図：2点から等半径の円→2交点を結ぶ。",
+     "<span class='kw'>角の二等分線</span>＝角の<span class='kw'>2辺から等距離</span>にある点の集まり。",
+     "<span class='kw'>垂線</span>：点を中心に円→直線と2交点→そこから等半径の円→交点と結ぶ。",
+     "作図問題のコツ：問題文の条件を「〇〇から等距離」に<span class='kw'>言いかえる</span>と、どの基本作図を使うか決まる。",
+     "おうぎ形（半径r・中心角a°）：弧の長さ＝<span class='kw'>2πr×a/360</span>、面積＝<span class='kw'>πr²×a/360</span>。",
+     "面積＝<span class='kw'>1/2×弧の長さ×半径</span> も便利。"
+   ],
+   formulas:["弧の長さ＝2πr×(a/360)","おうぎ形の面積＝πr²×(a/360)＝(1/2)×弧×r"],
+   quiz:[
+     {q:"2点A、Bから等しい距離にある点の集まりは？",opts:["線分ABの垂直二等分線","∠Aの二等分線","点Aを通る垂線","線分ABに平行な直線"],a:0,e:"2点から等距離＝垂直二等分線。作図問題はこの言いかえが出発点。"},
+     {q:"半径6cm、中心角60°のおうぎ形の弧の長さは？",opts:["π cm","2π cm","6π cm","12π cm"],a:1,e:"2π×6×(60/360)＝12π×1/6＝2π cm。"},
+     {q:"半径6cm、中心角60°のおうぎ形の面積は？",opts:["3π cm²","6π cm²","12π cm²","36π cm²"],a:1,e:"π×6²×(60/360)＝36π×1/6＝6π cm²。"},
+     {q:"角の二等分線上の点の性質として正しいものは？",opts:["角の頂点から等距離","角の2辺から等距離","2点から等距離","円の中心から等距離"],a:1,e:"角の二等分線＝2辺から等距離な点の集まり。「2辺から等しい距離の点」とあれば角の二等分線を作図。"}
+   ]},
+  {id:"z2", grade:"中1", title:"空間図形",
+   points:[
+     "角柱・円柱の体積＝<span class='kw'>底面積×高さ</span>。角錐・円錐の体積＝<span class='kw'>底面積×高さ×1/3</span>。",
+     "球：体積＝<span class='kw'>(4/3)πr³</span>、表面積＝<span class='kw'>4πr²</span>。",
+     "円柱の側面は長方形（横の長さ＝<span class='kw'>底面の円周</span>）。円錐の側面はおうぎ形（弧＝底面の円周）。",
+     "空間内の2直線：交わる／平行／<span class='kw'>ねじれの位置</span>（平行でなく交わらない）。",
+     "回転体：長方形→円柱、直角三角形→円錐、半円→球。"
+   ],
+   formulas:["柱の体積＝底面積×高さ","錐の体積＝(1/3)×底面積×高さ","球の体積＝(4/3)πr³　球の表面積＝4πr²"],
+   quiz:[
+     {q:"底面の半径3cm、高さ4cmの円錐の体積は？",opts:["12π cm³","36π cm³","4π cm³","24π cm³"],a:0,e:"(1/3)×π×3²×4＝(1/3)×36π＝12π cm³。錐は1/3を忘れない。"},
+     {q:"半径3cmの球の体積は？",opts:["12π cm³","27π cm³","36π cm³","108π cm³"],a:2,e:"(4/3)×π×3³＝(4/3)×27π＝36π cm³。"},
+     {q:"空間内で、平行でなく交わらない2直線の位置関係を何という？",opts:["垂直","ねじれの位置","一致","接する"],a:1,e:"ねじれの位置。同一平面上にない2直線の関係。"}
+   ]},
+  {id:"z3", grade:"中2", title:"平行線と角・多角形",
+   points:[
+     "<span class='kw'>対頂角</span>は等しい。平行線では<span class='kw'>同位角・錯角</span>が等しい。",
+     "三角形の内角の和＝<span class='kw'>180°</span>。外角＝<span class='kw'>となり合わない2つの内角の和</span>。",
+     "n角形の内角の和＝<span class='kw'>180°×(n−2)</span>。",
+     "多角形の外角の和は<span class='kw'>何角形でも360°</span>。",
+     "正n角形の1つの内角＝180(n−2)/n、1つの外角＝360/n。"
+   ],
+   formulas:["n角形の内角の和＝180°×(n−2)","多角形の外角の和＝360°"],
+   quiz:[
+     {q:"正五角形の1つの内角の大きさは？",opts:["100°","108°","120°","135°"],a:1,e:"内角の和＝180×(5−2)＝540°。540÷5＝108°。"},
+     {q:"多角形の外角の和は？",opts:["180°","360°","540°","何角形かによる"],a:1,e:"外角の和はどんな多角形でも360°。1つの外角が40°の正多角形は360÷40＝9で正九角形。"},
+     {q:"内角の和が1080°になるのは何角形？",opts:["六角形","七角形","八角形","九角形"],a:2,e:"180(n−2)＝1080 → n−2＝6 → n＝8。八角形。"}
+   ]},
+  {id:"z4", grade:"中2", title:"三角形の合同と証明",
+   points:[
+     "合同条件：①<span class='kw'>3組の辺</span> ②<span class='kw'>2組の辺とその間の角</span> ③<span class='kw'>1組の辺とその両端の角</span> がそれぞれ等しい。",
+     "直角三角形の合同条件：①<span class='kw'>斜辺と1つの鋭角</span> ②<span class='kw'>斜辺と他の1辺</span>。",
+     "証明の型：「△〜と△〜において」→ 根拠つきで3つ（仮定・共通・対頂角・平行線の錯角など）→ 合同条件 → 結論。",
+     "<span class='kw'>二等辺三角形</span>：2つの底角は等しい。頂角の二等分線は底辺を垂直に2等分。",
+     "合同を示したあと「合同な図形の<span class='kw'>対応する辺（角）は等しい</span>」で辺や角の結論につなぐ。"
+   ],
+   formulas:[],
+   quiz:[
+     {q:"三角形の合同条件でないものは？",opts:["3組の辺がそれぞれ等しい","2組の辺とその間の角がそれぞれ等しい","1組の辺とその両端の角がそれぞれ等しい","3組の角がそれぞれ等しい"],a:3,e:"3組の角が等しいのは相似の条件。大きさがちがっても角は等しくなれる。"},
+     {q:"直角三角形の合同条件は「斜辺と1つの鋭角」ともう1つは？",opts:["斜辺と他の1辺","2つの鋭角","面積と斜辺","高さと底辺"],a:0,e:"直角三角形は「斜辺と1つの鋭角」「斜辺と他の1辺」の2つ。"},
+     {q:"二等辺三角形の性質として正しいものは？",opts:["3つの角がすべて等しい","2つの底角が等しい","対角線が直交する","内角の和が360°"],a:1,e:"二等辺三角形の底角は等しい。証明でよく根拠に使う。"}
+   ]},
+  {id:"z5", grade:"中3", title:"相似",
+   points:[
+     "相似条件：①<span class='kw'>3組の辺の比</span> ②<span class='kw'>2組の辺の比とその間の角</span> ③<span class='kw'>2組の角</span> がそれぞれ等しい。入試の証明はほぼ<span class='kw'>2組の角</span>。",
+     "相似比 m：n のとき、面積比＝<span class='kw'>m²：n²</span>、体積比＝<span class='kw'>m³：n³</span>。",
+     "<span class='kw'>中点連結定理</span>：2辺の中点を結ぶ線分は残りの辺と平行で、長さは<span class='kw'>半分</span>。",
+     "三角形と比：DE∥BC ならば AD：AB＝AE：AC＝DE：BC。",
+     "平行線にはさまれた線分の比は等しい。"
+   ],
+   formulas:["相似比 m：n → 面積比 m²：n²、体積比 m³：n³","中点連結定理：MN∥BC、MN＝(1/2)BC"],
+   quiz:[
+     {q:"相似比が 2：3 の2つの図形の面積比は？",opts:["2：3","4：9","8：27","4：6"],a:1,e:"面積比は相似比の2乗。2²：3²＝4：9。"},
+     {q:"△ABCで、辺AB、ACの中点をM、Nとする。BC＝10cmのときMNの長さは？",opts:["5 cm","10 cm","20 cm","2.5 cm"],a:0,e:"中点連結定理よりMN＝(1/2)BC＝5cm。MN∥BCも同時に成り立つ。"},
+     {q:"相似比が 1：2 の2つの立体の体積比は？",opts:["1：2","1：4","1：8","1：6"],a:2,e:"体積比は相似比の3乗。1³：2³＝1：8。"}
+   ]},
+  {id:"z6", grade:"中3", title:"円周角の定理",
+   points:[
+     "円周角は同じ弧に対する<span class='kw'>中心角の半分</span>。",
+     "<span class='kw'>同じ弧</span>に対する円周角はすべて等しい。",
+     "<span class='kw'>半円の弧（直径）</span>に対する円周角は<span class='kw'>90°</span>。",
+     "円周角の定理の逆：2点P、Qが直線ABの同じ側にあって∠APB＝∠AQBなら、4点は<span class='kw'>同じ円周上</span>にある。",
+     "弧の長さが等しい→円周角も等しい（弧と円周角は比例）。"
+   ],
+   formulas:["円周角＝中心角×(1/2)"],
+   quiz:[
+     {q:"ある弧に対する中心角が80°のとき、同じ弧に対する円周角は？",opts:["160°","80°","40°","20°"],a:2,e:"円周角は中心角の半分。80÷2＝40°。"},
+     {q:"直径に対する円周角の大きさは？",opts:["45°","60°","90°","180°"],a:2,e:"半円の弧に対する円周角は90°。「直径が出てきたら90°」は入試の定石。"},
+     {q:"同じ弧ABに対する円周角∠APBが35°のとき、中心角∠AOBは？",opts:["17.5°","35°","70°","140°"],a:2,e:"中心角は円周角の2倍。35×2＝70°。"}
+   ]},
+  {id:"z7", grade:"中3", title:"三平方の定理",
+   points:[
+     "直角三角形で <span class='kw'>a²＋b²＝c²</span>（cは<span class='kw'>斜辺</span>＝直角の向かいの辺）。",
+     "特別な直角三角形：<span class='kw'>45°・45°・90°→1：1：√2</span>、<span class='kw'>30°・60°・90°→1：2：√3</span>。",
+     "有名な整数の組（ピタゴラス数）：<span class='kw'>3・4・5</span>、5・12・13、8・15・17。",
+     "2点間の距離＝<span class='kw'>√{(xの差)²＋(yの差)²}</span>。",
+     "直方体（縦a・横b・高さc）の対角線＝<span class='kw'>√(a²＋b²＋c²)</span>。",
+     "1辺aの正方形の対角線＝a√2、1辺aの正三角形の高さ＝(√3/2)a。"
+   ],
+   formulas:["a²＋b²＝c²","2点間の距離＝√{(x₂−x₁)²＋(y₂−y₁)²}","直方体の対角線＝√(a²＋b²＋c²)"],
+   quiz:[
+     {q:"直角をはさむ2辺が3cmと4cmの直角三角形の斜辺の長さは？",opts:["5 cm","6 cm","7 cm","√7 cm"],a:0,e:"√(3²＋4²)＝√25＝5cm。3・4・5は暗記。"},
+     {q:"1辺が6cmの正方形の対角線の長さは？",opts:["6√3 cm","6√2 cm","12 cm","3√2 cm"],a:1,e:"対角線＝1辺×√2＝6√2cm（45°・45°・90°の比1：1：√2）。"},
+     {q:"縦3cm、横4cm、高さ12cmの直方体の対角線の長さは？",opts:["13 cm","19 cm","√19 cm","15 cm"],a:0,e:"√(3²＋4²＋12²)＝√(9＋16＋144)＝√169＝13cm。"},
+     {q:"2点 (1, 2)、(4, 6) の間の距離は？",opts:["5","7","√7","25"],a:0,e:"√{(4−1)²＋(6−2)²}＝√(9＋16)＝√25＝5。"}
+   ]},
+  {id:"z8", grade:"暗記", title:"図形の公式・定理 暗記シート",
+   points:[
+     "<b>■ 面積の公式</b>",
+     "三角形＝底辺×高さ÷2 ／ 平行四辺形＝底辺×高さ ／ 台形＝<span class='kw'>（上底＋下底）×高さ÷2</span> ／ ひし形＝<span class='kw'>対角線×対角線÷2</span> ／ 円＝πr²",
+     "<b>■ 体積・表面積</b>",
+     "柱＝底面積×高さ ／ 錐＝底面積×高さ×<span class='kw'>1/3</span> ／ 球の体積＝<span class='kw'>(4/3)πr³</span>（身の上に心配あるので参上） ／ 球の表面積＝<span class='kw'>4πr²</span>（心配ある事情）",
+     "<b>■ 角度の定理</b>",
+     "三角形の内角の和180° ／ n角形の内角の和<span class='kw'>180(n−2)</span> ／ 外角の和は常に<span class='kw'>360°</span> ／ 円周角＝中心角の<span class='kw'>半分</span> ／ 直径の円周角＝<span class='kw'>90°</span>",
+     "<b>■ 辺の比・長さ</b>",
+     "三平方 a²＋b²＝c² ／ 45°型 <span class='kw'>1：1：√2</span> ／ 30°60°型 <span class='kw'>1：2：√3</span> ／ 相似比m：n→面積比<span class='kw'>m²：n²</span>・体積比<span class='kw'>m³：n³</span> ／ 中点連結定理＝半分で平行",
+     "<b>■ 作図は3つの基本形だけ</b>",
+     "垂直二等分線（2点から等距離）／ 角の二等分線（2辺から等距離）／ 垂線（90°・接線・最短距離）。問題の条件をこの3つに言いかえる。"
+   ],
+   formulas:[
+     "台形の面積＝(上底＋下底)×高さ÷2",
+     "ひし形の面積＝対角線×対角線÷2",
+     "おうぎ形：弧＝2πr×(a/360)、面積＝πr²×(a/360)",
+     "錐の体積＝(1/3)×底面積×高さ",
+     "球：V＝(4/3)πr³、S＝4πr²"
+   ],
+   quiz:[
+     {q:"台形の面積を求める公式は？",opts:["底辺×高さ","(上底＋下底)×高さ÷2","対角線×対角線÷2","(上底＋下底)×高さ"],a:1,e:"台形＝(上底＋下底)×高さ÷2。÷2のわすれに注意。"},
+     {q:"ひし形の面積を求める公式は？",opts:["1辺×1辺","底辺×高さ÷2","対角線×対角線÷2","対角線×対角線"],a:2,e:"ひし形（対角線が直交する四角形）＝対角線×対角線÷2。"},
+     {q:"30°、60°、90°の直角三角形の3辺の比は？",opts:["1：1：√2","1：2：√3","3：4：5","1：√2：√3"],a:1,e:"30°60°90°は1：2：√3（最短辺：斜辺：中間）。45°型は1：1：√2。"},
+     {q:"半径rの球の表面積は？",opts:["πr²","2πr²","4πr²","(4/3)πr³"],a:2,e:"表面積S＝4πr²（心配ある事情）。体積は(4/3)πr³。"}
+   ]},
+]},
+
+dat:{ name:"データ・確率", color:"var(--dat)", units:[
+  {id:"d1", grade:"中1", title:"データの整理（度数分布）",
+   points:[
+     "<span class='kw'>度数分布表</span>：データを階級に分けて度数（個数）を整理。柱状グラフが<span class='kw'>ヒストグラム</span>。",
+     "<span class='kw'>階級値</span>＝階級の真ん中の値。",
+     "<span class='kw'>相対度数</span>＝その階級の度数÷度数の合計（割合。合計は1になる）。",
+     "<span class='kw'>累積度数</span>＝最初の階級からその階級までの度数の合計。",
+     "<span class='kw'>範囲（レンジ）</span>＝最大値−最小値。代表値：平均値・中央値（メジアン）・最頻値（モード）。"
+   ],
+   formulas:["相対度数＝階級の度数÷度数の合計","範囲＝最大値−最小値"],
+   quiz:[
+     {q:"40人のクラスで、ある階級の度数が8人のとき相対度数は？",opts:["0.08","0.2","0.25","8"],a:1,e:"8÷40＝0.2。相対度数は割合なので1以下の小数。"},
+     {q:"「範囲（レンジ）」の求め方は？",opts:["最大値−最小値","平均値−中央値","最大値÷2","度数の合計"],a:0,e:"範囲＝最大値−最小値。データの散らばりの大きさを表す。"},
+     {q:"データの中で最も多く現れる値を何という？",opts:["平均値","中央値","最頻値","階級値"],a:2,e:"最頻値（モード）。真ん中の値は中央値（メジアン）。"}
+   ]},
+  {id:"d2", grade:"中2", title:"確率",
+   points:[
+     "確率＝<span class='kw'>あてはまる場合の数÷起こりうるすべての場合の数</span>（どの場合も同様に確からしいとき）。",
+     "数えもれを防ぐ：<span class='kw'>樹形図</span>か<span class='kw'>表</span>をかく。2つのさいころは<span class='kw'>6×6＝36通り</span>の表。",
+     "「<span class='kw'>少なくとも1つ</span>〜」の確率＝1−（1つも〜ない確率）。",
+     "確率pの範囲は 0≦p≦1。必ず起こる＝1、決して起こらない＝0。",
+     "硬貨n枚の出方は2ⁿ通り（2枚→4通り、3枚→8通り）。"
+   ],
+   formulas:["p＝あてはまる場合の数／全部の場合の数","少なくとも1つ＝1−（1つもない確率）"],
+   quiz:[
+     {q:"大小2つのさいころを投げるとき、目の和が5になる確率は？",opts:["1/6","1/9","5/36","1/12"],a:1,e:"全部で36通り。和が5は(1,4)(2,3)(3,2)(4,1)の4通り。4/36＝1/9。"},
+     {q:"2枚の硬貨を投げるとき、少なくとも1枚は表が出る確率は？",opts:["1/2","2/3","3/4","1/4"],a:2,e:"全4通りのうち「1枚も表がない（両方裏）」は1通り。1−1/4＝3/4。"},
+     {q:"5本のうち当たりが2本のくじを1本引くとき、当たる確率は？",opts:["1/5","2/5","1/2","2/3"],a:1,e:"2÷5＝2/5。"},
+     {q:"大小2つのさいころを投げるとき、同じ目が出る確率は？",opts:["1/36","1/12","1/6","1/2"],a:2,e:"(1,1)〜(6,6)の6通り。6/36＝1/6。"}
+   ]},
+  {id:"d3", grade:"中2", title:"箱ひげ図と四分位数",
+   points:[
+     "データを小さい順に並べ4等分する区切りが<span class='kw'>四分位数</span>。第2四分位数＝<span class='kw'>中央値</span>。",
+     "第1四分位数＝前半分の中央値、第3四分位数＝後半分の中央値。",
+     "<span class='kw'>四分位範囲＝第3四分位数−第1四分位数</span>（箱の長さ）。",
+     "箱ひげ図：ひげの端が最小値・最大値、箱がQ1〜Q3、箱の中の線が中央値。",
+     "箱（Q1〜Q3）にはデータ全体の<span class='kw'>約50％</span>、各区間に約25％ずつが入る。"
+   ],
+   formulas:["四分位範囲＝第3四分位数−第1四分位数"],
+   quiz:[
+     {q:"第2四分位数と同じものは？",opts:["平均値","中央値","最頻値","最小値"],a:1,e:"第2四分位数＝データ全体の中央値。平均値とは限らない点に注意。"},
+     {q:"四分位範囲の求め方は？",opts:["最大値−最小値","第3四分位数−第1四分位数","中央値−最小値","第3四分位数÷第1四分位数"],a:1,e:"四分位範囲＝Q3−Q1。箱ひげ図の「箱の長さ」にあたる。"},
+     {q:"箱ひげ図の「箱」の部分に含まれるデータはおよそ全体の？",opts:["25％","50％","75％","100％"],a:1,e:"箱はQ1からQ3まで＝真ん中の約50％のデータ。"}
+   ]},
+  {id:"d4", grade:"中3", title:"標本調査",
+   points:[
+     "集団全部を調べるのが<span class='kw'>全数調査</span>（国勢調査・健康診断）、一部を調べて全体を推定するのが<span class='kw'>標本調査</span>。",
+     "調べる対象全体＝<span class='kw'>母集団</span>、取り出した一部＝<span class='kw'>標本</span>。かたよりなく選ぶことを<span class='kw'>無作為に抽出</span>という。",
+     "推定は<span class='kw'>比例計算</span>：標本の割合＝母集団の割合とみなす。",
+     "例：池の魚→ 印をつけて放し、再び捕まえた中の印の割合から全体を推定。"
+   ],
+   formulas:["母集団の数量：標本の数量 の比で推定する"],
+   quiz:[
+     {q:"標本調査が適しているのはどれ？",opts:["学校の健康診断","国勢調査","電球の寿命調査","入学試験"],a:2,e:"寿命調査は全部調べると売る商品がなくなるので標本調査。健康診断や国勢調査は全数調査。"},
+     {q:"池の魚50匹に印をつけて放した。後日50匹捕まえると印つきが10匹いた。池の魚の総数はおよそ？",opts:["100匹","250匹","500匹","2500匹"],a:1,e:"印つきの割合10/50＝1/5が全体でも成り立つとみなす。50÷(1/5)＝250匹。"},
+     {q:"標本を選ぶとき「かたよりなく選ぶ」ことを何という？",opts:["全数調査","無作為に抽出する","累積する","相対化する"],a:1,e:"無作為に抽出する（ランダムに選ぶ）。かたよった標本では正しく推定できない。"}
+   ]},
+]}
+};
+
+/* ================= 状態管理（localStorage） ================= */
+const LS_KEY="chiba_sugaku_progress_v1";
+let progress = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+function save(){localStorage.setItem(LS_KEY, JSON.stringify(progress));}
+
+function allUnits(){
+  return Object.keys(DATA).flatMap(f=>DATA[f].units.map(u=>u.id));
+}
+function updateProgress(){
+  const all=allUnits();
+  const done=all.filter(id=>progress[id]).length;
+  const pct=all.length? Math.round(done/all.length*100):0;
+  document.getElementById('progFill').style.width=pct+"%";
+  document.getElementById('progText').textContent=`${done} / ${all.length} 単元 完了`;
+}
+
+/* ================= 描画 ================= */
+function renderField(fkey){
+  const f=DATA[fkey];
+  let html=`<section id="sec-${fkey}" class="${fkey==='suu'?'active':''}">`;
+  html+=`<div class="field-head"><span class="field-dot" style="background:${f.color}"></span><h2>${f.name}</h2><span class="cnt">${f.units.length}単元</span></div>`;
+  f.units.forEach(u=>{
+    const done=progress[u.id];
+    html+=`<div class="unit" data-uid="${u.id}">
+      <div class="unit-head">
+        <span class="unit-grade">${u.grade}</span>
+        <span class="unit-title">${u.title}</span>
+        <span class="unit-check">${done?'✅':'⬜'}</span>
+        <span class="unit-arrow">▶</span>
+      </div>
+      <div class="unit-body">
+        <h3 class="sec">📘 要点整理</h3>
+        <ul class="points">${u.points.map(p=>`<li>${p}</li>`).join('')}</ul>
+        ${u.formulas.length?`<h3 class="sec">📐 覚える式</h3>${u.formulas.map(fm=>`<div class="fm">${fm}</div>`).join('')}`:''}
+        <h3 class="sec">✏️ 確認問題</h3>
+        <div class="quiz-box">${u.quiz.map((q,qi)=>renderQuiz(u.id,qi,q)).join('')}</div>
+        <div class="row">
+          <button class="btn primary mark-btn" data-uid="${u.id}">${done?'✅ 学習済み（解除）':'この単元を学習済みにする'}</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  html+=`</section>`;
+  return html;
+}
+function renderQuiz(uid,qi,q){
+  return `<div class="q" data-uid="${uid}" data-qi="${qi}">
+    <div class="q-txt"><span class="num">Q${qi+1}.</span>${q.q}</div>
+    <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
+    <div class="expl"><b>解説：</b>${q.e}</div>
+  </div>`;
+}
+
+function buildAll(){
+  const c=document.getElementById('content');
+  c.innerHTML = Object.keys(DATA).map(renderField).join('');
+  updateProgress();
+  bindEvents();
+}
+
+/* ================= イベント ================= */
+function bindEvents(){
+  // タブ
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.onclick=()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+      t.classList.add('active');
+      const f=t.dataset.f;
+      if(f==='test'){document.getElementById('sec-test').classList.add('active'); renderTestIntro();}
+      else if(f==='qa'){document.getElementById('sec-qa').classList.add('active'); if(!qaState)renderQAIntro();}
+      else if(f==='kijutsu'){document.getElementById('sec-kijutsu').classList.add('active'); renderKijutsu();}
+      else document.getElementById('sec-'+f).classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+    };
+  });
+  // 単元の開閉
+  document.querySelectorAll('.unit-head').forEach(h=>{
+    h.onclick=()=>h.parentElement.classList.toggle('open');
+  });
+  // クイズ回答
+  document.querySelectorAll('.q').forEach(qEl=>{
+    const uid=qEl.dataset.uid, qi=+qEl.dataset.qi;
+    const ans=findQuiz(uid,qi).a;
+    qEl.querySelectorAll('.opt').forEach(opt=>{
+      opt.onclick=()=>{
+        if(qEl.classList.contains('answered'))return;
+        qEl.classList.add('answered');
+        const chosen=+opt.dataset.oi;
+        qEl.querySelectorAll('.opt').forEach((o,i)=>{
+          o.classList.add('disabled');
+          if(i===ans)o.classList.add('correct');
+          if(i===chosen&&chosen!==ans)o.classList.add('wrong');
+        });
+        qEl.querySelector('.expl').classList.add('show');
+      };
+    });
+  });
+  // 学習済みボタン
+  document.querySelectorAll('.mark-btn').forEach(b=>{
+    b.onclick=(e)=>{
+      e.stopPropagation();
+      const uid=b.dataset.uid;
+      progress[uid]=!progress[uid];
+      save(); updateProgress();
+      // 更新
+      const unit=document.querySelector(`.unit[data-uid="${uid}"]`);
+      unit.querySelector('.unit-check').textContent=progress[uid]?'✅':'⬜';
+      b.textContent=progress[uid]?'✅ 学習済み（解除）':'この単元を学習済みにする';
+    };
+  });
+}
+function findQuiz(uid,qi){
+  for(const f of Object.values(DATA)){
+    const u=f.units.find(u=>u.id===uid);
+    if(u)return u.quiz[qi];
+  }
+}
+
+/* ================= 模試モード ================= */
+let testState=null;
+function renderTestIntro(){
+  const area=document.getElementById('testArea');
+  area.innerHTML=`
+    <div class="test-intro">
+      <h2>📝 実力チェック模試</h2>
+      <p>全分野からランダムに出題します。本番のように、まず自分で解いてから答え合わせをしよう。分野をしぼることもできます。計算用紙を用意して、とちゅう式を書きながら解くのがおすすめ。</p>
+      <div class="chips" id="fieldChips">
+        <div class="chip on" data-f="suu">数と式</div>
+        <div class="chip on" data-f="eq">方程式</div>
+        <div class="chip on" data-f="fn">関数</div>
+        <div class="chip on" data-f="zu">図形</div>
+        <div class="chip on" data-f="dat">データ・確率</div>
+      </div>
+      <div class="row">
+        <span style="font-size:13px;color:var(--sub)">問題数：</span>
+        <div class="chips" id="countChips" style="margin:0">
+          <div class="chip on" data-n="10">10問</div>
+          <div class="chip" data-n="20">20問</div>
+          <div class="chip" data-n="0">全問</div>
+        </div>
+      </div>
+      <div class="row"><button class="btn primary" id="startTest">模試スタート</button></div>
+    </div>`;
+  area.querySelectorAll('#fieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+  area.querySelectorAll('#countChips .chip').forEach(c=>c.onclick=()=>{
+    area.querySelectorAll('#countChips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');
+  });
+  document.getElementById('startTest').onclick=startTest;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function startTest(){
+  const fields=[...document.querySelectorAll('#fieldChips .chip.on')].map(c=>c.dataset.f);
+  if(!fields.length){alert('分野を1つ以上選んでください');return;}
+  const n=+document.querySelector('#countChips .chip.on').dataset.n;
+  let pool=[];
+  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach(q=>pool.push({...q,field:DATA[fk].name}))));
+  pool=shuffle(pool);
+  if(n>0)pool=pool.slice(0,n);
+  testState={pool,answers:new Array(pool.length).fill(null),submitted:false};
+  renderTestQuestions();
+}
+function renderTestQuestions(){
+  const {pool}=testState;
+  const area=document.getElementById('testArea');
+  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p></div>`;
+  pool.forEach((q,i)=>{
+    html+=`<div class="q" data-i="${i}">
+      <div class="qcount">${q.field}</div>
+      <div class="q-txt"><span class="num">問${i+1}.</span>${q.q}</div>
+      <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
+      <div class="expl"><b>解説：</b>${q.e}</div>
+    </div>`;
+  });
+  html+=`<div class="row"><button class="btn primary" id="submitTest">採点する</button><button class="btn" id="cancelTest">やめる</button></div>`;
+  area.innerHTML=html;
+  area.querySelectorAll('.q').forEach(qEl=>{
+    const i=+qEl.dataset.i;
+    qEl.querySelectorAll('.opt').forEach(opt=>{
+      opt.onclick=()=>{
+        if(testState.submitted)return;
+        qEl.querySelectorAll('.opt').forEach(o=>o.style.borderColor='');
+        opt.style.borderColor='var(--accent)';
+        testState.answers[i]=+opt.dataset.oi;
+      };
+    });
+  });
+  document.getElementById('submitTest').onclick=gradeTest;
+  document.getElementById('cancelTest').onclick=renderTestIntro;
+}
+function gradeTest(){
+  const {pool,answers}=testState;
+  const unanswered=answers.filter(a=>a===null).length;
+  if(unanswered>0 && !confirm(`未回答が${unanswered}問あります。このまま採点しますか？`))return;
+  testState.submitted=true;
+  let correct=0;
+  document.querySelectorAll('#testArea .q').forEach(qEl=>{
+    const i=+qEl.dataset.i;const q=pool[i];
+    if(answers[i]===q.a)correct++;
+    qEl.querySelectorAll('.opt').forEach((o,oi)=>{
+      o.classList.add('disabled');o.style.borderColor='';
+      if(oi===q.a)o.classList.add('correct');
+      if(oi===answers[i]&&answers[i]!==q.a)o.classList.add('wrong');
+    });
+    qEl.querySelector('.expl').classList.add('show');
+  });
+  const pct=Math.round(correct/pool.length*100);
+  let msg;
+  if(pct>=90)msg='素晴らしい！合格圏内。この調子で苦手分野を仕上げよう。';
+  else if(pct>=70)msg='good！あと一歩。まちがえた単元の要点を読み直そう。';
+  else if(pct>=50)msg='基礎はついてきた。解説をよく読んで復習しよう。';
+  else msg='まずは各単元の「要点整理」から。くり返せば必ず伸びる！';
+  const card=document.createElement('div');
+  card.className='result-card';
+  card.innerHTML=`<div class="result-score">${correct} / ${pool.length}</div>
+    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%</div>
+    <div class="result-msg">${msg}</div>
+    <div class="row" style="justify-content:center;margin-top:14px">
+      <button class="btn primary" id="retryTest">もう一度</button>
+    </div>`;
+  const area=document.getElementById('testArea');
+  area.insertBefore(card, area.firstChild);
+  document.getElementById('retryTest').onclick=renderTestIntro;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ================= 一問一答（フラッシュカード） ================= */
+const QA={
+ suu:[
+  {q:"(a＋b)² を展開すると？",a:"a²＋2ab＋b²"},
+  {q:"(a＋b)(a−b) を展開すると？",a:"a²−b²"},
+  {q:"x²−a² を因数分解すると？",a:"(x＋a)(x−a)"},
+  {q:"−5² の値は？",a:"−25（(−5)²＝25と区別）"},
+  {q:"√a×√b は？",a:"√(ab)"},
+  {q:"√50 を簡単にすると？",a:"5√2"},
+  {q:"13² の値は？",a:"169"},
+  {q:"√3 の近似値は？",a:"約1.732（人なみにおごれや）"},
+  {q:"正の数aの平方根はいくつある？",a:"±√a の2つ"},
+  {q:"a円のt割引きの代金を式で表すと？",a:"a×(1−t/10) 円"},
+  {q:"分母の有理化：1/√2 ＝？",a:"√2/2"},
+  {q:"かっこの前の−をはずすときのルールは？",a:"すべての項の符号を変える"}
+ ],
+ eq:[
+  {q:"二次方程式の解の公式は？",a:"x＝{−b±√(b²−4ac)}／2a"},
+  {q:"a：b＝c：d のとき成り立つ式は？",a:"ad＝bc"},
+  {q:"移項すると符号はどうなる？",a:"変わる（＋⇔−）"},
+  {q:"(x−a)(x−b)＝0 の解は？",a:"x＝a、x＝b"},
+  {q:"(x＋m)²＝k（k＞0）の解は？",a:"x＝−m±√k"},
+  {q:"連立方程式で係数をそろえて消す解き方は？",a:"加減法"},
+  {q:"y＝〜の式を他方に代入する解き方は？",a:"代入法"},
+  {q:"x²＝9x を解くときにしてはいけないことは？",a:"両辺をxで割る（x＝0が消える）"},
+  {q:"文章題で解が出たあと必ずすることは？",a:"問題に合うか確かめる（負の個数などを除く）"},
+  {q:"時間を求める式は？",a:"時間＝道のり÷速さ"}
+ ],
+ fn:[
+  {q:"比例の式は？",a:"y＝ax"},
+  {q:"反比例の式は？",a:"y＝a/x"},
+  {q:"一次関数の式は？",a:"y＝ax＋b"},
+  {q:"変化の割合を求める式は？",a:"yの増加量÷xの増加量"},
+  {q:"y＝ax＋b の b を何という？",a:"切片（y軸との交点のy座標）"},
+  {q:"y＝ax² で xがp→qのときの変化の割合は？",a:"a(p＋q)"},
+  {q:"y＝ax² のグラフの名前は？",a:"放物線（頂点は原点）"},
+  {q:"2直線の交点の座標の求め方は？",a:"2式を連立方程式として解く"},
+  {q:"平行な2直線の関係は？",a:"傾きが等しい"},
+  {q:"y＝ax²で xの変域が0をまたぐとき注意することは？",a:"yの最小値（または最大値）は0になる"},
+  {q:"反比例で一定になるものは？",a:"xとyの積（xy＝a）"}
+ ],
+ zu:[
+  {q:"三角形の内角の和は？",a:"180°"},
+  {q:"n角形の内角の和は？",a:"180°×(n−2)"},
+  {q:"多角形の外角の和は？",a:"360°（何角形でも）"},
+  {q:"円周角と中心角の関係は？",a:"円周角＝中心角の半分"},
+  {q:"直径に対する円周角は？",a:"90°"},
+  {q:"三平方の定理は？",a:"a²＋b²＝c²（cは斜辺）"},
+  {q:"45°・45°・90°の三角形の3辺の比は？",a:"1：1：√2"},
+  {q:"30°・60°・90°の三角形の3辺の比は？",a:"1：2：√3"},
+  {q:"錐（すい）の体積の公式は？",a:"底面積×高さ×1/3"},
+  {q:"球の体積の公式は？",a:"(4/3)πr³"},
+  {q:"球の表面積の公式は？",a:"4πr²"},
+  {q:"おうぎ形の弧の長さの公式は？",a:"2πr×(中心角/360)"},
+  {q:"相似比 m：n の図形の面積比は？",a:"m²：n²"},
+  {q:"中点連結定理とは？",a:"中点を結ぶ線分は残りの辺に平行で長さは半分"},
+  {q:"2点から等距離な点の集まりは？",a:"垂直二等分線"},
+  {q:"角の2辺から等距離な点の集まりは？",a:"角の二等分線"}
+ ],
+ dat:[
+  {q:"相対度数の求め方は？",a:"その階級の度数÷度数の合計"},
+  {q:"中央値の別の呼び方は？",a:"メジアン（＝第2四分位数）"},
+  {q:"最頻値の別の呼び方は？",a:"モード"},
+  {q:"範囲（レンジ）の求め方は？",a:"最大値−最小値"},
+  {q:"四分位範囲の求め方は？",a:"第3四分位数−第1四分位数"},
+  {q:"2つのさいころの目の出方は全部で？",a:"36通り"},
+  {q:"「少なくとも1つ」の確率の求め方は？",a:"1−（1つもない確率）"},
+  {q:"確率pがとる値の範囲は？",a:"0≦p≦1"},
+  {q:"標本をかたよりなく選ぶことを何という？",a:"無作為に抽出する"},
+  {q:"全数調査の例を1つ？",a:"国勢調査（健康診断でも可）"}
+ ]
+};
+const QA_FIELDS={suu:"数と式",eq:"方程式",fn:"関数",zu:"図形",dat:"データ・確率"};
+let qaState=null;
+function renderQAIntro(){
+  const area=document.getElementById('qaArea');
+  area.innerHTML=`
+    <div class="test-intro">
+      <h2>🃏 一問一答</h2>
+      <p>公式・用語をフラッシュカードで暗記しよう。問題を見て頭の中で答えてから「答えを見る」。覚えたカードは消え、まちがえたカードはくり返し出てきます。</p>
+      <div class="chips" id="qaFieldChips">
+        <div class="chip on" data-f="suu">数と式</div>
+        <div class="chip on" data-f="eq">方程式</div>
+        <div class="chip on" data-f="fn">関数</div>
+        <div class="chip on" data-f="zu">図形</div>
+        <div class="chip on" data-f="dat">データ・確率</div>
+      </div>
+      <div class="row"><button class="btn primary" id="startQA">スタート</button></div>
+    </div>`;
+  area.querySelectorAll('#qaFieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+  document.getElementById('startQA').onclick=startQA;
+}
+function startQA(){
+  const fields=[...document.querySelectorAll('#qaFieldChips .chip.on')].map(c=>c.dataset.f);
+  if(!fields.length){alert('分野を1つ以上選んでください');return;}
+  let deck=[];
+  fields.forEach(f=>QA[f].forEach(c=>deck.push({...c,field:QA_FIELDS[f]})));
+  deck=shuffle(deck);
+  qaState={deck,total:deck.length,idx:0,ok:0,ng:0,revealed:false};
+  renderQACard();
+}
+function renderQACard(){
+  const s=qaState, area=document.getElementById('qaArea');
+  if(s.deck.length===0){
+    area.innerHTML=`<div class="result-card">
+      <div class="result-score">🎉</div>
+      <div style="font-size:18px;font-weight:700;margin-top:6px">全${s.total}枚 コンプリート！</div>
+      <div class="result-msg">くり返して定着させよう。</div>
+      <div class="row" style="justify-content:center;margin-top:14px"><button class="btn primary" id="qaAgain">もう一度</button></div>
+    </div>`;
+    document.getElementById('qaAgain').onclick=renderQAIntro;
+    return;
+  }
+  const card=s.deck[0];
+  area.innerHTML=`
+    <div class="qa-stat">
+      <div class="s-rem">のこり<b>${s.deck.length}</b></div>
+      <div class="s-ok">覚えた<b>${s.ok}</b></div>
+      <div class="s-ng">要復習<b>${s.ng}</b></div>
+    </div>
+    <div class="card" id="qaCard">
+      <div class="card-field">${card.field}</div>
+      <div class="card-q">${card.q}</div>
+      <div class="card-a">${card.a}</div>
+      <div class="card-hint" id="qaHint">タップして答えを見る</div>
+    </div>
+    <div id="qaControls"></div>`;
+  const cardEl=document.getElementById('qaCard');
+  const reveal=()=>{
+    if(s.revealed)return; s.revealed=true;
+    cardEl.classList.add('revealed');
+    document.getElementById('qaHint').style.display='none';
+    document.getElementById('qaControls').innerHTML=`
+      <div class="grade-row">
+        <button class="btn ng" id="qaNG">× もう一度</button>
+        <button class="btn ok" id="qaOK">✓ 覚えた</button>
+      </div>`;
+    document.getElementById('qaOK').onclick=()=>gradeCard(true);
+    document.getElementById('qaNG').onclick=()=>gradeCard(false);
+  };
+  cardEl.onclick=reveal;
+}
+function gradeCard(ok){
+  const s=qaState;
+  const card=s.deck.shift();
+  s.revealed=false;
+  if(ok){s.ok++;}
+  else{s.ng++; s.deck.push(card);} // まちがえたら山の最後へ戻す
+  renderQACard();
+}
+
+/* ================= 証明・記述対策 ================= */
+const KJ_META={
+  goudou:{name:"三角形の合同の証明", color:"var(--zu)"},
+  souji:{name:"相似の証明", color:"var(--eq)"},
+  moji:{name:"文字式による説明", color:"var(--suu)"},
+  sakuzu:{name:"作図の考え方", color:"var(--fn)"}
+};
+const KIJUTSU={
+ goudou:[
+  {q:"線分ABと線分CDが点Oで交わっていて、AO＝BO、CO＝DO である。このとき △AOC≡△BOD を証明せよ。",
+   a:"△AOCと△BODにおいて、<br>仮定より AO＝BO …①<br>仮定より CO＝DO …②<br>対頂角は等しいから ∠AOC＝∠BOD …③<br>①②③より、2組の辺とその間の角がそれぞれ等しいから<br>△AOC≡△BOD",
+   p:"「△〜と△〜において」で書き始め、①②③それぞれに根拠（仮定・対頂角）を必ず添える。最後の合同条件は一字一句正確に。"},
+  {q:"AB∥DC、AB＝DC である四角形ABCDに対角線BDをひく。このとき △ABD≡△CDB を証明せよ。",
+   a:"△ABDと△CDBにおいて、<br>仮定より AB＝CD …①<br>BDは共通 …②<br>AB∥DCより、平行線の錯角は等しいから ∠ABD＝∠CDB …③<br>①②③より、2組の辺とその間の角がそれぞれ等しいから<br>△ABD≡△CDB",
+   p:"「共通な辺」と「平行線→錯角」は合同証明の2大定番。錯角を使うときは必ず「AB∥DCより」と平行の根拠を書く。"},
+  {q:"AB＝ACの二等辺三角形ABCで、頂角Aの二等分線と辺BCとの交点をDとする。このとき BD＝CD を証明せよ。",
+   a:"△ABDと△ACDにおいて、<br>仮定より AB＝AC …①<br>ADは∠Aの二等分線だから ∠BAD＝∠CAD …②<br>ADは共通 …③<br>①②③より、2組の辺とその間の角がそれぞれ等しいから<br>△ABD≡△ACD<br>合同な図形の対応する辺は等しいから BD＝CD",
+   p:"結論が「辺が等しい」でも、まず三角形の合同を示す。最後の「合同な図形の対応する辺は等しいから」の一文を書き忘れると減点。"}
+ ],
+ souji:[
+  {q:"△ABCの辺AB上に点D、辺AC上に点Eがあり、∠ADE＝∠ACB である。このとき △ADE∽△ACB を証明せよ。",
+   a:"△ADEと△ACBにおいて、<br>∠Aは共通 …①<br>仮定より ∠ADE＝∠ACB …②<br>①②より、2組の角がそれぞれ等しいから<br>△ADE∽△ACB",
+   p:"相似の証明はほぼ「2組の角がそれぞれ等しい」で決まる。まず共通な角がないか探すのが鉄則。対応する頂点の順番（A→A、D→C、E→B）にも注意。"},
+  {q:"円Oの2つの弦ABとCDが、円の内部の点Pで交わっている。このとき △PAC∽△PDB を証明せよ。",
+   a:"△PACと△PDBにおいて、<br>対頂角は等しいから ∠APC＝∠DPB …①<br>弧CBに対する円周角は等しいから ∠PAC＝∠PDB …②<br>①②より、2組の角がそれぞれ等しいから<br>△PAC∽△PDB",
+   p:"円がある相似証明では「同じ弧に対する円周角」、線分が交わっていれば「対頂角」。この2つの組み合わせが千葉の大問3の定番。"}
+ ],
+ moji:[
+  {q:"連続する3つの整数の和は3の倍数になる。この理由を文字を使って説明せよ。",
+   a:"まん中の整数をnとすると、連続する3つの整数は n−1、n、n＋1 と表せる。<br>その和は (n−1)＋n＋(n＋1)＝3n<br>nは整数だから、3nは3の倍数である。<br>よって、連続する3つの整数の和は3の倍数になる。",
+   p:"まん中をnとすると計算が楽。「nは整数だから」の一文が採点ポイント。結論の文を最後にもう一度書く。"},
+  {q:"2けたの自然数と、その数の十の位と一の位を入れかえてできる数との和は、11の倍数になる。この理由を説明せよ。",
+   a:"もとの数の十の位をa、一の位をbとすると、もとの数は 10a＋b、入れかえた数は 10b＋a と表せる。<br>その和は (10a＋b)＋(10b＋a)＝11a＋11b＝11(a＋b)<br>a＋bは整数だから、11(a＋b)は11の倍数である。<br>よって、2つの数の和は11の倍数になる。",
+   p:"2けたの数＝10×(十の位)＋(一の位) と表すのがすべて。「ab」と書くと積になってしまうのでNG。"},
+  {q:"奇数と奇数の和は偶数になる。この理由を文字を使って説明せよ。",
+   a:"m、nを整数とすると、2つの奇数は 2m＋1、2n＋1 と表せる。<br>その和は (2m＋1)＋(2n＋1)＝2m＋2n＋2＝2(m＋n＋1)<br>m＋n＋1は整数だから、2(m＋n＋1)は偶数である。<br>よって、奇数と奇数の和は偶数になる。",
+   p:"2つの奇数は別々の文字（mとn）で表す。同じnを使うと「同じ奇数どうし」の話になってしまい減点。"}
+ ],
+ sakuzu:[
+  {q:"∠XOYの二等分線を、コンパスと定規で作図する手順を説明せよ。",
+   a:"① 点Oを中心とする円をかき、辺OX、OYとの交点をそれぞれA、Bとする。<br>② A、Bをそれぞれ中心として、等しい半径の円をかき、その交点の1つをPとする。<br>③ 半直線OPをひく。これが∠XOYの二等分線である。",
+   p:"角の二等分線＝「2辺から等距離な点の集まり」。作図の手順説明では「〜を中心として」「等しい半径で」を明確に書く。"},
+  {q:"直線ℓ上にない2点A、Bがある。ℓ上にあって、2点A、Bから等しい距離にある点Pを作図する方法を説明せよ。",
+   a:"① A、Bをそれぞれ中心として、等しい半径の円をかき、2つの交点を通る直線（線分ABの垂直二等分線）をひく。<br>② この垂直二等分線と直線ℓとの交点がPである。<br>（垂直二等分線上の点は2点A、Bから等距離だから）",
+   p:"「2点から等距離」→垂直二等分線 に言いかえるのが千葉の作図の決め手。条件が「2辺から等距離」なら角の二等分線、「最短距離・90°」なら垂線。"},
+  {q:"線分ABを直径とする円を作図する手順を説明せよ。",
+   a:"① 線分ABの垂直二等分線を作図し、ABとの交点（＝ABの中点）をOとする。<br>② Oを中心として、半径OA（＝OB）の円をかく。これが線分ABを直径とする円である。",
+   p:"「直径の円」→中心は中点→中点は垂直二等分線で求める、と逆算する。作図問題は結論から必要なものをさかのぼって考える。"}
+ ]
+};
+function renderKijutsu(){
+  const area=document.getElementById('kijutsuArea');
+  let html=`<div class="test-intro" style="padding:16px 18px">
+     <h2>✍️ 証明・記述対策</h2>
+     <p style="margin:0">千葉県入試で差がつく「証明・説明」問題。まずノートに自分の言葉で書いてから模範解答を確認しよう。太字の<b>採点ポイント</b>が入っていれば正解に近い。証明は途中まで書けても部分点がもらえる。</p>
+   </div>`;
+  Object.keys(KIJUTSU).forEach(f=>{
+    html+=`<div class="field-head"><span class="field-dot" style="background:${KJ_META[f].color}"></span><h2 style="font-size:15px">${KJ_META[f].name}</h2></div>`;
+    KIJUTSU[f].forEach((k,i)=>{
+      html+=`<div class="kj">
+        <div class="kj-q"><span class="num">問${i+1}.</span> ${k.q}</div>
+        <button class="btn kj-btn" data-f="${f}" data-i="${i}">模範解答を見る</button>
+        <div class="kj-a" id="kj-${f}-${i}">
+          <span class="lbl">模範解答</span>${k.a}
+          <div class="kj-point">🔑 ${k.p}</div>
+        </div>
+      </div>`;
+    });
+  });
+  area.innerHTML=html;
+  area.querySelectorAll('.kj-btn').forEach(b=>{
+    b.onclick=()=>{
+      const box=document.getElementById(`kj-${b.dataset.f}-${b.dataset.i}`);
+      const open=box.classList.toggle('show');
+      b.textContent=open?'解答を隠す':'模範解答を見る';
+    };
+  });
+}
+
+/* ================= リセット ================= */
+document.getElementById('resetBtn').onclick=()=>{
+  if(confirm('学習の進捗をすべてリセットしますか？')){
+    progress={};save();buildAll();
+  }
+};
+
+buildAll();
+</script>
+</body>
+</html>
