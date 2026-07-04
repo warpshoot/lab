@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>千葉県公立高校 国語 対策</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3441;
+    --txt:#e6edf3; --sub:#8b98a9; --accent:#4fc3f7; --accent2:#66d9a8;
+    --warn:#ffb454; --bad:#ff6b6b; --good:#66d9a8;
+    --kanji:#ffb454; --bun:#4fc3f7; --dok:#66d9a8; --kot:#c792ea;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Kaku Gothic ProN','Yu Gothic',Meiryo,sans-serif;
+    background:var(--bg); color:var(--txt); line-height:1.7; padding-bottom:80px;
+  }
+  a{color:inherit}
+  .wrap{max-width:860px;margin:0 auto;padding:0 18px}
+
+  header{
+    background:linear-gradient(135deg,#2a1a14,#0d1117);
+    border-bottom:1px solid var(--line); padding:26px 0 22px; margin-bottom:8px;
+  }
+  header h1{font-size:20px;font-weight:700;letter-spacing:.02em}
+  header p{color:var(--sub);font-size:13px;margin-top:4px}
+  .prog-wrap{margin-top:16px}
+  .prog-bar{height:8px;background:var(--panel2);border-radius:6px;overflow:hidden}
+  .prog-fill{height:100%;width:0;background:linear-gradient(90deg,var(--warn),var(--accent2));transition:width .5s}
+  .prog-label{font-size:12px;color:var(--sub);margin-top:6px;display:flex;justify-content:space-between}
+
+  /* nav tabs */
+  .tabs{display:flex;gap:6px;position:sticky;top:0;background:var(--bg);padding:12px 0;z-index:20;flex-wrap:wrap}
+  .tab{
+    flex:1;min-width:64px;text-align:center;padding:9px 4px;border-radius:10px;
+    background:var(--panel);border:1px solid var(--line);font-size:13px;font-weight:600;
+    color:var(--sub);cursor:pointer;transition:.15s;user-select:none;
+  }
+  .tab.active{color:var(--txt);border-color:var(--accent)}
+  .tab[data-f="kanji"].active{border-color:var(--kanji);color:var(--kanji)}
+  .tab[data-f="bun"].active{border-color:var(--bun);color:var(--bun)}
+  .tab[data-f="dok"].active{border-color:var(--dok);color:var(--dok)}
+  .tab[data-f="kot"].active{border-color:var(--kot);color:var(--kot)}
+  .tab[data-f="test"].active{border-color:#fff;color:#fff}
+
+  section{display:none;animation:fade .3s}
+  section.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .field-head{display:flex;align-items:center;gap:10px;margin:18px 0 10px}
+  .field-dot{width:12px;height:12px;border-radius:50%}
+  .field-head h2{font-size:17px}
+  .field-head .cnt{margin-left:auto;font-size:12px;color:var(--sub)}
+
+  .unit{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
+  .unit-head{display:flex;align-items:center;gap:10px;padding:15px 16px;cursor:pointer;user-select:none}
+  .unit-head:hover{background:var(--panel2)}
+  .unit-grade{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--panel2);color:var(--sub);white-space:nowrap}
+  .unit-title{font-weight:700;font-size:15px;flex:1}
+  .unit-check{font-size:16px;width:22px;text-align:center}
+  .unit-arrow{color:var(--sub);transition:transform .2s;font-size:12px}
+  .unit.open .unit-arrow{transform:rotate(90deg)}
+  .unit-body{display:none;padding:0 16px 16px;border-top:1px solid var(--line)}
+  .unit.open .unit-body{display:block}
+
+  h3.sec{font-size:13px;color:var(--accent);margin:16px 0 8px;font-weight:700;letter-spacing:.03em}
+  .points{list-style:none}
+  .points li{padding:7px 0 7px 22px;position:relative;font-size:14px;border-bottom:1px dashed var(--line)}
+  .points li:last-child{border-bottom:none}
+  .points li::before{content:"▸";position:absolute;left:2px;color:var(--accent2)}
+  .kw{color:var(--warn);font-weight:700}
+  .fm{background:var(--panel2);border-left:3px solid var(--accent);padding:8px 12px;border-radius:6px;margin:8px 0;font-size:14px}
+
+  /* quiz */
+  .q{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
+  .q-txt{font-size:14px;font-weight:600;margin-bottom:10px}
+  .q-txt .num{color:var(--accent);margin-right:6px}
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opt{padding:10px 13px;border-radius:9px;background:var(--panel);border:1px solid var(--line);cursor:pointer;font-size:14px;transition:.12s}
+  .opt:hover{border-color:var(--accent)}
+  .opt.correct{background:rgba(102,217,168,.18);border-color:var(--good)}
+  .opt.wrong{background:rgba(255,107,107,.16);border-color:var(--bad)}
+  .opt.disabled{cursor:default;pointer-events:none;opacity:.55}
+  .opt.disabled.correct,.opt.disabled.wrong{opacity:1}
+  .expl{display:none;margin-top:10px;padding:10px 12px;background:var(--panel);border-radius:8px;font-size:13px;border-left:3px solid var(--accent2)}
+  .expl.show{display:block}
+  .expl b{color:var(--accent2)}
+
+  .btn{display:inline-block;padding:9px 16px;border-radius:9px;background:var(--panel);border:1px solid var(--line);color:var(--txt);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent);color:#04222f;border-color:var(--accent)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0}
+
+  /* test mode */
+  .test-intro{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0}
+  .test-intro h2{font-size:18px;margin-bottom:8px}
+  .test-intro p{color:var(--sub);font-size:14px;margin-bottom:14px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .chip{padding:7px 14px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);font-size:13px;cursor:pointer;font-weight:600}
+  .chip.on{background:var(--accent);color:#04222f;border-color:var(--accent)}
+  .result-card{text-align:center;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:14px;margin:16px 0}
+  .result-score{font-size:44px;font-weight:800;color:var(--accent)}
+  .result-msg{color:var(--sub);margin-top:6px}
+  .qcount{font-size:12px;color:var(--sub);text-align:right;margin-bottom:4px}
+
+  /* flashcard (一問一答) */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px 20px;margin:14px 0;min-height:200px;display:flex;flex-direction:column;justify-content:center;text-align:center}
+  .card-field{font-size:12px;color:var(--sub);margin-bottom:12px;font-weight:700}
+  .card-q{font-size:19px;font-weight:700;line-height:1.6}
+  .card-a{font-size:24px;font-weight:800;color:var(--accent2);margin-top:18px;display:none}
+  .card.revealed .card-a{display:block;animation:fade .25s}
+  .card-hint{font-size:12px;color:var(--sub);margin-top:16px}
+  .grade-row{display:flex;gap:10px;margin:10px 0}
+  .grade-row .btn{flex:1;text-align:center;padding:13px}
+  .btn.ng{border-color:var(--bad);color:var(--bad)}
+  .btn.ok{border-color:var(--good);color:var(--good)}
+  .qa-stat{display:flex;justify-content:space-around;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;font-size:13px}
+  .qa-stat b{display:block;font-size:22px;font-weight:800}
+  .qa-stat .s-rem b{color:var(--accent)} .qa-stat .s-ok b{color:var(--good)} .qa-stat .s-ng b{color:var(--warn)}
+
+  /* 作文 */
+  .kj{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+  .kj-q{font-size:15px;font-weight:700;margin-bottom:6px}
+  .kj-q .num{color:var(--kanji)}
+  .kj-cond{color:var(--sub);font-size:13px;margin-bottom:10px;padding-left:2px}
+  .kj-a{display:none;margin-top:12px;padding:12px 14px;background:var(--panel2);border-radius:9px;border-left:3px solid var(--good);font-size:14px;line-height:1.8}
+  .kj-a.show{display:block;animation:fade .25s}
+  .kj-a .lbl{color:var(--good);font-weight:700;font-size:12px;display:block;margin-bottom:4px}
+  .kj-point{color:var(--sub);font-size:13px;margin-top:8px}
+
+  footer{text-align:center;color:var(--sub);font-size:12px;margin-top:30px}
+  .reset{color:var(--sub);text-decoration:underline;cursor:pointer;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>📖 千葉県公立高校 国語 対策</h1>
+    <p>漢字・語句／文法・敬語／読解／古典の全単元｜要点整理・一問一答・作文対策・模試</p>
+    <div class="prog-wrap">
+      <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+      <div class="prog-label">
+        <span>学習の進み具合</span>
+        <span id="progText">0 / 0 単元</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-f="kanji">漢字・語句</div>
+    <div class="tab" data-f="bun">文法</div>
+    <div class="tab" data-f="dok">読解</div>
+    <div class="tab" data-f="kot">古典</div>
+    <div class="tab" data-f="qa">一問一答</div>
+    <div class="tab" data-f="sakubun">作文</div>
+    <div class="tab" data-f="test">模試</div>
+  </div>
+
+  <div id="content"></div>
+
+  <section id="sec-qa">
+    <div id="qaArea"></div>
+  </section>
+
+  <section id="sec-sakubun">
+    <div id="sakubunArea"></div>
+  </section>
+
+  <section id="sec-test">
+    <div id="testArea"></div>
+  </section>
+
+  <footer>
+    千葉県公立高校入試（国語）学習教材 ・ 全範囲対応<br>
+    進捗はこの端末に自動保存されます ・ <span class="reset" id="resetBtn">進捗をリセット</span>
+  </footer>
+</div>
+
+<script>
+/* =========================================================================
+   千葉県公立高校 国語 教材データ
+   分野: kanji(漢字・語句) bun(文法・敬語) dok(読解) kot(古典)
+   各単元: grade, title, points[], notes[], quiz[{q,opts,a,e}]
+   千葉県入試の傾向: 大問1が聞き取り検査（全国でも珍しい）、
+   漢字の読み・書き各4問、説明的文章・文学的文章・古典（古文中心＋漢文）、
+   最後に二段落構成の条件作文（200字）。記述問題が多いのが特徴。
+   ========================================================================= */
+const DATA = {
+kanji:{ name:"漢字・語句", color:"var(--kanji)", units:[
+  {id:"kj1", grade:"頻出", title:"漢字の読み（入試頻出）",
+   points:[
+     "千葉県の大問2は<span class='kw'>漢字の読み4問</span>。中学で習う読みが中心で、<span class='kw'>訓読みの動詞</span>（〜す・〜れる・〜う）が特によく出る。",
+     "頻出の訓読み：促す（<span class='kw'>うなが</span>す）・滞る（<span class='kw'>とどこお</span>る）・繕う（<span class='kw'>つくろ</span>う）・慕う（<span class='kw'>した</span>う）・催す（<span class='kw'>もよお</span>す）・遂げる（<span class='kw'>と</span>げる）・潤う（<span class='kw'>うるお</span>う）・廃れる（<span class='kw'>すた</span>れる）・怠る（<span class='kw'>おこた</span>る）・鍛える（<span class='kw'>きた</span>える）。",
+     "頻出の音読み：会釈（<span class='kw'>えしゃく</span>）・凝視（ぎょうし）・匿名（<span class='kw'>とくめい</span>）・頻繁（ひんぱん）・緩和（かんわ）・余韻（よいん）・克明（こくめい）・披露（<span class='kw'>ひろう</span>）・示唆（<span class='kw'>しさ</span>）・貢献（こうけん）。",
+     "特別な読み（熟字訓）：<span class='kw'>名残（なごり）</span>・土産（みやげ）・梅雨（つゆ）・行方（ゆくえ）・眼鏡（めがね）・雪崩（なだれ）・芝生（しばふ）・足袋（たび）・風邪（かぜ）・木綿（もめん）。",
+     "読みまちがえやすい語：<span class='kw'>雰囲気（ふんいき）</span>・体裁（<span class='kw'>ていさい</span>）・境内（<span class='kw'>けいだい</span>）・発足（<span class='kw'>ほっそく</span>）・出納（すいとう）・相殺（そうさい）・凡例（はんれい）・重複（ちょうふく）。"
+   ],
+   notes:["読みの学習は「声に出して読む→ひらがなで書く」の2ステップで。目で見るだけでは本番で出てこない","送りがなごと覚える：「試みる（こころ-みる）」「承る（うけたまわ-る）」のように送りがなの位置もセットで"],
+   quiz:[
+     {q:"「作業が滞る」——「滞る」の読みは？",opts:["とどこおる","たまる","はばかる","こだわる"],a:0,e:"とどこおる。「物事が順調に進まない」の意味。音読みは「タイ」（停滞・滞在）。"},
+     {q:"「注意を促す」——「促す」の読みは？",opts:["せかす","うながす","ほどこす","そそのかす"],a:1,e:"うながす。音読みは「ソク」（促進・催促）。"},
+     {q:"「軽く会釈をする」——「会釈」の読みは？",opts:["かいしゃく","えしゃく","あいさつ","えとく"],a:1,e:"えしゃく。「会」を「エ」と読む特別な音読み（会得＝えとく も同様）。"},
+     {q:"「寺の境内を歩く」——「境内」の読みは？",opts:["きょうない","けいない","けいだい","きょうだい"],a:2,e:"けいだい。神社や寺の敷地内のこと。「境」を「ケイ」、「内」を「ダイ」と読む。"},
+     {q:"「名残惜しい」——「名残」の読みは？",opts:["なざん","めいざん","なごり","ながり"],a:2,e:"なごり。漢字の音訓と関係なく熟語全体に読みをあてた「熟字訓」。土産（みやげ）・行方（ゆくえ）なども同じ仲間。"}
+   ]},
+  {id:"kj2", grade:"頻出", title:"漢字の書き（入試頻出）",
+   points:[
+     "千葉県の大問3は<span class='kw'>漢字の書き4問</span>。<span class='kw'>小学校高学年〜中学前半</span>で習う漢字が中心。難しい字より「確実に正しく書ける」ことが大事。",
+     "頻出の書き：<span class='kw'>補う</span>・<span class='kw'>垂れる</span>・預ける・耕す・唱える・敬う・険しい・快い・志す・営む・境・築く・貯蔵・複雑・批評・規律・簡潔・視野・往復・郵便。",
+     "同じ訓の使い分けに注意：<span class='kw'>努める</span>（努力する）・<span class='kw'>務める</span>（役目を果たす）・<span class='kw'>勤める</span>(会社に勤務する)。<span class='kw'>暖かい</span>（気候・空気）と<span class='kw'>温かい</span>（物・心）。",
+     "形の似た字に注意：<span class='kw'>専門</span>（「門」にてん・「専」に点はない）・<span class='kw'>復習と複雑</span>（にんべんの有無）・<span class='kw'>券</span>（下は「刀」）・<span class='kw'>祝と福</span>（しめすへん）。",
+     "<span class='kw'>とめ・はね・はらい</span>まで採点される。楷書でていねいに書く練習をすること。"
+   ],
+   notes:["書きの練習は「問題文ごと」書く：「損失をオギナウ→補う」のように文脈の中で覚えると本番に強い","まちがえた漢字は3回書いて、翌日もう一度テストするのが最短ルート"],
+   quiz:[
+     {q:"「不足分をオギナウ」——正しい漢字は？",opts:["捕う","補う","備う","浦う"],a:1,e:"補う（おぎなう）。「補」はころもへん。「捕まえる」のてへんと区別する。"},
+     {q:"「学級委員をツトメル」——正しい漢字は？",opts:["努める","勤める","務める","勉める"],a:2,e:"務める＝役目を果たす。努める＝努力する、勤める＝会社などに勤務する。"},
+     {q:"「アタタカイお茶を飲む」——正しい漢字は？",opts:["暖かい","温かい","熱かい","暑かい"],a:1,e:"温かい。物や心には「温」、気候や空気全体には「暖」（暖かい部屋・暖冬）を使う。"},
+     {q:"「センモン（専門）」の「専」の書き方について正しいのは？",opts:["右上に点を打つ","点は打たない","「博」と同じつくり","「門」に点がある"],a:1,e:"「専」に点はない。「博」の右上には点がある。細部まで正確に。"},
+     {q:"「歴史をキザム」——正しい漢字は？",opts:["刻む","核む","険む","刻ざむ"],a:0,e:"刻む（きざ-む）。送りがなは「む」だけ。「刻」の音読みは「コク」（時刻・深刻）。"}
+   ]},
+  {id:"kj3", grade:"頻出", title:"同音異義語・同訓異字",
+   points:[
+     "<span class='kw'>同音異義語</span>＝読みが同じで意味が違う熟語。文脈で判断する問題が頻出。",
+     "タイショウ：<span class='kw'>対象</span>（めあて・相手）／<span class='kw'>対称</span>（つり合い・シンメトリー）／<span class='kw'>対照</span>（照らし合わせ・対比）。「中学生対象」「左右対称」「対照的な性格」。",
+     "ホショウ：<span class='kw'>保証</span>（責任を持つ・保証書）／<span class='kw'>保障</span>（守る・安全保障）／<span class='kw'>補償</span>（損害をつぐなう）。",
+     "ツイキュウ：<span class='kw'>追求</span>（追い求める・利益）／<span class='kw'>追究</span>（深く調べる・真理）／<span class='kw'>追及</span>（責める・責任）。",
+     "オサメル：<span class='kw'>納める</span>（税金・品物）／<span class='kw'>収める</span>（成功・手中）／<span class='kw'>治める</span>（国・領地）／<span class='kw'>修める</span>（学問）。",
+     "その他：機会／機械、意外／以外、解放／開放、平行／並行／平衡、驚異／脅威、厚い／熱い／暑い。"
+   ],
+   notes:["同音異義語は「熟語の一方の字」に注目：対象→象（かたどる相手）、対称→称（つり合い）、対照→照（てらす）のように字の意味から判断する"],
+   quiz:[
+     {q:"「左右タイショウな図形」——正しいのは？",opts:["対象","対称","対照","対招"],a:1,e:"対称。つり合いの意味。調査の相手なら「対象」、比べる意味なら「対照」。"},
+     {q:"「真理をツイキュウする」——正しいのは？",opts:["追求","追及","追究","追窮"],a:2,e:"追究＝学問的に深く調べきわめる。利益なら「追求」、責任なら「追及」。"},
+     {q:"「税金をオサメル」——正しいのは？",opts:["収める","納める","治める","修める"],a:1,e:"納める。金や品物を相手に渡すのは「納」。国を治める、学問を修める、成功を収める。"},
+     {q:"「アツい本を読む」——正しいのは？",opts:["熱い","暑い","厚い","篤い"],a:2,e:"厚い＝厚みがある。温度が高い物は「熱い」、気温は「暑い」。"}
+   ]},
+  {id:"kj4", grade:"知識", title:"熟語の構成・部首・画数",
+   points:[
+     "二字熟語の構成は5パターン＋否定：①<span class='kw'>似た意味の組み合わせ</span>（岩石・豊富）②<span class='kw'>反対の意味の組み合わせ</span>（高低・売買）③<span class='kw'>上が下を修飾</span>（洋画・急行）④<span class='kw'>下が上の目的・対象</span>（読書＝書を読む・登山＝山に登る）⑤<span class='kw'>主語と述語</span>（国立＝国が立てる・日没）。",
+     "否定の接頭語：<span class='kw'>不</span>（不安）・<span class='kw'>未</span>（未定＝まだ〜ない）・<span class='kw'>非</span>（非常）・<span class='kw'>無</span>（無害）。",
+     "④「下が上の目的」の見分け方：<span class='kw'>下から上へ「〜を」「〜に」と返して読める</span>（読書→書ヲ読む、着席→席ニ着く）。",
+     "部首の例：<span class='kw'>きへん・のぎへん・しめすへん（礼）ところもへん（補）</span>の区別、<span class='kw'>にくづき</span>（腹・胸＝体に関係）、<span class='kw'>おおざと</span>（部・都、右側）と<span class='kw'>こざとへん</span>（防・階、左側）。",
+     "画数の注意：<span class='kw'>「乙」「了」は1〜2画</span>、「弓」は3画、「子」は3画、「糸」は6画、「阝」は3画。行書は点画が省略・連続されるので、<span class='kw'>楷書に直して数える</span>。"
+   ],
+   notes:["熟語の構成は「下から返して読めるか」をまず試す。返せたら④、返せなければ意味の関係（似ている・反対・修飾）を考える"],
+   quiz:[
+     {q:"「読書」と同じ構成の熟語は？",opts:["高低","岩石","洋画","着席"],a:3,e:"着席＝席ニ着く、読書＝書ヲ読む。どちらも下から返して読める「下が上の目的・対象」。"},
+     {q:"「日没」の構成は？",opts:["似た意味","反対の意味","主語と述語","上が下を修飾"],a:2,e:"日没＝日ガ没する（主語＋述語）。国立・地震・雷鳴も同じ構成。"},
+     {q:"「未完」の「未」の意味は？",opts:["〜でない","まだ〜ない","〜がない","〜すべきでない"],a:1,e:"未＝「まだ〜ない」。未完＝まだ完成していない。不＝〜でない、無＝〜がない。"},
+     {q:"「防」の部首「こざとへん」と同じ部首を持つ字は？",opts:["都","限","形","役"],a:1,e:"限（こざとへん・左側）。「都」はおおざと（右側）。位置で区別する。"}
+   ]},
+  {id:"kj5", grade:"知識", title:"慣用句・ことわざ",
+   points:[
+     "体の部分を使う慣用句が最頻出：<span class='kw'>頭が下がる</span>（感心する）・<span class='kw'>目がない</span>（大好き）・<span class='kw'>鼻が高い</span>（誇らしい）・<span class='kw'>耳が痛い</span>（弱点を突かれてつらい）・<span class='kw'>口が重い</span>（無口）・<span class='kw'>手を焼く</span>（もてあます）・<span class='kw'>足が出る</span>（予算オーバー）・<span class='kw'>腹を割る</span>（本心を話す）・<span class='kw'>肩を持つ</span>（味方する）。",
+     "動物の慣用句：<span class='kw'>馬が合う</span>（気が合う）・<span class='kw'>猫の額</span>（狭い）・<span class='kw'>雀の涙</span>（ごくわずか）・<span class='kw'>犬猿の仲</span>（仲が悪い）・<span class='kw'>虫がいい</span>（自分勝手）。",
+     "その他：<span class='kw'>油を売る</span>（むだ話でなまける）・<span class='kw'>羽を伸ばす</span>（のびのびする）・<span class='kw'>水に流す</span>（なかったことにする）・<span class='kw'>図に乗る</span>（調子に乗る）・<span class='kw'>骨を折る</span>（苦労する）。",
+     "同じ意味のことわざ：<span class='kw'>猿も木から落ちる＝弘法にも筆の誤り＝河童の川流れ</span>（名人も失敗する）。<span class='kw'>石橋をたたいて渡る＝念には念を入れよ</span>（用心深く）。",
+     "意味を誤解しやすいことわざ：<span class='kw'>情けは人のためならず</span>＝人に親切にすればめぐりめぐって自分のためになる（「ためにならない」は誤り）。<span class='kw'>灯台下暗し</span>＝身近なことはかえって気づきにくい。",
+     "効果がないたとえ：<span class='kw'>二階から目薬・焼け石に水・のれんに腕押し・ぬかに釘</span>。"
+   ],
+   notes:["慣用句は「体の部分＋動詞」の形で意味とセットで音読。「耳が痛い／耳を疑う／耳にたこができる」のように同じ部位でまとめて覚えると混ざらない"],
+   quiz:[
+     {q:"「彼の努力には頭が下がる」の意味は？",opts:["がっかりする","感心する","恥ずかしい","申し訳ない"],a:1,e:"頭が下がる＝敬服する・感心する。「頭が上がらない」（引け目を感じる）と区別。"},
+     {q:"「情けは人のためならず」の正しい意味は？",opts:["親切はその人のためにならない","親切はいずれ自分に返ってくる","情けをかけると恨まれる","他人に厳しくすべきだ"],a:1,e:"人に親切にしておけば、めぐりめぐって自分によい報いが返ってくる、が本来の意味。"},
+     {q:"「猿も木から落ちる」と同じ意味のことわざは？",opts:["犬も歩けば棒に当たる","弘法にも筆の誤り","猫に小判","馬の耳に念仏"],a:1,e:"弘法にも筆の誤り・河童の川流れも同じく「名人でも失敗することがある」。"},
+     {q:"「予算より多くお金を使ってしまう」ことを表す慣用句は？",opts:["足が出る","手が出る","首が回らない","腹が減る"],a:0,e:"足が出る＝出費が予算を超える。首が回らない＝借金などでやりくりできない。"},
+     {q:"「のれんに腕押し」の意味は？",opts:["とても簡単なこと","手ごたえがないこと","力が強いこと","あきらめが早いこと"],a:1,e:"のれんに腕押し＝手ごたえ・効き目がない。ぬかに釘・豆腐にかすがいも同じ意味。"}
+   ]},
+  {id:"kj6", grade:"知識", title:"四字熟語・故事成語",
+   points:[
+     "数字の四字熟語：<span class='kw'>一石二鳥</span>・<span class='kw'>十人十色</span>（好みは人それぞれ）・<span class='kw'>四苦八苦</span>・<span class='kw'>五里霧中</span>（見通しが立たない。「夢中」と書かない！）・<span class='kw'>七転八倒</span>・三日坊主。",
+     "頻出の四字熟語：<span class='kw'>以心伝心</span>（言葉なしで通じ合う）・<span class='kw'>異口同音</span>（皆が同じことを言う）・<span class='kw'>単刀直入</span>（前置きなしに本題へ）・<span class='kw'>日進月歩</span>（絶えず進歩）・<span class='kw'>付和雷同</span>（考えなしに他人に同調）・<span class='kw'>本末転倒</span>・<span class='kw'>優柔不断</span>・<span class='kw'>臨機応変</span>・<span class='kw'>温故知新</span>（古きをたずねて新しきを知る）・<span class='kw'>我田引水</span>（自分に都合よくはからう）。",
+     "書きまちがい注意：五里<span class='kw'>霧</span>中（×夢中）・<span class='kw'>絶体</span>絶命（×絶対）・単<span class='kw'>刀</span>直入（×短刀）・無我<span class='kw'>夢</span>中（こちらは夢）・危機<span class='kw'>一髪</span>（×一発）。",
+     "故事成語（中国の古い話が由来）：<span class='kw'>矛盾</span>（つじつまが合わない）・<span class='kw'>蛇足</span>（よけいなつけたし）・<span class='kw'>五十歩百歩</span>（大差ない）・<span class='kw'>推敲</span>（文章を練り直す）・<span class='kw'>杞憂</span>（取りこし苦労）・<span class='kw'>背水の陣</span>（あとがない覚悟）・<span class='kw'>画竜点睛を欠く</span>（最後の仕上げが足りない）・<span class='kw'>他山の石</span>（他人の失敗を自分の参考にする）。"
+   ],
+   notes:["故事成語は「もとの話」とセットで覚える：矛盾＝何でも通す矛と何でも防ぐ盾を売る商人の話、蛇足＝蛇の絵に足を描き足して負けた話。話を知れば意味を忘れない"],
+   quiz:[
+     {q:"「ゴリムチュウ」を正しく書くと？",opts:["五里夢中","五里霧中","悟里霧中","五理霧中"],a:1,e:"五里霧中。五里四方の霧の中で方角がわからない、が由来。「夢中」と書くのは定番の誤り。"},
+     {q:"「付和雷同」の意味は？",opts:["雷のように怒ること","自分の考えなしに他人の意見に同調すること","うわさがすぐ広まること","意見がぶつかり合うこと"],a:1,e:"付和雷同＝しっかりした考えを持たず、安易に他人の説に賛成すること。"},
+     {q:"「つじつまが合わないこと」を表す故事成語は？",opts:["蛇足","矛盾","推敲","杞憂"],a:1,e:"矛盾。「どんな盾も突き通す矛」と「どんな矛も防ぐ盾」を同時に売った商人の話が由来。"},
+     {q:"「よけいなつけたし」を表す故事成語は？",opts:["蛇足","圧巻","登竜門","漁夫の利"],a:0,e:"蛇足。蛇の絵を早く描く競争で、先に描き終えた者が足まで描き足して負けた話が由来。"},
+     {q:"「温故知新」の意味は？",opts:["古いものは捨てて新しくする","昔のことを学び、そこから新しい知識を得る","故郷を大切にする","知識は温めるほど深まる"],a:1,e:"「故（ふる）きを温（たず）ねて新しきを知る」。論語に由来する言葉。"}
+   ]}
+]},
+bun:{ name:"文法・敬語", color:"var(--bun)", units:[
+  {id:"b1", grade:"中1", title:"文節・文の成分",
+   points:[
+     "<span class='kw'>文節</span>＝発音や意味が不自然にならない最小の区切り。区切るときは「<span class='kw'>ネ</span>」を入れて確かめる：「私はネ／昨日ネ／図書館でネ／本をネ／借りたヨ」→5文節。",
+     "<span class='kw'>単語</span>はさらに細かい区切り。1文節＝<span class='kw'>自立語1つ＋付属語0個以上</span>（自立語は必ず文節の頭）。",
+     "文の成分：<span class='kw'>主語</span>（〜が・〜は）・<span class='kw'>述語</span>（どうする・どんなだ・何だ）・<span class='kw'>修飾語</span>・<span class='kw'>接続語</span>・<span class='kw'>独立語</span>（呼びかけ・感動）。",
+     "修飾語は2種類：<span class='kw'>連体修飾語</span>（体言＝名詞を修飾：「白い花」）と<span class='kw'>連用修飾語</span>（用言を修飾：「速く走る」）。",
+     "文節どうしの関係：主・述の関係／修飾・被修飾の関係／<span class='kw'>並立の関係</span>（「暑くて苦しい」対等に並ぶ）／<span class='kw'>補助の関係</span>（「読んで<u>いる</u>」「置いて<u>おく</u>」下が意味を補う）。",
+     "主語述語の問題では、まず<span class='kw'>述語（文末）を見つけてから「何が？」と問い返して主語を探す</span>のが鉄則。主語が省略されたり倒置されたりする文に注意。"
+   ],
+   notes:["「ネ」で文節、「これ以上分けたら意味が壊れる」まで分けて単語。まず文節→次に単語の順で練習する","補助の関係の目印は「〜て（で）＋いる・ある・みる・おく・しまう・くる」。ひらがな書きが多い"],
+   quiz:[
+     {q:"「小さな犬が公園を元気に走り回る。」の文節の数は？",opts:["4","5","6","7"],a:1,e:"小さな／犬が／公園を／元気に／走り回る＝5文節。「走り回る」は複合動詞で1文節。"},
+     {q:"「兄は本を読んでいる。」——「読んで」と「いる」の関係は？",opts:["主・述の関係","修飾・被修飾の関係","並立の関係","補助の関係"],a:3,e:"補助の関係。「いる」は本来の意味（存在する）が薄れ、「読む」に意味を添えている。"},
+     {q:"「白い花が庭に咲いた。」——「白い」はどの文節を修飾する？",opts:["花が","庭に","咲いた","修飾していない"],a:0,e:"「白い」→「花が」。名詞（体言）を修飾するので連体修飾語。"},
+     {q:"「おや、もう桜が咲いたのか。」——「おや」の文の成分は？",opts:["主語","述語","接続語","独立語"],a:3,e:"独立語。感動・呼びかけ・応答などを表し、他の文節と直接係り受けの関係を持たない。"}
+   ]},
+  {id:"b2", grade:"中1", title:"品詞の分類",
+   points:[
+     "品詞は全部で<span class='kw'>10種類</span>。まず<span class='kw'>自立語か付属語か</span>→<span class='kw'>活用するかしないか</span>で分ける。",
+     "自立語で活用するもの＝<span class='kw'>用言</span>：<span class='kw'>動詞</span>（ウ段で終わる）・<span class='kw'>形容詞</span>（〜い）・<span class='kw'>形容動詞</span>（〜だ）。",
+     "自立語で活用しないもの：<span class='kw'>名詞</span>（体言・主語になれる）・<span class='kw'>副詞</span>（主に用言を修飾：「とても」「ゆっくり」）・<span class='kw'>連体詞</span>（体言だけを修飾：「この」「大きな」「あらゆる」「いわゆる」）・<span class='kw'>接続詞</span>（「しかし」「だから」）・<span class='kw'>感動詞</span>（「ああ」「はい」）。",
+     "付属語：<span class='kw'>助動詞</span>（活用<span class='kw'>する</span>：れる・ない・た・ようだ）・<span class='kw'>助詞</span>(活用<span class='kw'>しない</span>：が・を・に・は・ても)。",
+     "ひっかけ注意：「<span class='kw'>大きな</span>」は連体詞（活用しない）、「<span class='kw'>大きい</span>」は形容詞。「きれいだ」は形容動詞で「きれい」という形容詞は存在しない。",
+     "副詞の呼応（陳述の副詞）：「<span class='kw'>決して</span>〜ない」「<span class='kw'>まるで</span>〜ようだ」「<span class='kw'>たぶん</span>〜だろう」「<span class='kw'>もし</span>〜なら」のように受け方が決まる。"
+   ],
+   notes:["品詞分類のフローチャート：①単独で文節を作れる？（自立語/付属語）②活用する？③言い切りの形は？（ウ段→動詞、い→形容詞、だ→形容動詞）④何を修飾する？（用言→副詞、体言のみ→連体詞）"],
+   quiz:[
+     {q:"「大きな声で歌う」——「大きな」の品詞は？",opts:["形容詞","形容動詞","連体詞","副詞"],a:2,e:"連体詞。活用せず体言だけを修飾する。「大きい」なら形容詞。「小さな・おかしな・いろんな」も連体詞。"},
+     {q:"「とてもきれいだ」——「とても」の品詞は？",opts:["連体詞","副詞","形容詞","接続詞"],a:1,e:"副詞。用言（ここでは形容動詞「きれいだ」）を修飾する。程度の副詞。"},
+     {q:"次のうち、付属語で活用するものは？",opts:["助詞","助動詞","接続詞","感動詞"],a:1,e:"助動詞。「読ま【ない】→読ま【なかっ】た」のように形が変わる。助詞は活用しない。"},
+     {q:"「決して」の後に続く決まった言い方は？",opts:["〜だろう","〜ようだ","〜ない","〜たい"],a:2,e:"「決して〜ない」（打ち消し）。副詞の呼応。「まるで〜ようだ」「たぶん〜だろう」も覚える。"},
+     {q:"「きれいだ」の品詞は？",opts:["形容詞","形容動詞","動詞","連体詞"],a:1,e:"言い切りが「〜だ」なので形容動詞。「〜い」で言い切る形容詞（美しい）と区別。"}
+   ]},
+  {id:"b3", grade:"中2", title:"用言の活用（動詞・形容詞・形容動詞）",
+   points:[
+     "動詞の活用の種類は5つ：<span class='kw'>五段・上一段・下一段・カ行変格（来る）・サ行変格（する・〜する）</span>。",
+     "見分け方＝「<span class='kw'>ない</span>」を付ける：直前が<span class='kw'>ア段→五段</span>（書か-ない）、<span class='kw'>イ段→上一段</span>（起き-ない）、<span class='kw'>エ段→下一段</span>（食べ-ない）。「来る」「する」だけは暗記。",
+     "活用形は6つ：<span class='kw'>未然形</span>（ナイ・ウに続く）・<span class='kw'>連用形</span>（マス・タに続く）・<span class='kw'>終止形</span>（言い切る）・<span class='kw'>連体形</span>（トキ・体言に続く）・<span class='kw'>仮定形</span>（バに続く）・<span class='kw'>命令形</span>。",
+     "形容詞の活用：「かろ／かっ・く／い／い／けれ／○」（命令形なし）。形容動詞：「だろ／だっ・で・に／だ／な／なら／○」。",
+     "五段活用の<span class='kw'>音便</span>：書き＋て→書<span class='kw'>い</span>て（イ音便）、立ち＋て→立<span class='kw'>っ</span>て（促音便）、読み＋て→読<span class='kw'>ん</span>で（撥音便）。",
+     "<span class='kw'>可能動詞</span>（書ける・読める）はすべて下一段活用。「見れる・食べれる」は<span class='kw'>ら抜き言葉</span>で本来は誤り（見られる・食べられる）。"
+   ],
+   notes:["活用の種類は「ナイを付けて直前の音」、活用形は「下に続く言葉」で機械的に判定できる。感覚で解かずルールで解く","「〜とき」に続けば連体形、「。」で言い切れば終止形。動詞は終止形と連体形が同じ形なので下の語で判断"],
+   quiz:[
+     {q:"「起きる」の活用の種類は？",opts:["五段活用","上一段活用","下一段活用","カ行変格活用"],a:1,e:"「起き-ない」→「き」はイ段→上一段活用。ア段なら五段、エ段なら下一段。"},
+     {q:"「本を読んだ。」——「読ん」の活用形は？",opts:["未然形","連用形","終止形","連体形"],a:1,e:"連用形。「た（だ）」に続くのは連用形。「読み」が撥音便で「読ん」になった形。"},
+     {q:"「食べれる」という言い方の説明として正しいのは？",opts:["正しい可能の表現","「ら抜き言葉」で、本来は「食べられる」","尊敬の表現","方言なので誤りではない"],a:1,e:"下一段活用「食べる」の可能表現は助動詞「られる」を使い「食べられる」。「食べれる」はら抜き言葉。"},
+     {q:"「楽しい」の仮定形は？",opts:["楽しかろ","楽しく","楽しけれ","楽しいなら"],a:2,e:"形容詞の仮定形は「〜けれ」（＋ば）。「楽しければ」の「楽しけれ」。"},
+     {q:"「勉強する」の活用の種類は？",opts:["五段活用","上一段活用","下一段活用","サ行変格活用"],a:3,e:"「する」および「〜する」の複合動詞はすべてサ行変格活用（サ変）。"}
+   ]},
+  {id:"b4", grade:"中2〜3", title:"助詞・助動詞と紛らわしい語の識別",
+   points:[
+     "<span class='kw'>「ない」の識別</span>：①助動詞（打ち消し）＝「<span class='kw'>ぬ</span>」に置き換えられる（行かない→行かぬ）②形容詞＝直前に「<span class='kw'>は・も</span>」を入れられる（お金がない→お金が<u>は</u>ない…存在しない）③形容詞の一部（少ない・切ない・危ない）。",
+     "<span class='kw'>「れる・られる」の4つの意味</span>：<span class='kw'>受け身</span>（先生にほめられる）・<span class='kw'>可能</span>（朝早く起きられる）・<span class='kw'>自発</span>（故郷が思い出される：心の動きの語につく）・<span class='kw'>尊敬</span>（先生が話される）。",
+     "<span class='kw'>「の」の識別</span>：①主格＝「<span class='kw'>が</span>」に置き換え可（母の作った料理→母が）②連体修飾（私の本）③体言の代用＝「<span class='kw'>こと・もの</span>」に置き換え可（走るのが好き→走ることが）。",
+     "<span class='kw'>「そうだ」</span>：<span class='kw'>伝聞</span>＝終止形に接続（雨が降る<u>そうだ</u>＝人から聞いた）／<span class='kw'>様態</span>＝連用形などに接続（雨が降り<u>そうだ</u>＝見た様子）。",
+     "<span class='kw'>「だ」の識別</span>：①断定の助動詞（これは本だ）②過去の助動詞「た」の濁った形（読んだ）③形容動詞の語尾（静かだ→「静かな＋名詞」と言えれば形容動詞）。",
+     "<span class='kw'>「らしい」</span>：推定の助動詞（明日は晴れる<u>らしい</u>）／形容詞の一部・接尾語（中学生<span class='kw'>らしい</span>態度＝〜にふさわしい）。"
+   ],
+   notes:["識別問題は「置き換えテスト」が最強：ない→ぬ？／の→が・こと？／れる→受け身・可能・自発・尊敬のどれか主語との関係で判断","自発は「思う・感じる・案じる・偲ぶ」など心の動きの動詞につくことが多い——これだけで1問取れる"],
+   quiz:[
+     {q:"「宿題が終わらない」の「ない」と同じ用法は？",opts:["この部屋は広くない","時間がない","彼は来ない","あぶない道"],a:2,e:"「終わらない」「来ない」は「ぬ」に置き換えられる打ち消しの助動詞。「広くない」「時間がない」は形容詞、「あぶない」は形容詞の一部。"},
+     {q:"「先生が黒板に書かれる」の「れる」の意味は？",opts:["受け身","可能","自発","尊敬"],a:3,e:"主語が「先生」で敬うべき人の動作なので尊敬。「先生に叱られる」なら受け身。"},
+     {q:"「昔のことが思い出される」の「れる」の意味は？",opts:["受け身","可能","自発","尊敬"],a:2,e:"自発＝自然とそうなる。「思う・感じる」など心の動きを表す動詞につくのが目印。"},
+     {q:"「泳ぐのが得意だ」の「の」と同じ用法は？",opts:["私の傘","君の描いた絵","読むのが速い","春の風"],a:2,e:"「泳ぐの」「読むの」は「こと」に置き換えられる体言の代用。「君の描いた絵」は「が」に置き換わる主格。"},
+     {q:"「明日は雨が降るそうだ」の「そうだ」の意味は？",opts:["様態（様子）","伝聞","推定","断定"],a:1,e:"終止形「降る」に接続しているので伝聞（人から聞いた）。「降りそうだ」（連用形接続）なら様態。"}
+   ]},
+  {id:"b5", grade:"中3", title:"敬語（尊敬語・謙譲語・丁寧語）",
+   points:[
+     "<span class='kw'>尊敬語</span>＝相手（動作をする人）を高める：<span class='kw'>いらっしゃる</span>（行く・来る・いる）・<span class='kw'>おっしゃる</span>（言う）・<span class='kw'>召し上がる</span>（食べる）・<span class='kw'>なさる</span>（する）・<span class='kw'>ご覧になる</span>（見る）・くださる（くれる）。形：「<span class='kw'>お（ご）〜になる</span>」「〜れる・られる」。",
+     "<span class='kw'>謙譲語</span>＝自分（動作をする人）を低めて相手を高める：<span class='kw'>伺う・参る</span>（行く・来る）・<span class='kw'>申す・申し上げる</span>（言う）・<span class='kw'>いただく</span>（食べる・もらう）・<span class='kw'>拝見する</span>（見る）・<span class='kw'>差し上げる</span>（与える）・おる（いる）。形：「<span class='kw'>お（ご）〜する</span>」。",
+     "<span class='kw'>丁寧語</span>＝聞き手への丁寧な言い方：<span class='kw'>です・ます・ございます</span>。",
+     "使い分けの鉄則：<span class='kw'>動作をするのが相手側なら尊敬語、自分側（家族含む）なら謙譲語</span>。「先生が申された」は誤り（申す＝謙譲語）→「おっしゃった」。",
+     "<span class='kw'>身内は低める</span>：外の人に対して「（私の）母が申しました」（×おっしゃいました）。",
+     "<span class='kw'>二重敬語</span>は誤り：「おっしゃられる」（おっしゃる＋られる）→「おっしゃる」、「お読みになられる」→「お読みになる」。"
+   ],
+   notes:["敬語問題はまず「動作をしているのは誰か」に線を引く。相手→尊敬、自分・身内→謙譲。これだけでほぼ解ける","特別な動詞の対応表（行く：いらっしゃる/伺う、言う：おっしゃる/申す、食べる：召し上がる/いただく、見る：ご覧になる/拝見する）は丸暗記必須"],
+   quiz:[
+     {q:"「先生が給食をいただいた」の誤りを正すと？",opts:["先生が給食を食べられた","先生が給食を召し上がった","先生が給食を拝食した","誤りはない"],a:1,e:"「いただく」は謙譲語なので先生の動作には使えない。尊敬語「召し上がる」が正しい。"},
+     {q:"「私が先生のお宅にウカガウ」——「伺う」の敬語の種類は？",opts:["尊敬語","謙譲語","丁寧語","美化語"],a:1,e:"謙譲語。自分の「行く」動作を低めて相手を高める。尊敬語なら「いらっしゃる」。"},
+     {q:"外部の人に自分の母のことを話すとき、正しいのは？",opts:["母がおっしゃいました","お母さんが申されました","母が申しました","お母様が言われました"],a:2,e:"身内の動作は謙譲語で低める。「申しました」が正しい。身内に「お母さん」「おっしゃる」は使わない。"},
+     {q:"「おっしゃられる」という言い方の問題点は？",opts:["謙譲語だから","二重敬語だから","丁寧語が足りないから","問題はない"],a:1,e:"「おっしゃる」（尊敬語）＋「られる」（尊敬）で二重敬語。「おっしゃる」だけでよい。"},
+     {q:"「先生の絵を拝見しました」の「拝見する」が高めているのは？",opts:["自分","先生","絵","聞き手"],a:1,e:"謙譲語は自分の動作を低めることで、動作の受け手（先生）を高める。"}
+   ]}
+]},
+dok:{ name:"読解", color:"var(--dok)", units:[
+  {id:"d1", grade:"傾向", title:"千葉県の出題傾向・時間配分・聞き取り検査",
+   points:[
+     "千葉県の国語は<span class='kw'>50分・100点</span>。大問構成：<span class='kw'>大問1 聞き取り検査</span>（放送）→<span class='kw'>大問2 漢字の読み</span>（4問）→<span class='kw'>大問3 漢字の書き</span>（4問）→<span class='kw'>大問4 説明的文章</span>→<span class='kw'>大問5 文学的文章</span>→<span class='kw'>大問6 古典</span>（古文・漢文）→<span class='kw'>大問7 条件作文</span>（約200字）。",
+     "<span class='kw'>聞き取り検査</span>は全国でも珍しい千葉県の名物。授業や話し合いの場面が放送され、内容や発言の意図を選択肢で答える。配点は約8点。",
+     "聞き取りのコツ：①放送前に<span class='kw'>問題用紙の選択肢に目を通す</span>②<span class='kw'>数字・具体例・言い換え表現をメモ</span>する③「話し合いの進め方」（司会の役割・意見のまとめ方）を問う問題が多い。",
+     "時間配分の目安：聞き取り約10分（放送込み）→漢字5分→説明文10分→小説10分→古典7分→<span class='kw'>作文に8〜10分残す</span>。作文は配点約10点、白紙が一番もったいない。",
+     "千葉県は<span class='kw'>記述問題が多い</span>のが特徴。「〜字以内で書け」「文中の言葉を使って」など条件つき記述が各大問に入る。",
+     "迷った問題に時間をかけすぎない。<span class='kw'>漢字と知識問題を確実に取り、記述は部分点をねらう</span>のが合格ライン到達の近道。"
+   ],
+   notes:["過去問演習は必ず「放送台本つき」でやる。家族に台本を読んでもらうか音声つき過去問を使い、本番と同じ流れ（聞き取り→漢字→…→作文）で50分通す練習を最低3回","作文を最後に回して時間切れ、が最悪パターン。過去問では先に作文テーマだけ見ておき、頭の片すみで構想する練習も有効"],
+   quiz:[
+     {q:"千葉県公立入試の国語で、他県ではあまり見られない大問は？",opts:["条件作文","聞き取り検査","古典","漢字の書き取り"],a:1,e:"聞き取り検査。放送を聞いて答える問題が大問1に置かれるのが千葉県の大きな特徴。"},
+     {q:"聞き取り検査の対策として最も適切なのは？",opts:["放送中は目を閉じて集中する","放送前に選択肢に目を通し、放送中は数字や言い換えをメモする","放送は1回目を聞き流し2回目に集中する","選択肢は放送後に初めて読む"],a:1,e:"先に選択肢を読んで「何を聞き取るべきか」を予測し、放送中はメモを取るのが鉄則。"},
+     {q:"時間配分として最も適切な考え方は？",opts:["説明文に25分かける","作文は時間が余ったら書く","作文に8〜10分残す配分を最初から決めておく","漢字は最後に回す"],a:2,e:"配点約10点の作文を白紙にしないこと。最初から作文の時間を確保する計画を立てる。"},
+     {q:"条件つき記述問題で最優先すべきことは？",opts:["美しい文章を書く","指定された条件（字数・使う言葉・文末）をすべて守る","できるだけ長く書く","自分の意見を強く出す"],a:1,e:"条件を1つでも落とすと大きく減点される。字数・指定語句・文末の形をまず確認。"}
+   ]},
+  {id:"d2", grade:"中1〜3", title:"説明的文章（論説文）の解き方",
+   points:[
+     "説明文は<span class='kw'>筆者の主張（言いたいこと）を探すゲーム</span>。主張は「<span class='kw'>つまり・このように・〜べきだ・〜ではないだろうか</span>」の後ろに来やすい。",
+     "<span class='kw'>接続語</span>が最大のヒント：<span class='kw'>順接</span>（だから）・<span class='kw'>逆接</span>（しかし←この後ろに主張が来やすい！）・<span class='kw'>並立・添加</span>(また・さらに)・<span class='kw'>対比・選択</span>（一方・あるいは）・<span class='kw'>説明・言い換え</span>（つまり・なぜなら）・<span class='kw'>転換</span>（さて・ところで）。",
+     "<span class='kw'>指示語</span>（これ・それ・この）の内容は<span class='kw'>直前</span>から探すのが原則。見つけたら指示語に当てはめて意味が通るか確認する。",
+     "<span class='kw'>具体例は主張を支える材料</span>。「例えば」の中身は主張そのものではない——例の前後にある抽象的なまとめの文をつかむ。",
+     "段落構成：<span class='kw'>序論（問題提起）→本論（具体例・根拠）→結論（主張）</span>。「問い」の文を見つけたら、その「答え」が主張。",
+     "選択肢問題は<span class='kw'>本文に書いてあるかどうか</span>だけで判断。「言いすぎ（〜だけ・必ず）」「本文にない話」「因果の逆転」が誤りの選択肢の三大パターン。"
+   ],
+   notes:["読みながら「しかし」に△、「つまり」に○、問いかけの文に？マークをつける——記号をつけるだけで主張の場所が浮かび上がる","設問を先に読んでから本文を読むと、探しながら読めて時間短縮になる（特に傍線部問題）"],
+   quiz:[
+     {q:"筆者の主張が最も現れやすいのはどこ？",opts:["具体例の中","「例えば」の直後","「しかし」「つまり」の後ろや最終段落","文章の題名だけ"],a:2,e:"逆接の後ろと言い換えのまとめ、そして結論部（最終段落付近）に主張が集まる。"},
+     {q:"指示語「それ」の指す内容を探すとき、まず見るべき場所は？",opts:["直後の文","直前の部分","文章の冒頭","最終段落"],a:1,e:"指示語の内容は原則直前にある。見つけたら指示語に代入して意味が通るか確かめる。"},
+     {q:"「例えば」で始まる具体例の役割は？",opts:["筆者の主張そのもの","主張をわかりやすく支える材料","反対意見の紹介","話題の転換"],a:1,e:"具体例は主張の根拠・説明。設問で問われる「筆者の考え」は例の前後の抽象的な文にある。"},
+     {q:"選択肢問題で誤りの選択肢によくあるパターンは？",opts:["本文と同じ内容","本文の言い換え","「必ず」「〜だけ」など言いすぎの表現","短い選択肢"],a:2,e:"言いすぎ・本文にない内容・因果関係の逆転が誤り選択肢の三大パターン。"},
+     {q:"「なぜなら」という接続語の働きは？",opts:["逆接","理由の説明","話題の転換","並立"],a:1,e:"「なぜなら〜からだ」で直前の内容の理由を説明する。理由を問う記述問題のヒントになる。"}
+   ]},
+  {id:"d3", grade:"中1〜3", title:"文学的文章（小説）の解き方",
+   points:[
+     "小説の設問はほぼすべて<span class='kw'>「心情」とその変化</span>を問う。心情は直接書かれないことが多く、<span class='kw'>行動・会話・表情・情景描写</span>から読み取る。",
+     "まず<span class='kw'>場面</span>をおさえる：<span class='kw'>時・場所・登場人物（と関係）</span>。場面が変わるところ（時間や場所の飛び）に線を引く。",
+     "<span class='kw'>心情変化の公式</span>：「はじめの心情」→<span class='kw'>きっかけ（出来事・他人の言葉）</span>→「あとの心情」。記述問題はこの3点セットで書くと部分点が取れる。",
+     "<span class='kw'>情景描写は心情の鏡</span>：「空が晴れわたっていた」＝前向きな気持ち、「雨が降り続く」＝沈んだ気持ち、のように風景に心情が重ねられる。",
+     "<span class='kw'>表現の工夫</span>を問う問題：比喩（直喩・隠喩・擬人法）・<span class='kw'>倒置</span>・<span class='kw'>体言止め</span>・短い文の連続（緊張感）・会話文の多用（臨場感）などの効果を答える。",
+     "選択肢は<span class='kw'>気持ちの言葉（うれしい・くやしい・不安）と理由の両方</span>が本文と合っているか確認。気持ちが合っていても理由がずれている選択肢がワナ。"
+   ],
+   notes:["心情語に印をつけながら読む：直接表現（うれしい）だけでなく、動作（うつむいた・声がはずんだ）にも印。設問はほぼその印の周辺から出る","「〜のときの気持ちを書け」は【出来事＋気持ち】の形（例：「試合に負けて、くやしい気持ち。」）で書くのが基本形"],
+   quiz:[
+     {q:"小説で登場人物の心情を読み取る手がかりにならないものは？",opts:["行動や表情","会話文","情景描写","文章の字数"],a:3,e:"心情は行動・会話・表情・情景に表れる。字数は関係ない。"},
+     {q:"「彼はうつむいたまま、何も言わなかった」から読み取れる心情として最も適切なのは？",opts:["喜び","落ち込みや気まずさ","怒りで興奮している","安心している"],a:1,e:"「うつむく」「黙る」は落胆・気まずさ・恥ずかしさなどマイナスの心情を表す動作。"},
+     {q:"心情の変化を記述するときに必要な3点セットは？",opts:["時・場所・人物","はじめの心情・きっかけ・あとの心情","比喩・倒置・体言止め","主語・述語・修飾語"],a:1,e:"変化前の心情→きっかけとなる出来事→変化後の心情。この順で書くと採点ポイントを押さえられる。"},
+     {q:"場面の変わり目を見つける手がかりは？",opts:["時間や場所が変わるところ","漢字が増えるところ","会話が始まるところ","段落が長くなるところ"],a:0,e:"時・場所・登場人物の変化が場面の切れ目。「翌朝」「学校では」などの言葉に注目。"},
+     {q:"「グラウンドに、まぶしい朝の光があふれていた。」という情景描写の効果は？",opts:["天気の説明をしている","人物の前向きな気持ちを暗示している","季節を示すだけ","特に意味はない"],a:1,e:"明るい情景は人物の晴れやかな心情を映す。情景描写は心情の鏡。"}
+   ]},
+  {id:"d4", grade:"中1〜3", title:"詩・短歌・俳句（表現技法）",
+   points:[
+     "比喩3種：<span class='kw'>直喩</span>（「ようだ・みたいだ」を使う）・<span class='kw'>隠喩</span>（使わない：「君は太陽だ」）・<span class='kw'>擬人法</span>（人でないものを人に見立てる：「風がささやく」）。",
+     "<span class='kw'>倒置</span>＝語順を入れかえて強調（「行こう、あの海へ」）。<span class='kw'>体言止め</span>＝行末・句末を名詞で止めて余韻（「見上げれば満天の星」）。<span class='kw'>反復</span>＝くり返しでリズムと強調。<span class='kw'>対句</span>＝形の似た表現を並べる。",
+     "短歌は<span class='kw'>五・七・五・七・七</span>（31音）。意味の切れ目＝<span class='kw'>句切れ</span>（初句切れ・二句切れ…句点「。」を打てる場所）。<span class='kw'>字余り・字足らず</span>も問われる。",
+     "俳句は<span class='kw'>五・七・五</span>（17音）で<span class='kw'>季語</span>を一つ詠みこむのが原則。<span class='kw'>切れ字「や・かな・けり」</span>は感動の中心を示す——切れ字の直前に注目。",
+     "季語の季節は<span class='kw'>旧暦</span>なのでずれに注意：<span class='kw'>五月雨（さみだれ）＝夏</span>・<span class='kw'>天の川＝秋</span>・<span class='kw'>名月＝秋</span>・<span class='kw'>雪解け＝春</span>・蛙（かわず）＝春・小春日和＝冬。",
+     "有名俳句：「古池や蛙飛びこむ水の音」（<span class='kw'>芭蕉</span>）・「柿くへば鐘が鳴るなり法隆寺」（<span class='kw'>正岡子規</span>・季語は柿＝秋）・「菜の花や月は東に日は西に」（<span class='kw'>蕪村</span>）。"
+   ],
+   notes:["技法の見分けは機械的に：「ようだ」あり→直喩／なし→隠喩／人の動作をしている→擬人法／名詞で終わる→体言止め／語順が逆→倒置","俳句の問題は①季語と季節②切れ字③感動の中心、の3点を必ず確認する習慣を"],
+   quiz:[
+     {q:"「風がささやいている」に使われている表現技法は？",opts:["直喩","隠喩","擬人法","体言止め"],a:2,e:"擬人法。人でない「風」が「ささやく」という人間の動作をしている。"},
+     {q:"「まるで綿のような雲」に使われている表現技法は？",opts:["直喩","隠喩","倒置","反復"],a:0,e:"「まるで〜ような」を使っているので直喩。使わなければ隠喩。"},
+     {q:"俳句の切れ字はどれ？",opts:["ぞ・なむ","や・かな・けり","は・が・を","ようだ・みたいだ"],a:1,e:"や・かな・けり。感動の中心を示す。「古池や」なら「古池」に感動の中心がある。"},
+     {q:"「五月雨（さみだれ）」の季節は？",opts:["春","夏","秋","冬"],a:1,e:"五月雨は旧暦5月の長雨＝梅雨のことで夏の季語。「五月」につられて春としない。"},
+     {q:"行の終わりを名詞で止めて余韻を残す技法は？",opts:["倒置","反復","体言止め","対句"],a:2,e:"体言止め。体言＝名詞。短歌・俳句・詩で頻出の技法。"}
+   ]},
+  {id:"d5", grade:"中3", title:"記述問題の書き方（千葉県対策）",
+   points:[
+     "千葉県は<span class='kw'>条件つき記述</span>が多い。まず条件に印：<span class='kw'>①字数②使う言葉（指定語句）③文末の形</span>（「〜こと。」「〜から。」）。",
+     "<span class='kw'>文末は設問に対応させる</span>：「なぜか」→<span class='kw'>「〜から。」</span>／「どういうことか」→<span class='kw'>「〜こと。」</span>／「気持ちを書け」→「〜気持ち。」。",
+     "字数は<span class='kw'>8割以上</span>埋める（30字以内なら24字以上）。オーバーは0点になるので絶対に超えない。",
+     "<span class='kw'>抜き出し</span>と<span class='kw'>記述</span>の違い：抜き出しは本文のまま一字一句写す（句読点も数える）。記述は<span class='kw'>本文の言葉を材料に自分で組み立てる</span>。",
+     "記述の手順：①設問が求める要素を分解（理由？内容？心情？）②<span class='kw'>本文から材料になる部分に線を引く</span>③指定語句を組みこんで一文に組み立てる④文末・字数を確認。",
+     "部分点をねらう：完全な答えが書けなくても<span class='kw'>キーワードが入っていれば点になる</span>。空欄だけは避ける。"
+   ],
+   notes:["採点者になったつもりで見直す：「設問に正面から答えているか（問い返しテスト：なぜ？→〜から、になっているか）」を最後に確認","過去問の模範解答を写経するのも効果大。千葉県の解答の「型」が体に入る"],
+   quiz:[
+     {q:"「なぜか」と問われた記述の文末は？",opts:["〜こと。","〜から。","〜気持ち。","〜である。"],a:1,e:"理由を問われたら「〜から。」「〜ため。」で結ぶ。設問と文末を対応させるのが鉄則。"},
+     {q:"「30字以内で書け」という問題で目指す字数は？",opts:["10字程度で簡潔に","24字以上30字以内","ちょうど30字ぴったりだけ","31字以上でもよい"],a:1,e:"指定字数の8割以上が目安。字数オーバーは採点対象外になるので厳禁。"},
+     {q:"「本文から抜き出せ」という問題の正しい答え方は？",opts:["自分の言葉でまとめる","本文の表現を一字一句そのまま写す","似た意味の言葉に言い換える","要約して短くする"],a:1,e:"抜き出しは本文のまま。一字でも違えば不正解。句読点が字数に含まれるかも確認。"},
+     {q:"記述問題で時間がなく完全な答えが書けないとき、最善の行動は？",opts:["白紙にする","キーワードを入れて書けるところまで書く","関係ない感想を書く","記号だけ書く"],a:1,e:"採点はキーワード（要素）ごとの部分点方式が多い。要素が入っていれば得点できる。"}
+   ]}
+]},
+kot:{ name:"古典", color:"var(--kot)", units:[
+  {id:"kt1", grade:"中1〜2", title:"歴史的仮名遣い・古文の基礎",
+   points:[
+     "現代仮名遣いへの直し方（ほぼ毎年出る！）：語中・語尾の<span class='kw'>「は・ひ・ふ・へ・ほ」→「わ・い・う・え・お」</span>（いふ→いう、あはれ→あわれ、思ひて→思いて）。※語頭はそのまま（花→はな）。",
+     "<span class='kw'>「ゐ・ゑ・を」→「い・え・お」</span>（ゐる→いる、こゑ→こえ）。<span class='kw'>「ぢ・づ」→「じ・ず」</span>（もみぢ→もみじ）。",
+     "<span class='kw'>「くわ・ぐわ」→「か・が」</span>（くわし→かし）。<span class='kw'>「む」→「ん」</span>（〜せむ→せん）。",
+     "母音の変化：<span class='kw'>au→ō</span>（やうやう→ようよう）、<span class='kw'>iu→yū</span>（うつくしう→うつくしゅう）、<span class='kw'>eu→yō</span>（てふ→ちょう）。「けふ（今日）→きょう」は超頻出。",
+     "古文の特徴：<span class='kw'>主語が省略されやすい</span>——「誰が」を補いながら読む。会話文は「<span class='kw'>〜と言ふ</span>」の直前まで。",
+     "古文の助詞：「<span class='kw'>の</span>」が「が」の意味になる（雀の子＝雀が）。係助詞「は・も」も省略されがち。"
+   ],
+   notes:["仮名遣いの変換は5つのルール（ハ行→ワ行/ゐゑを/ぢづ/くわ/au→ō）で全問対応できる。過去問の仮名遣い問題は絶対に落とさない","古文は「誰が・何を・どうした」を〔 〕で補って音読する練習が最強。主語の取り違えが失点の最大原因"],
+   quiz:[
+     {q:"「あはれ」を現代仮名遣いに直すと？",opts:["あはれ","あわれ","あばれ","あうれ"],a:1,e:"語中のハ行はワ行に：あはれ→あわれ。語頭の「は」はそのまま。"},
+     {q:"「てふ」を現代仮名遣いに直すと？",opts:["ちょう","てう","ちふ","てふ"],a:0,e:"てふ→てう→（eu→yō）→ちょう。「てふてふ（蝶々）→ちょうちょう」で覚える。"},
+     {q:"「やうやう白くなりゆく山ぎは」——「やうやう」の読みは？",opts:["やうやう","ようよう","やんやん","ゆうゆう"],a:1,e:"au→ō の変化で「ようよう」（だんだん、の意味）。枕草子の冒頭。"},
+     {q:"「をかし」を現代仮名遣いに直すと？",opts:["おかし","をかし","うかし","わかし"],a:0,e:"「を」→「お」で「おかし」。意味は「趣がある・興味深い」。"},
+     {q:"「雪の降りたるは、言ふべきにもあらず」——「雪の」の「の」の意味は？",opts:["〜の（所有）","〜が（主語を示す）","〜を","〜へ"],a:1,e:"「雪【が】降っているのは」の意味。古文の「の」は主語を示す「が」の働きをすることが多い（枕草子）。"}
+   ]},
+  {id:"kt2", grade:"中2〜3", title:"頻出古語・係り結び",
+   points:[
+     "最頻出の古語：<span class='kw'>いと</span>（とても）・<span class='kw'>をかし</span>（趣がある）・<span class='kw'>あはれなり</span>（しみじみと心打たれる）・<span class='kw'>うつくし</span>（<span class='kw'>かわいい</span>※現代と意味が違う！）・<span class='kw'>ありがたし</span>（<span class='kw'>めったにない</span>）・<span class='kw'>やがて</span>（<span class='kw'>すぐに</span>）。",
+     "現代と意味が違う古語（超頻出）：<span class='kw'>つとめて</span>（早朝）・<span class='kw'>あやし</span>（不思議だ・身分が低い）・<span class='kw'>おどろく</span>（<span class='kw'>はっと気づく・目を覚ます</span>）・<span class='kw'>ののしる</span>（大声で騒ぐ）・<span class='kw'>かなし</span>（いとしい）・<span class='kw'>なつかし</span>（心ひかれる）。",
+     "その他の頻出語：<span class='kw'>げに</span>（本当に）・<span class='kw'>なほ</span>（やはり）・<span class='kw'>いみじ</span>（はなはだしい・すばらしい/ひどい）・<span class='kw'>さらなり</span>（言うまでもない）・<span class='kw'>ゆかし</span>（見たい・知りたい）・<span class='kw'>え〜ず</span>（〜できない）・<span class='kw'>な〜そ</span>（〜するな）。",
+     "<span class='kw'>係り結びの法則</span>：文中に係助詞<span class='kw'>「ぞ・なむ・や・か」→文末が連体形</span>、<span class='kw'>「こそ」→文末が已然形</span>になる。",
+     "係助詞の意味：<span class='kw'>ぞ・なむ・こそ＝強調</span>、<span class='kw'>や・か＝疑問・反語</span>（「〜だろうか、いや〜ない」）。",
+     "例：「もと光る竹<span class='kw'>なむ</span>一筋あり<span class='kw'>ける</span>」（竹取物語）——「なむ」を受けて「けり」が連体形「ける」になっている。"
+   ],
+   notes:["古語は英単語と同じで暗記が全て。1日5語×2週間で主要語は制覇できる。「うつくし＝かわいい」「ありがたし＝めったにない」など現代語とのズレが狙われる","係り結びは「ぞなむやか→連体形」「こそ→已然形」の呪文だけでOK。文末が言い切りでない理由を問われたら係り結びを疑う"],
+   quiz:[
+     {q:"古語「うつくし」の意味は？",opts:["美しい","かわいい","立派だ","清らかだ"],a:1,e:"うつくし＝かわいい・いとしい。「うつくしきもの、瓜にかきたるちごの顔」（枕草子）。現代語との意味のズレが頻出。"},
+     {q:"古語「ありがたし」の意味は？",opts:["感謝したい","めったにない","うれしい","もったいない"],a:1,e:"ありがたし＝「有り難し」＝存在するのが難しい→めったにない。"},
+     {q:"古語「つとめて」の意味は？",opts:["努力して","早朝","勤め先","がんばって"],a:1,e:"つとめて＝早朝。「冬はつとめて」（枕草子＝冬は早朝がよい）で覚える。"},
+     {q:"「ぞ・なむ・や・か」の係助詞があるとき、文末の活用形は？",opts:["終止形","連体形","已然形","命令形"],a:1,e:"ぞ・なむ・や・か→連体形。こそ→已然形。係り結びの法則。"},
+     {q:"古語「おどろく」の意味として適切なのは？",opts:["びっくりする だけ","はっと気づく・目を覚ます","おびえる","感動する"],a:1,e:"古文の「おどろく」は「はっと気づく・目を覚ます」。「秋来ぬと目にはさやかに見えねども風の音にぞおどろかれぬる」。"}
+   ]},
+  {id:"kt3", grade:"中1〜3", title:"古典の文学史・古典常識",
+   points:[
+     "<span class='kw'>竹取物語</span>＝現存する<span class='kw'>日本最古の物語</span>（かぐや姫）。「今は昔、竹取の翁といふものありけり」。",
+     "三大随筆：<span class='kw'>枕草子（清少納言・平安）</span>「春はあけぼの」／<span class='kw'>方丈記（鴨長明・鎌倉）</span>「ゆく河の流れは絶えずして」／<span class='kw'>徒然草（兼好法師・鎌倉）</span>「つれづれなるままに」。",
+     "<span class='kw'>源氏物語</span>＝<span class='kw'>紫式部</span>（平安）の長編物語。枕草子の清少納言とセットで混同注意（<span class='kw'>物語の紫式部・随筆の清少納言</span>）。",
+     "<span class='kw'>平家物語</span>＝鎌倉時代の<span class='kw'>軍記物語</span>。「祇園精舎の鐘の声、諸行無常の響きあり」。<span class='kw'>琵琶法師</span>が語り広めた。",
+     "<span class='kw'>おくのほそ道</span>＝江戸時代、<span class='kw'>松尾芭蕉</span>の<span class='kw'>俳諧紀行文</span>。「月日は百代の過客にして」。",
+     "和歌集：<span class='kw'>万葉集</span>（奈良・現存最古の歌集）→<span class='kw'>古今和歌集</span>（平安・紀貫之ら）→<span class='kw'>新古今和歌集</span>（鎌倉）。",
+     "古典常識：旧暦の月名（<span class='kw'>睦月・如月・弥生</span>…<span class='kw'>師走</span>）、時刻・方位は十二支（<span class='kw'>子の刻＝深夜0時ごろ</span>、丑三つ時）、「<span class='kw'>上る</span>」＝都（京）へ行く。"
+   ],
+   notes:["作品・作者・時代・冒頭文・ジャンルを1セットで暗記。冒頭文を見て作品名を答える問題が定番","「随筆＝枕草子・方丈記・徒然草」「物語＝竹取・源氏・平家」のジャンル分けを先に固めると混乱しない"],
+   quiz:[
+     {q:"「春はあけぼの」で始まる作品と作者は？",opts:["徒然草・兼好法師","枕草子・清少納言","方丈記・鴨長明","源氏物語・紫式部"],a:1,e:"枕草子（清少納言）。平安時代の随筆。「源氏物語の紫式部」と混同しないこと。"},
+     {q:"「祇園精舎の鐘の声」で始まる軍記物語は？",opts:["太平記","平家物語","保元物語","平治物語"],a:1,e:"平家物語。平家一門の栄華と滅亡を描き、琵琶法師の弾き語りで広まった。"},
+     {q:"現存する日本最古の物語は？",opts:["源氏物語","竹取物語","伊勢物語","今昔物語集"],a:1,e:"竹取物語。「物語の出で来はじめの祖（おや）」と源氏物語の中でも呼ばれている。"},
+     {q:"「おくのほそ道」の作者は？",opts:["小林一茶","与謝蕪村","松尾芭蕉","正岡子規"],a:2,e:"松尾芭蕉（江戸時代）。俳諧紀行文。一茶・蕪村も俳人だが時代とジャンルで区別。"},
+     {q:"現存する日本最古の和歌集は？",opts:["古今和歌集","新古今和歌集","万葉集","百人一首"],a:2,e:"万葉集（奈良時代）。平安の古今和歌集、鎌倉の新古今和歌集と時代順に覚える。"}
+   ]},
+  {id:"kt4", grade:"中2〜3", title:"漢文（返り点・書き下し文）",
+   points:[
+     "漢文は中国語の語順を日本語の語順に直して読む。そのための記号が<span class='kw'>返り点</span>。",
+     "<span class='kw'>レ点</span>＝<span class='kw'>すぐ下の一字</span>から上の一字に返る。「読レ書」→「書を読む」。",
+     "<span class='kw'>一・二点</span>＝<span class='kw'>二字以上</span>離れて返る。一点まで読んでから二点に返る。「登二富士山一」→「富士山に登る」。",
+     "レ点と一・二点の組み合わせもある。<span class='kw'>下から順に組み立てる</span>と迷わない。",
+     "<span class='kw'>書き下し文</span>のルール：日本語の<span class='kw'>助詞・助動詞にあたる字はひらがな</span>に直す（不→ず、也→なり、之→の）。<span class='kw'>置き字（而・於・矣）は読まない</span>。",
+     "<span class='kw'>論語</span>＝<span class='kw'>孔子</span>と弟子の言行録。「子曰はく、学びて時に之を習ふ、亦説（よろこ）ばしからずや」——「<span class='kw'>子</span>」は先生（孔子）のこと。",
+     "故事成語の出典も漢文：<span class='kw'>矛盾・蛇足・五十歩百歩・推敲・漁夫の利</span>など。話の内容とセットで問われる。"
+   ],
+   notes:["返り点は「数字パズル」：まず返り点のない字を上から読み、レ点は1字だけ・一二点は2字以上ジャンプ、と機械的に処理する","書き下し文の問題は「順番」と「ひらがなにする字」の2つが採点ポイント。「不・也・之」のひらがな化を忘れない"],
+   quiz:[
+     {q:"レ点の働きは？",opts:["二字以上返って読む","すぐ下の一字から上に返って読む","その字を読まない","繰り返して読む"],a:1,e:"レ点は直下の一字から直上の字へ返る。二字以上返るのは一・二点。"},
+     {q:"「読レ書」を書き下し文にすると？",opts:["読む書を","書を読む","書読む","読書す"],a:1,e:"レ点があるので「書」を先に読み、「書を読む」となる。"},
+     {q:"漢文で「置き字」と呼ばれる「而」「於」の扱いは？",opts:["強く読む","最後に読む","読まない","ひらがなで読む"],a:2,e:"置き字は訓読では読まない。語と語の関係を示すだけの字。"},
+     {q:"「論語」に記録されているのは誰の言葉？",opts:["孟子","孔子","老子","韓非子"],a:1,e:"孔子とその弟子たち。「子曰はく」の「子」は孔子を指す。儒教のもととなった書物。"},
+     {q:"書き下し文で「不」はどう書く？",opts:["漢字のまま「不」","ひらがなで「ず」","読まない","カタカナで「ズ」"],a:1,e:"助動詞にあたる字はひらがなに直す。不→ず、也→なり、之→の（助詞のとき）。"}
+   ]}
+]}
+};
+
+/* ================= 状態管理（localStorage） ================= */
+const LS_KEY="chiba_kokugo_progress_v1";
+let progress = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+function save(){localStorage.setItem(LS_KEY, JSON.stringify(progress));}
+
+function allUnits(){
+  return Object.keys(DATA).flatMap(f=>DATA[f].units.map(u=>u.id));
+}
+function updateProgress(){
+  const all=allUnits();
+  const done=all.filter(id=>progress[id]).length;
+  const pct=all.length? Math.round(done/all.length*100):0;
+  document.getElementById('progFill').style.width=pct+"%";
+  document.getElementById('progText').textContent=`${done} / ${all.length} 単元 完了`;
+}
+
+/* ================= 描画 ================= */
+function renderField(fkey){
+  const f=DATA[fkey];
+  let html=`<section id="sec-${fkey}" class="${fkey==='kanji'?'active':''}">`;
+  html+=`<div class="field-head"><span class="field-dot" style="background:${f.color}"></span><h2>${f.name}</h2><span class="cnt">${f.units.length}単元</span></div>`;
+  f.units.forEach(u=>{
+    const done=progress[u.id];
+    html+=`<div class="unit" data-uid="${u.id}">
+      <div class="unit-head">
+        <span class="unit-grade">${u.grade}</span>
+        <span class="unit-title">${u.title}</span>
+        <span class="unit-check">${done?'✅':'⬜'}</span>
+        <span class="unit-arrow">▶</span>
+      </div>
+      <div class="unit-body">
+        <h3 class="sec">📘 要点整理</h3>
+        <ul class="points">${u.points.map(p=>`<li>${p}</li>`).join('')}</ul>
+        ${u.notes && u.notes.length?`<h3 class="sec">🗂 勉強のコツ</h3>${u.notes.map(n=>`<div class="fm">${n}</div>`).join('')}`:''}
+        <h3 class="sec">✏️ 確認問題</h3>
+        <div class="quiz-box">${u.quiz.map((q,qi)=>renderQuiz(u.id,qi,q)).join('')}</div>
+        <div class="row">
+          <button class="btn primary mark-btn" data-uid="${u.id}">${done?'✅ 学習済み（解除）':'この単元を学習済みにする'}</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  html+=`</section>`;
+  return html;
+}
+function renderQuiz(uid,qi,q){
+  return `<div class="q" data-uid="${uid}" data-qi="${qi}">
+    <div class="q-txt"><span class="num">Q${qi+1}.</span>${q.q}</div>
+    <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
+    <div class="expl"><b>解説：</b>${q.e}</div>
+  </div>`;
+}
+
+function buildAll(){
+  const c=document.getElementById('content');
+  c.innerHTML = Object.keys(DATA).map(renderField).join('');
+  updateProgress();
+  bindEvents();
+}
+
+/* ================= イベント ================= */
+function bindEvents(){
+  // タブ
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.onclick=()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+      t.classList.add('active');
+      const f=t.dataset.f;
+      if(f==='test'){document.getElementById('sec-test').classList.add('active'); renderTestIntro();}
+      else if(f==='qa'){document.getElementById('sec-qa').classList.add('active'); if(!qaState)renderQAIntro();}
+      else if(f==='sakubun'){document.getElementById('sec-sakubun').classList.add('active'); renderSakubun();}
+      else document.getElementById('sec-'+f).classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+    };
+  });
+  // 単元の開閉
+  document.querySelectorAll('.unit-head').forEach(h=>{
+    h.onclick=()=>h.parentElement.classList.toggle('open');
+  });
+  // クイズ回答
+  document.querySelectorAll('.q').forEach(qEl=>{
+    const uid=qEl.dataset.uid, qi=+qEl.dataset.qi;
+    const ans=findQuiz(uid,qi).a;
+    qEl.querySelectorAll('.opt').forEach(opt=>{
+      opt.onclick=()=>{
+        if(qEl.classList.contains('answered'))return;
+        qEl.classList.add('answered');
+        const chosen=+opt.dataset.oi;
+        qEl.querySelectorAll('.opt').forEach((o,i)=>{
+          o.classList.add('disabled');
+          if(i===ans)o.classList.add('correct');
+          if(i===chosen&&chosen!==ans)o.classList.add('wrong');
+        });
+        qEl.querySelector('.expl').classList.add('show');
+      };
+    });
+  });
+  // 学習済みボタン
+  document.querySelectorAll('.mark-btn').forEach(b=>{
+    b.onclick=(e)=>{
+      e.stopPropagation();
+      const uid=b.dataset.uid;
+      progress[uid]=!progress[uid];
+      save(); updateProgress();
+      const unit=document.querySelector(`.unit[data-uid="${uid}"]`);
+      unit.querySelector('.unit-check').textContent=progress[uid]?'✅':'⬜';
+      b.textContent=progress[uid]?'✅ 学習済み（解除）':'この単元を学習済みにする';
+    };
+  });
+}
+function findQuiz(uid,qi){
+  for(const f of Object.values(DATA)){
+    const u=f.units.find(u=>u.id===uid);
+    if(u)return u.quiz[qi];
+  }
+}
+
+/* ================= 模試モード ================= */
+let testState=null;
+function renderTestIntro(){
+  const area=document.getElementById('testArea');
+  area.innerHTML=`
+    <div class="test-intro">
+      <h2>📝 実力チェック模試</h2>
+      <p>全分野からランダムに出題します。千葉県の国語は知識問題（漢字・文法・古典知識）を確実に取ることが合格への近道。分野をしぼることもできます。</p>
+      <div class="chips" id="fieldChips">
+        <div class="chip on" data-f="kanji">漢字・語句</div>
+        <div class="chip on" data-f="bun">文法</div>
+        <div class="chip on" data-f="dok">読解</div>
+        <div class="chip on" data-f="kot">古典</div>
+      </div>
+      <div class="row">
+        <span style="font-size:13px;color:var(--sub)">問題数：</span>
+        <div class="chips" id="countChips" style="margin:0">
+          <div class="chip on" data-n="10">10問</div>
+          <div class="chip" data-n="20">20問</div>
+          <div class="chip" data-n="0">全問</div>
+        </div>
+      </div>
+      <div class="row"><button class="btn primary" id="startTest">模試スタート</button></div>
+    </div>`;
+  area.querySelectorAll('#fieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+  area.querySelectorAll('#countChips .chip').forEach(c=>c.onclick=()=>{
+    area.querySelectorAll('#countChips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');
+  });
+  document.getElementById('startTest').onclick=startTest;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function startTest(){
+  const fields=[...document.querySelectorAll('#fieldChips .chip.on')].map(c=>c.dataset.f);
+  if(!fields.length){alert('分野を1つ以上選んでください');return;}
+  const n=+document.querySelector('#countChips .chip.on').dataset.n;
+  let pool=[];
+  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach(q=>pool.push({...q,field:DATA[fk].name}))));
+  pool=shuffle(pool);
+  if(n>0)pool=pool.slice(0,n);
+  testState={pool,answers:new Array(pool.length).fill(null),submitted:false};
+  renderTestQuestions();
+}
+function renderTestQuestions(){
+  const {pool}=testState;
+  const area=document.getElementById('testArea');
+  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p></div>`;
+  pool.forEach((q,i)=>{
+    html+=`<div class="q" data-i="${i}">
+      <div class="qcount">${q.field}</div>
+      <div class="q-txt"><span class="num">問${i+1}.</span>${q.q}</div>
+      <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
+      <div class="expl"><b>解説：</b>${q.e}</div>
+    </div>`;
+  });
+  html+=`<div class="row"><button class="btn primary" id="submitTest">採点する</button><button class="btn" id="cancelTest">やめる</button></div>`;
+  area.innerHTML=html;
+  area.querySelectorAll('.q').forEach(qEl=>{
+    const i=+qEl.dataset.i;
+    qEl.querySelectorAll('.opt').forEach(opt=>{
+      opt.onclick=()=>{
+        if(testState.submitted)return;
+        qEl.querySelectorAll('.opt').forEach(o=>o.style.borderColor='');
+        opt.style.borderColor='var(--accent)';
+        testState.answers[i]=+opt.dataset.oi;
+      };
+    });
+  });
+  document.getElementById('submitTest').onclick=gradeTest;
+  document.getElementById('cancelTest').onclick=renderTestIntro;
+}
+function gradeTest(){
+  const {pool,answers}=testState;
+  const unanswered=answers.filter(a=>a===null).length;
+  if(unanswered>0 && !confirm(`未回答が${unanswered}問あります。このまま採点しますか？`))return;
+  testState.submitted=true;
+  let correct=0;
+  document.querySelectorAll('#testArea .q').forEach(qEl=>{
+    const i=+qEl.dataset.i;const q=pool[i];
+    if(answers[i]===q.a)correct++;
+    qEl.querySelectorAll('.opt').forEach((o,oi)=>{
+      o.classList.add('disabled');o.style.borderColor='';
+      if(oi===q.a)o.classList.add('correct');
+      if(oi===answers[i]&&answers[i]!==q.a)o.classList.add('wrong');
+    });
+    qEl.querySelector('.expl').classList.add('show');
+  });
+  const pct=Math.round(correct/pool.length*100);
+  let msg;
+  if(pct>=90)msg='素晴らしい！合格圏内。この調子で読解演習（過去問）に進もう。';
+  else if(pct>=70)msg='good！あと一歩。まちがえた単元の要点を読み直そう。';
+  else if(pct>=50)msg='基礎はついてきた。解説をよく読んで復習しよう。';
+  else msg='まずは各単元の「要点整理」から。知識問題は必ず伸びる！';
+  const card=document.createElement('div');
+  card.className='result-card';
+  card.innerHTML=`<div class="result-score">${correct} / ${pool.length}</div>
+    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%</div>
+    <div class="result-msg">${msg}</div>
+    <div class="row" style="justify-content:center;margin-top:14px">
+      <button class="btn primary" id="retryTest">もう一度</button>
+    </div>`;
+  const area=document.getElementById('testArea');
+  area.insertBefore(card, area.firstChild);
+  document.getElementById('retryTest').onclick=renderTestIntro;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ================= 一問一答（フラッシュカード） ================= */
+const QA={
+ yomi:[
+  {q:"「注意を促す」の読みは？",a:"うながす"},
+  {q:"「工事が滞る」の読みは？",a:"とどこおる"},
+  {q:"「ほころびを繕う」の読みは？",a:"つくろう"},
+  {q:"「軽く会釈する」の読みは？",a:"えしゃく"},
+  {q:"「匿名で投稿する」の読みは？",a:"とくめい"},
+  {q:"「頻繁に連絡する」の読みは？",a:"ひんぱん"},
+  {q:"「規制を緩和する」の読みは？",a:"かんわ"},
+  {q:"「演奏の余韻」の読みは？",a:"よいん"},
+  {q:"「名残惜しい」の読みは？",a:"なごり"},
+  {q:"「成功を遂げる」の読みは？",a:"とげる"},
+  {q:"「先輩を慕う」の読みは？",a:"したう"},
+  {q:"「展覧会を催す」の読みは？",a:"もよおす"},
+  {q:"「肌が潤う」の読みは？",a:"うるおう"},
+  {q:"「流行が廃れる」の読みは？",a:"すたれる"},
+  {q:"「練習を怠る」の読みは？",a:"おこたる"},
+  {q:"「体を鍛える」の読みは？",a:"きたえる"},
+  {q:"「新曲を披露する」の読みは？",a:"ひろう"},
+  {q:"「解決策を示唆する」の読みは？",a:"しさ"},
+  {q:"「社会に貢献する」の読みは？",a:"こうけん"},
+  {q:"「寺の境内」の読みは？",a:"けいだい"},
+  {q:"「体裁を整える」の読みは？",a:"ていさい"},
+  {q:"「委員会が発足する」の読みは？",a:"ほっそく"},
+  {q:"「説明が重複する」の読みは？",a:"ちょうふく（じゅうふくも可）"},
+  {q:"「雰囲気がよい」の読みは？",a:"ふんいき"},
+  {q:"「新しいことを試みる」の読みは？",a:"こころみる"},
+  {q:"「ご注文を承る」の読みは？",a:"うけたまわる"}
+ ],
+ kaki:[
+  {q:"不足分をオギナウ",a:"補う"},
+  {q:"枝が下にタレル",a:"垂れる"},
+  {q:"荷物をアズケル",a:"預ける"},
+  {q:"畑をタガヤス",a:"耕す"},
+  {q:"お経をトナエル",a:"唱える"},
+  {q:"年長者をウヤマウ",a:"敬う"},
+  {q:"ケワシイ山道を登る",a:"険しい"},
+  {q:"ココロヨイ風が吹く",a:"快い"},
+  {q:"医者をココロザス",a:"志す"},
+  {q:"パン屋をイトナム",a:"営む"},
+  {q:"新しい城をキズク",a:"築く"},
+  {q:"米をチョゾウする",a:"貯蔵"},
+  {q:"フクザツな問題",a:"複雑"},
+  {q:"作品をヒヒョウする",a:"批評"},
+  {q:"キリツ正しい生活",a:"規律"},
+  {q:"カンケツにまとめる",a:"簡潔"},
+  {q:"シヤを広げる",a:"視野"},
+  {q:"学校とのオウフク",a:"往復"},
+  {q:"ユウビン局に行く",a:"郵便"},
+  {q:"役目を果たす意味で「委員長をツトメル」",a:"務める"},
+  {q:"アタタカイ（温度の）スープ",a:"温かい"},
+  {q:"歴史をキザム",a:"刻む"},
+  {q:"センモン家に相談する",a:"専門"},
+  {q:"雑誌をハッカンする",a:"発刊"}
+ ],
+ goi:[
+  {q:"感心し敬服することを表す慣用句「頭が◯◯◯」",a:"頭が下がる"},
+  {q:"「大好きでたまらない」ことを表す慣用句「◯がない」",a:"目がない"},
+  {q:"「弱点を突かれてつらい」ことを表す慣用句「◯が痛い」",a:"耳が痛い"},
+  {q:"「もてあます」ことを表す慣用句「◯を焼く」",a:"手を焼く"},
+  {q:"「予算を超える」ことを表す慣用句「◯が出る」",a:"足が出る"},
+  {q:"「本心を打ち明ける」ことを表す慣用句「◯を割る」",a:"腹を割る"},
+  {q:"「気が合う」ことを表す動物の慣用句は？",a:"馬が合う"},
+  {q:"「ごくわずか」を表す動物のたとえは？",a:"雀の涙"},
+  {q:"「名人も失敗する」を表すことわざを1つ",a:"猿も木から落ちる（弘法にも筆の誤り／河童の川流れ）"},
+  {q:"「身近なことはかえって気づきにくい」ということわざは？",a:"灯台下暗し"},
+  {q:"「情けは人のためならず」の正しい意味は？",a:"人への親切はめぐりめぐって自分のためになる"},
+  {q:"「手ごたえがない」ことを表すことわざを1つ",a:"のれんに腕押し（ぬかに釘・豆腐にかすがい）"},
+  {q:"「見通しがまったく立たない」四字熟語は？",a:"五里霧中"},
+  {q:"「言葉にしなくても心が通じ合う」四字熟語は？",a:"以心伝心"},
+  {q:"「前置きなしにいきなり本題に入る」四字熟語は？",a:"単刀直入"},
+  {q:"「自分の考えなく他人に同調する」四字熟語は？",a:"付和雷同"},
+  {q:"「古きをたずねて新しきを知る」四字熟語は？",a:"温故知新"},
+  {q:"「その場に応じて適切に対処する」四字熟語は？",a:"臨機応変"},
+  {q:"「つじつまが合わない」ことを表す故事成語は？",a:"矛盾"},
+  {q:"「よけいなつけたし」を表す故事成語は？",a:"蛇足"},
+  {q:"「文章を何度も練り直す」ことを表す故事成語は？",a:"推敲"},
+  {q:"「大差がない」ことを表す故事成語は？",a:"五十歩百歩"}
+ ],
+ kogo:[
+  {q:"古語「いと」の意味は？",a:"とても・たいそう"},
+  {q:"古語「をかし」の意味は？",a:"趣がある・興味深い"},
+  {q:"古語「うつくし」の意味は？",a:"かわいい・いとしい"},
+  {q:"古語「あはれなり」の意味は？",a:"しみじみと心を打たれる"},
+  {q:"古語「ありがたし」の意味は？",a:"めったにない"},
+  {q:"古語「つとめて」の意味は？",a:"早朝"},
+  {q:"古語「やがて」の意味は？",a:"すぐに・そのまま"},
+  {q:"古語「あやし」の意味は？",a:"不思議だ・身分が低い"},
+  {q:"古語「おどろく」の意味は？",a:"はっと気づく・目を覚ます"},
+  {q:"古語「げに」の意味は？",a:"本当に・なるほど"},
+  {q:"古語「なほ」の意味は？",a:"やはり・それでもなお"},
+  {q:"古語「ゆかし」の意味は？",a:"見たい・知りたい・心ひかれる"},
+  {q:"「え〜ず」の意味は？",a:"〜できない"},
+  {q:"「な〜そ」の意味は？",a:"〜するな（禁止）"},
+  {q:"係助詞「ぞ・なむ・や・か」の結びの活用形は？",a:"連体形"},
+  {q:"係助詞「こそ」の結びの活用形は？",a:"已然形"},
+  {q:"「いふ」を現代仮名遣いに直すと？",a:"いう"},
+  {q:"「けふ」を現代仮名遣いに直すと？",a:"きょう"},
+  {q:"「枕草子」の作者は？",a:"清少納言"},
+  {q:"「源氏物語」の作者は？",a:"紫式部"},
+  {q:"「徒然草」の作者は？",a:"兼好法師"},
+  {q:"「方丈記」の作者は？",a:"鴨長明"},
+  {q:"「おくのほそ道」の作者は？",a:"松尾芭蕉"},
+  {q:"琵琶法師が語り広めた軍記物語は？",a:"平家物語"},
+  {q:"現存する日本最古の物語は？",a:"竹取物語"},
+  {q:"現存する日本最古の和歌集は？",a:"万葉集"}
+ ]
+};
+const QA_FIELDS={yomi:"漢字の読み",kaki:"漢字の書き",goi:"語句・四字熟語",kogo:"古語・文学史"};
+let qaState=null;
+function renderQAIntro(){
+  const area=document.getElementById('qaArea');
+  area.innerHTML=`
+    <div class="test-intro">
+      <h2>🃏 一問一答</h2>
+      <p>重要事項をフラッシュカードで暗記しよう。問題を見て頭の中で答えてから「答えを見る」。「書き」のカードは<b>実際に紙に書いてから</b>めくると効果倍増。覚えたカードは消え、まちがえたカードはくり返し出てきます。</p>
+      <div class="chips" id="qaFieldChips">
+        <div class="chip on" data-f="yomi">漢字の読み</div>
+        <div class="chip on" data-f="kaki">漢字の書き</div>
+        <div class="chip on" data-f="goi">語句・四字熟語</div>
+        <div class="chip on" data-f="kogo">古語・文学史</div>
+      </div>
+      <div class="row"><button class="btn primary" id="startQA">スタート</button></div>
+    </div>`;
+  area.querySelectorAll('#qaFieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+  document.getElementById('startQA').onclick=startQA;
+}
+function startQA(){
+  const fields=[...document.querySelectorAll('#qaFieldChips .chip.on')].map(c=>c.dataset.f);
+  if(!fields.length){alert('分野を1つ以上選んでください');return;}
+  let deck=[];
+  fields.forEach(f=>QA[f].forEach(c=>deck.push({...c,field:QA_FIELDS[f]})));
+  deck=shuffle(deck);
+  qaState={deck,total:deck.length,ok:0,ng:0,revealed:false};
+  renderQACard();
+}
+function renderQACard(){
+  const s=qaState, area=document.getElementById('qaArea');
+  if(s.deck.length===0){
+    area.innerHTML=`<div class="result-card">
+      <div class="result-score">🎉</div>
+      <div style="font-size:18px;font-weight:700;margin-top:6px">全${s.total}枚 コンプリート！</div>
+      <div class="result-msg">くり返して定着させよう。</div>
+      <div class="row" style="justify-content:center;margin-top:14px"><button class="btn primary" id="qaAgain">もう一度</button></div>
+    </div>`;
+    document.getElementById('qaAgain').onclick=renderQAIntro;
+    return;
+  }
+  const card=s.deck[0];
+  area.innerHTML=`
+    <div class="qa-stat">
+      <div class="s-rem">のこり<b>${s.deck.length}</b></div>
+      <div class="s-ok">覚えた<b>${s.ok}</b></div>
+      <div class="s-ng">要復習<b>${s.ng}</b></div>
+    </div>
+    <div class="card" id="qaCard">
+      <div class="card-field">${card.field}</div>
+      <div class="card-q">${card.q}</div>
+      <div class="card-a">${card.a}</div>
+      <div class="card-hint" id="qaHint">タップして答えを見る</div>
+    </div>
+    <div id="qaControls"></div>`;
+  const cardEl=document.getElementById('qaCard');
+  const reveal=()=>{
+    if(s.revealed)return; s.revealed=true;
+    cardEl.classList.add('revealed');
+    document.getElementById('qaHint').style.display='none';
+    document.getElementById('qaControls').innerHTML=`
+      <div class="grade-row">
+        <button class="btn ng" id="qaNG">× もう一度</button>
+        <button class="btn ok" id="qaOK">✓ 覚えた</button>
+      </div>`;
+    document.getElementById('qaOK').onclick=()=>gradeCard(true);
+    document.getElementById('qaNG').onclick=()=>gradeCard(false);
+  };
+  cardEl.onclick=reveal;
+}
+function gradeCard(ok){
+  const s=qaState;
+  const card=s.deck.shift();
+  s.revealed=false;
+  if(ok){s.ok++;}
+  else{s.ng++; s.deck.push(card);} // まちがえたら山の最後へ戻す
+  renderQACard();
+}
+
+/* ================= 条件作文対策 ================= */
+const SAKUBUN=[
+ {theme:"「言葉づかい」について",
+  q:"「若者の言葉づかいが乱れている」という意見があります。あなたは言葉づかいについてどのように考えますか。",
+  cond:"二段落構成。前段では言葉づかいについてあなたが気づいたことや経験を書き、後段ではそれをふまえたあなたの考えを書くこと。160〜200字。",
+  a:"私は部活動の後輩に、友達と同じ調子で話しかけられて驚いたことがある。悪気はないとわかっていたが、場面に合わない言葉づかいは相手を戸惑わせるのだと感じた。<br>　私は、言葉づかいとは相手への思いやりを形にしたものだと考える。正しい敬語を使うことだけが目的ではなく、相手や場面に合わせて言葉を選ぶことが大切だ。日ごろから場にふさわしい話し方を意識して使い分けていきたい。",
+  p:"前段＝体験や気づいたこと、後段＝意見、という段落の役割分担が最重要。「〜と考える。」と意見を明確に述べ、最後は今後の姿勢で締めると型が決まる。"},
+ {theme:"「読書」について",
+  q:"中学生の読書量が減っているという調査結果があります。この結果をふまえ、読書についてのあなたの考えを書きなさい。",
+  cond:"二段落構成。前段では資料（読書量の減少）から読み取れることを書き、後段ではあなたの考えを具体的な体験を交えて書くこと。160〜200字。",
+  a:"調査からは、スマートフォンの普及などで、本を読む時間が他のことに使われるようになったことが読み取れる。<br>　しかし私は、読書には動画などでは得られない良さがあると考える。以前、小説を読んで登場人物の気持ちを想像するうちに、友人の立場に立って考えられるようになった経験がある。読書は知識だけでなく、他者を理解する力を育ててくれる。私は今後も意識して本を読む時間を作っていきたい。",
+  p:"前段は「資料から読み取れること」を客観的に。後段は「体験→考え」の順で具体的に。逆接（しかし）で自分の立場を打ち出すと説得力が出る。"},
+ {theme:"「スマートフォンとの付き合い方」",
+  q:"中学生のスマートフォン利用時間が増えています。スマートフォンとの付き合い方について、あなたの考えを書きなさい。",
+  cond:"二段落構成。前段ではスマートフォンの利便性と問題点を、後段ではあなた自身の付き合い方についての考えを書くこと。160〜200字。",
+  a:"スマートフォンは、調べ学習や友人との連絡にすぐ使える便利な道具である。一方で、動画やゲームに夢中になり、勉強や睡眠の時間を削ってしまうという問題もある。<br>　私は、スマートフォンに使われるのではなく、目的を持って使うことが大切だと考える。私は寝る一時間前には電源を切ると決めてから、勉強に集中できるようになった。自分でルールを決めて道具として使いこなしていきたい。",
+  p:"「便利さ」と「問題点」の両面を挙げてから意見を述べると、一方的でないバランスの良い作文になる。自分の具体的なルール・行動を入れると高評価。"},
+ {theme:"「地域との関わり」について",
+  q:"地域の行事に参加する中学生が減っているといわれます。地域との関わりについて、あなたの考えを書きなさい。",
+  cond:"二段落構成。前段では地域との関わりについてのあなたの経験を、後段ではその経験から考えたことを書くこと。160〜200字。",
+  a:"私は昨年、地域の夏祭りの運営を手伝った。準備は大変だったが、普段話すことのない年配の方に昔の町の様子を教えてもらい、自分の住む町への愛着が深まった。<br>　この経験から、地域との関わりは中学生にとって学校では得られない学びの場だと考える。地域の人々と交流することで、視野が広がり、自分も地域の一員だという自覚が生まれる。私はこれからも積極的に地域の活動に参加していきたい。",
+  p:"体験は「何をした＋何を感じた」までセットで書く。後段では体験を一般化（〜は…の場だ）してから、今後の行動につなげる。"},
+ {theme:"「中学校生活で学んだこと」",
+  q:"あなたが中学校生活で学んだ最も大切なことは何ですか。高校生活にどう生かすかにも触れて書きなさい。",
+  cond:"二段落構成。前段では学んだことと具体的なきっかけを、後段では高校生活での生かし方を書くこと。160〜200字。",
+  a:"私が中学校生活で学んだ最も大切なことは、仲間と協力することの価値だ。合唱コンクールで意見が対立したとき、一人一人の考えを聞いて練習方法を工夫した結果、クラスがまとまり最優秀賞を取ることができた。<br>　高校では、この経験を部活動や学校行事で生かしたい。意見が違う人とも話し合いを重ねれば、一人では出せない力を生み出せる。仲間と支え合いながら、新しいことに挑戦していきたい。",
+  p:"「学んだこと」は一つにしぼる。きっかけとなる具体的なエピソード（いつ・何が・どうなった）→学び→高校での生かし方、の流れが面接にも使える鉄板構成。"},
+ {theme:"「日本の文化を紹介する」",
+  q:"海外から来た人に日本の文化を一つ紹介するとしたら、あなたは何を選びますか。理由とともに書きなさい。",
+  cond:"二段落構成。前段では紹介したい文化とその内容を、後段では選んだ理由を書くこと。160〜200字。",
+  a:"私が紹介したいのは、お正月の年賀状の文化だ。新年に、日ごろお世話になっている人や離れて暮らす友人へ、手書きのあいさつ状を送り合う習慣である。<br>　これを選んだ理由は、相手を思う時間そのものに価値があると考えるからだ。SNSで一瞬で連絡できる時代に、相手の顔を思い浮かべながら一枚一枚書く年賀状には、効率では測れない温かさがある。この心づかいこそ、伝えたい日本らしさだ。",
+  p:"「何を」＋「どんなものか（説明）」＋「なぜ（理由）」の3要素。読み手（外国の人）を意識した説明になっているかも採点ポイント。"}
+];
+function renderSakubun(){
+  const area=document.getElementById('sakubunArea');
+  let html=`<div class="test-intro" style="padding:16px 18px">
+     <h2>✍️ 条件作文対策（大問7）</h2>
+     <p style="margin:0">千葉県の最終問題は<b>約200字・二段落構成の条件作文</b>（配点約10点）。型を身につければ確実に得点できるボーナス問題です。まず下の「書き方の型」を覚え、練習テーマで実際に書いてから模範解答と比べよう。</p>
+   </div>
+   <div class="unit open">
+     <div class="unit-head" style="cursor:default"><span class="unit-grade">必読</span><span class="unit-title">条件作文 5つの鉄則</span></div>
+     <div class="unit-body" style="display:block">
+       <ul class="points">
+         <li><span class='kw'>条件をすべて守る</span>——段落数・字数（8割以上、超過は厳禁）・書く内容の指定。条件違反は大幅減点。</li>
+         <li><span class='kw'>前段＝事実・体験、後段＝意見・考え</span>が千葉県の基本形。段落の最初は1マス空ける。</li>
+         <li>文体は<span class='kw'>「だ・である」か「です・ます」のどちらかに統一</span>。混ぜると減点。</li>
+         <li>意見は<span class='kw'>「私は〜と考える。」と一文で明確に</span>。理由や体験は1つにしぼって具体的に。</li>
+         <li>書いたら必ず見直し：<span class='kw'>誤字脱字・話し言葉（「なので」「〜じゃない」）・一文の長さ</span>（60字を超えたら分ける）。</li>
+       </ul>
+       <div class="fm">練習方法：週1テーマ、10分計って200字。書いたら「条件を守れたか」を自分でチェックしてから模範解答と比較。家の人に読んでもらうのも効果大。</div>
+     </div>
+   </div>`;
+  SAKUBUN.forEach((k,i)=>{
+    html+=`<div class="kj">
+      <div class="kj-q"><span class="num">テーマ${i+1}.</span> ${k.theme}</div>
+      <div style="font-size:14px;margin-bottom:6px">${k.q}</div>
+      <div class="kj-cond">📋 条件：${k.cond}</div>
+      <button class="btn kj-btn" data-i="${i}">模範解答を見る</button>
+      <div class="kj-a" id="kj-${i}">
+        <span class="lbl">模範解答例</span>　${k.a}
+        <div class="kj-point">🔑 ${k.p}</div>
+      </div>
+    </div>`;
+  });
+  area.innerHTML=html;
+  area.querySelectorAll('.kj-btn').forEach(b=>{
+    b.onclick=()=>{
+      const box=document.getElementById(`kj-${b.dataset.i}`);
+      const open=box.classList.toggle('show');
+      b.textContent=open?'解答を隠す':'模範解答を見る';
+    };
+  });
+}
+
+/* ================= リセット ================= */
+document.getElementById('resetBtn').onclick=()=>{
+  if(confirm('学習の進捗をすべてリセットしますか？')){
+    progress={};save();buildAll();
+  }
+};
+
+buildAll();
+</script>
+</body>
+</html>
