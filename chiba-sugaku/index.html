@@ -144,7 +144,7 @@
 <header>
   <div class="wrap">
     <h1>📐 千葉県公立高校 数学 対策</h1>
-    <p>数と式・方程式・関数・図形・データの全単元｜要点整理と確認テスト</p>
+    <p>数と式・方程式・関数・図形・データ・規則性の全単元｜要点整理・確認テスト・復習キュー</p>
     <div class="prog-wrap">
       <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
       <div class="prog-label">
@@ -174,12 +174,18 @@
     <div class="tab" data-f="fn">関数</div>
     <div class="tab" data-f="zu">図形</div>
     <div class="tab" data-f="dat">データ</div>
+    <div class="tab" data-f="ki">規則性</div>
     <div class="tab" data-f="qa">一問一答</div>
     <div class="tab" data-f="kijutsu">証明</div>
     <div class="tab" data-f="test">模試</div>
+    <div class="tab" data-f="review">復習<span class="c-badge" id="reviewBadge"></span></div>
   </div>
 
   <div id="content"></div>
+
+  <section id="sec-review">
+    <div id="reviewArea"></div>
+  </section>
 
   <section id="sec-qa">
     <div id="qaArea"></div>
@@ -199,7 +205,9 @@
   </footer>
 </div>
 
+<script src="../chiba-common.js"></script>
 <script>
+Chiba.init('sugaku');
 /* =========================================================================
    千葉県公立高校 数学 教材データ
    分野: suu(数と式) eq(方程式) fn(関数) zu(図形) dat(データの活用)
@@ -422,7 +430,10 @@ fn:{ name:"関数", color:"var(--fn)", units:[
    quiz:[
      {q:"y＝x² 上の、x座標が−1と2の2点を通る直線の傾きは？",opts:["1","−1","2","3"],a:0,e:"時短公式 a(p＋q)＝1×(−1＋2)＝1。まじめに計算しても (4−1)÷(2−(−1))＝3÷3＝1。"},
      {q:"放物線 y＝x² と直線 y＝x＋2 の交点のx座標は？",opts:["x＝−1, 2","x＝1, −2","x＝1, 2","x＝−1, −2"],a:0,e:"x²＝x＋2 → x²−x−2＝0 → (x−2)(x＋1)＝0 → x＝−1, 2。"},
-     {q:"3点 A(0, 4)、B(−2, 0)、C(4, 0) を頂点とする三角形の面積は？",opts:["8","12","24","6"],a:1,e:"底辺BC＝4−(−2)＝6、高さはAのy座標4。6×4÷2＝12。"}
+     {q:"3点 A(0, 4)、B(−2, 0)、C(4, 0) を頂点とする三角形の面積は？",opts:["8","12","24","6"],a:1,e:"底辺BC＝4−(−2)＝6、高さはAのy座標4。6×4÷2＝12。"},
+     {q:"y＝(1/2)x² 上に A(−2, 2)、B(4, 8) がある。直線ABの式は？",opts:["y＝x＋4","y＝2x＋4","y＝x＋2","y＝(1/2)x＋4"],a:0,e:"傾き＝a(p＋q)＝(1/2)×(−2＋4)＝1、切片＝−apq＝−(1/2)×(−2)×4＝4。よって y＝x＋4。時短公式が使えると大問2が速くなる。",lv:3},
+     {q:"O(0,0)、A(−2, 2)、B(4, 8) を頂点とする△OABの面積は？（直線ABは y＝x＋4）",opts:["6","12","24","8"],a:1,e:"直線ABとy軸の交点C(0, 4)で△OABを2つに分ける。面積＝(1/2)×OC×(AとBのx座標の差)＝(1/2)×4×{4−(−2)}＝12。「切片で分割」は座標三角形の必修テク。",lv:3},
+     {q:"上の△OABと面積が等しい△PABを、y軸上の点P（O以外）でつくる。Pの座標は？",opts:["(0, 8)","(0, 6)","(0, 4)","(0, 2)"],a:0,e:"ABとy軸の交点はC(0, 4)。OはCから下に4なので、反対側に4上がった P(0, 8) なら底辺ABに対する高さ（Cからの距離）が等しい。等積変形の定番。",lv:3}
    ]},
 ]},
 
@@ -497,7 +508,9 @@ zu:{ name:"図形", color:"var(--zu)", units:[
    quiz:[
      {q:"相似比が 2：3 の2つの図形の面積比は？",opts:["2：3","4：9","8：27","4：6"],a:1,e:"面積比は相似比の2乗。2²：3²＝4：9。"},
      {q:"△ABCで、辺AB、ACの中点をM、Nとする。BC＝10cmのときMNの長さは？",opts:["5 cm","10 cm","20 cm","2.5 cm"],a:0,e:"中点連結定理よりMN＝(1/2)BC＝5cm。MN∥BCも同時に成り立つ。"},
-     {q:"相似比が 1：2 の2つの立体の体積比は？",opts:["1：2","1：4","1：8","1：6"],a:2,e:"体積比は相似比の3乗。1³：2³＝1：8。"}
+     {q:"相似比が 1：2 の2つの立体の体積比は？",opts:["1：2","1：4","1：8","1：6"],a:2,e:"体積比は相似比の3乗。1³：2³＝1：8。"},
+     {q:"△ABCの辺AB上に点D、辺AC上に点EがありDE∥BC。AD：DB＝3：2 で△ADEの面積が18cm²のとき、△ABCの面積は？",opts:["30 cm²","45 cm²","50 cm²","36 cm²"],a:2,e:"AD：AB＝3：5（DBではなくABとの比に直す）。相似比3：5→面積比9：25。18×25/9＝50cm²。「3：2を3：5に直す」のがワナ。",lv:3},
+     {q:"DE∥BCの台形DBCE（上のような図）で、△ADE：台形DBCE の面積比は？（AD：DB＝3：2）",opts:["9：25","9：16","3：2","9：4"],a:1,e:"△ADE：△ABC＝9：25 なので、台形＝25−9＝16。△ADE：台形DBCE＝9：16。「全体から引く」一手間で差がつく。",lv:3}
    ]},
   {id:"z6", grade:"中3", title:"円周角の定理",
    points:[
@@ -511,7 +524,8 @@ zu:{ name:"図形", color:"var(--zu)", units:[
    quiz:[
      {q:"ある弧に対する中心角が80°のとき、同じ弧に対する円周角は？",opts:["160°","80°","40°","20°"],a:2,e:"円周角は中心角の半分。80÷2＝40°。"},
      {q:"直径に対する円周角の大きさは？",opts:["45°","60°","90°","180°"],a:2,e:"半円の弧に対する円周角は90°。「直径が出てきたら90°」は入試の定石。"},
-     {q:"同じ弧ABに対する円周角∠APBが35°のとき、中心角∠AOBは？",opts:["17.5°","35°","70°","140°"],a:2,e:"中心角は円周角の2倍。35×2＝70°。"}
+     {q:"同じ弧ABに対する円周角∠APBが35°のとき、中心角∠AOBは？",opts:["17.5°","35°","70°","140°"],a:2,e:"中心角は円周角の2倍。35×2＝70°。"},
+     {q:"円周上に3点A、B、Cがあり、弧AB：弧BC：弧CA＝3：4：5。∠BAC（弧BCに対する円周角）は？",opts:["45°","60°","75°","50°"],a:1,e:"中心角の合計360°を3：4：5に分けると 90°・120°・150°。弧BCの中心角は120°なので円周角は60°。「弧の比＝中心角の比」に置きかえるのが差がつくポイント。",lv:3}
    ]},
   {id:"z7", grade:"中3", title:"三平方の定理",
    points:[
@@ -527,7 +541,9 @@ zu:{ name:"図形", color:"var(--zu)", units:[
      {q:"直角をはさむ2辺が3cmと4cmの直角三角形の斜辺の長さは？",opts:["5 cm","6 cm","7 cm","√7 cm"],a:0,e:"√(3²＋4²)＝√25＝5cm。3・4・5は暗記。"},
      {q:"1辺が6cmの正方形の対角線の長さは？",opts:["6√3 cm","6√2 cm","12 cm","3√2 cm"],a:1,e:"対角線＝1辺×√2＝6√2cm（45°・45°・90°の比1：1：√2）。"},
      {q:"縦3cm、横4cm、高さ12cmの直方体の対角線の長さは？",opts:["13 cm","19 cm","√19 cm","15 cm"],a:0,e:"√(3²＋4²＋12²)＝√(9＋16＋144)＝√169＝13cm。"},
-     {q:"2点 (1, 2)、(4, 6) の間の距離は？",opts:["5","7","√7","25"],a:0,e:"√{(4−1)²＋(6−2)²}＝√(9＋16)＝√25＝5。"}
+     {q:"2点 (1, 2)、(4, 6) の間の距離は？",opts:["5","7","√7","25"],a:0,e:"√{(4−1)²＋(6−2)²}＝√(9＋16)＝√25＝5。"},
+     {q:"1辺6cmの正三角形の面積は？",opts:["9√3 cm²","18 cm²","6√3 cm²","12√3 cm²"],a:0,e:"高さ＝(√3/2)×6＝3√3。面積＝6×3√3÷2＝9√3cm²。正三角形は「半分に割って30°60°90°」が合言葉。",lv:3},
+     {q:"底面が1辺6cmの正方形で、他の辺がすべて9cmの正四角錐の高さは？",opts:["3√7 cm","3√5 cm","6√2 cm","3√6 cm"],a:0,e:"底面の対角線＝6√2、その半分3√2が頂点の真下から底面の頂点までの距離。高さ＝√(9²−(3√2)²)＝√(81−18)＝√63＝3√7cm。空間図形は「直角三角形を取り出す」。",lv:3}
    ]},
   {id:"z8", grade:"暗記", title:"図形の公式・定理 暗記シート",
    points:[
@@ -614,6 +630,43 @@ dat:{ name:"データ・確率", color:"var(--dat)", units:[
      {q:"池の魚50匹に印をつけて放した。後日50匹捕まえると印つきが10匹いた。池の魚の総数はおよそ？",opts:["100匹","250匹","500匹","2500匹"],a:1,e:"印つきの割合10/50＝1/5が全体でも成り立つとみなす。50÷(1/5)＝250匹。"},
      {q:"標本を選ぶとき「かたよりなく選ぶ」ことを何という？",opts:["全数調査","無作為に抽出する","累積する","相対化する"],a:1,e:"無作為に抽出する（ランダムに選ぶ）。かたよった標本では正しく推定できない。"}
    ]},
+]},
+
+ki:{ name:"規則性・思考力", color:"#ff8a65", units:[
+  {id:"k1", grade:"入試", title:"規則性の問題（千葉・大問4型）★差がつく",
+   points:[
+     "解法の型：①最初の<span class='kw'>3〜4番目まで表に書き出す</span> ②増え方を見つける ③n番目を<span class='kw'>nの式</span>で表す ④<span class='kw'>n＝1, 2を代入して検算</span>。",
+     "増え方が一定（＋d ずつ）なら n番目＝<span class='kw'>d×n＋（調整の数）</span>。調整の数は1番目の値から逆算。",
+     "「<span class='kw'>初めて100をこえるのは何番目？</span>」→ nの式＞100 の<span class='kw'>不等式</span>を解く。",
+     "増え方が一定でない（1, 3, 6, 10, …）→<span class='kw'>階段状の和</span>。1＋2＋…＋n＝<span class='kw'>n(n＋1)/2</span>。",
+     "図形の個数・マッチ棒・碁石は「<span class='kw'>共有される部分</span>」に注目（1個目だけ多く、2個目からは一定ずつ増える）。",
+     "本番では(1)(2)は具体的に数えれば解ける。<span class='kw'>(3)の一般化で差がつく</span>——nの式を作る練習を。"
+   ],
+   formulas:["1＋2＋3＋…＋n＝n(n＋1)/2","d ずつ増える列の n番目＝dn＋(1番目−d)"],
+   quiz:[
+     {q:"マッチ棒で正三角形を横一列にn個つなげて作る。必要なマッチ棒の本数をnの式で表すと？（1個で3本、2個で5本、3個で7本…）",opts:["3n","2n＋1","2n−1","n＋2"],a:1,e:"1個目は3本、2個目からは2本ずつ増える（1辺を共有するから）。よって 2n＋1。n＝1で3、n＝2で5になるか検算。",lv:3},
+     {q:"タイルを階段状に並べる。1段で1枚、2段で3枚、3段で6枚、4段で10枚…。10段では何枚？",opts:["45枚","50枚","55枚","66枚"],a:2,e:"n段＝1＋2＋…＋n＝n(n＋1)/2。10×11÷2＝55枚。増え方が一定でないときは「和の形」を疑う。",lv:3},
+     {q:"1, 5, 9, 13, … と4ずつ増える数の列のn番目をnの式で表すと？",opts:["4n","4n−3","4n＋1","n＋4"],a:1,e:"4ずつ増える→4n＋調整。1番目が1なので調整は1−4＝−3。よって4n−3。n＝2で5になるか検算。",lv:3},
+     {q:"3, 7, 11, 15, … の列で、初めて100をこえるのは何番目？",opts:["24番目","25番目","26番目","27番目"],a:2,e:"n番目＝4n−1。4n−1＞100 → n＞25.25 → n＝26。25番目は99、26番目は103。不等式で機械的に解く。",lv:3},
+     {q:"碁石を正方形の枠の形に並べる。1辺n個の正方形の枠に必要な碁石は？",opts:["4n","4n−4","4n＋4","n²"],a:1,e:"4辺×n個だと角の4個を二重に数えるので 4n−4。n＝2で4個、n＝3で8個になるか検算。「角の重複」が規則性の頻出ワナ。",lv:3}
+   ]},
+  {id:"k2", grade:"入試", title:"関数×図形の融合 攻略（差がつく大問）",
+   points:[
+     "座標三角形の面積は<span class='kw'>y軸（x軸）との交点で2つに分ける</span>：△OAB＝(1/2)×切片×（AとBのx座標の差）。",
+     "<span class='kw'>等積変形</span>：底辺ABが共通なら、頂点はABに<span class='kw'>平行な直線上</span>ならどこでも面積が同じ。",
+     "<span class='kw'>面積の2等分</span>：頂点を通る直線なら<span class='kw'>対辺の中点</span>を通す。中点＝座標の平均。",
+     "放物線 y＝ax² 上の2点（x座標p, q）を通る直線：<span class='kw'>傾き a(p＋q)、切片 −apq</span>。",
+     "回転体・動点の問題も「<span class='kw'>図をかいて、直角三角形や相似を取り出す</span>」のが第一歩。",
+     "本番の大問2・3の最終小問はこの融合型。<span class='kw'>まず座標をすべて文字か数で書き出す</span>こと。"
+   ],
+   formulas:["中点の座標＝（x座標の平均, y座標の平均）","△の面積＝(1/2)×（y軸との交点の切片）×（x座標の差）"],
+   quiz:[
+     {q:"y＝x² 上の2点 A(−1, 1)、B(2, 4) を通る直線の式は？",opts:["y＝x＋2","y＝2x＋2","y＝x−2","y＝3x＋1"],a:0,e:"傾き＝a(p＋q)＝1×(−1＋2)＝1、切片＝−apq＝−1×(−1)×2＝2。y＝x＋2。",lv:3},
+     {q:"O(0,0)、A(−1, 1)、B(2, 4)の△OABの面積は？（直線ABは y＝x＋2）",opts:["3","6","2","4"],a:0,e:"ABとy軸の交点C(0, 2)で分割。(1/2)×OC×（x座標の差）＝(1/2)×2×{2−(−1)}＝3。",lv:3},
+     {q:"A(−1, 1)、B(3, 5)の線分ABの中点の座標は？",opts:["(1, 3)","(2, 4)","(1, 2)","(2, 3)"],a:0,e:"中点＝座標の平均。x＝(−1＋3)/2＝1、y＝(1＋5)/2＝3。面積2等分の直線は必ずこの中点を通る。",lv:3},
+     {q:"y＝ax² が点(2, 2)を通るとき、aの値は？",opts:["a＝1","a＝1/2","a＝2","a＝1/4"],a:1,e:"2＝a×2² → 2＝4a → a＝1/2。「通る＝代入」。融合問題の(1)はほぼこれ。確実に取る。",lv:3},
+     {q:"y＝x²で、xが−1から2まで増加するときの変化の割合は？",opts:["1","3","2","−1"],a:0,e:"a(p＋q)＝1×(−1＋2)＝1。変化の割合＝その2点を通る直線の傾きと同じ、という意味も理解しておく。",lv:3}
+   ]},
 ]}
 };
 
@@ -664,7 +717,7 @@ function renderField(fkey){
 }
 function renderQuiz(uid,qi,q){
   return `<div class="q" data-uid="${uid}" data-qi="${qi}">
-    <div class="q-txt"><span class="num">Q${qi+1}.</span>${q.q}</div>
+    <div class="q-txt"><span class="num">Q${qi+1}.</span>${Chiba.lvTag(q.lv)}${q.q}</div>
     <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
     <div class="expl"><b>解説：</b>${q.e}</div>
   </div>`;
@@ -689,6 +742,7 @@ function bindEvents(){
       if(f==='test'){document.getElementById('sec-test').classList.add('active'); renderTestIntro();}
       else if(f==='qa'){document.getElementById('sec-qa').classList.add('active'); if(!qaState)renderQAIntro();}
       else if(f==='kijutsu'){document.getElementById('sec-kijutsu').classList.add('active'); renderKijutsu();}
+      else if(f==='review'){document.getElementById('sec-review').classList.add('active'); Chiba.renderReview('reviewArea');}
       else document.getElementById('sec-'+f).classList.add('active');
       window.scrollTo({top:0,behavior:'smooth'});
     };
@@ -698,9 +752,9 @@ function bindEvents(){
     h.onclick=()=>h.parentElement.classList.toggle('open');
   });
   // クイズ回答
-  document.querySelectorAll('.q').forEach(qEl=>{
+  document.querySelectorAll('#content .q').forEach(qEl=>{
     const uid=qEl.dataset.uid, qi=+qEl.dataset.qi;
-    const ans=findQuiz(uid,qi).a;
+    const q=findQuiz(uid,qi), ans=q.a;
     qEl.querySelectorAll('.opt').forEach(opt=>{
       opt.onclick=()=>{
         if(qEl.classList.contains('answered'))return;
@@ -712,6 +766,7 @@ function bindEvents(){
           if(i===chosen&&chosen!==ans)o.classList.add('wrong');
         });
         qEl.querySelector('.expl').classList.add('show');
+        Chiba.record({id:`q:${uid}:${qi}`,type:'choice',q:q.q,opts:q.opts,a:q.a,e:q.e,field:unitField(uid),lv:q.lv},chosen===ans);
       };
     });
   });
@@ -735,6 +790,12 @@ function findQuiz(uid,qi){
     if(u)return u.quiz[qi];
   }
 }
+function unitField(uid){
+  for(const f of Object.values(DATA)){
+    if(f.units.some(u=>u.id===uid))return f.name;
+  }
+  return '';
+}
 
 /* ================= 模試モード ================= */
 let testState=null;
@@ -743,13 +804,14 @@ function renderTestIntro(){
   area.innerHTML=`
     <div class="test-intro">
       <h2>📝 実力チェック模試</h2>
-      <p>全分野からランダムに出題します。本番のように、まず自分で解いてから答え合わせをしよう。分野をしぼることもできます。計算用紙を用意して、とちゅう式を書きながら解くのがおすすめ。</p>
+      <p>全分野からランダムに出題します。本番のように、まず自分で解いてから答え合わせをしよう。分野をしぼることもできます。計算用紙を用意して、とちゅう式を書きながら解くのがおすすめ。タイマーが動くので<b>1問90秒</b>を目安に。まちがえた問題は自動で「復習」タブにたまります。</p>
       <div class="chips" id="fieldChips">
         <div class="chip on" data-f="suu">数と式</div>
         <div class="chip on" data-f="eq">方程式</div>
         <div class="chip on" data-f="fn">関数</div>
         <div class="chip on" data-f="zu">図形</div>
         <div class="chip on" data-f="dat">データ・確率</div>
+        <div class="chip on" data-f="ki">規則性・思考力</div>
       </div>
       <div class="row">
         <span style="font-size:13px;color:var(--sub)">問題数：</span>
@@ -759,11 +821,22 @@ function renderTestIntro(){
           <div class="chip" data-n="0">全問</div>
         </div>
       </div>
+      <div class="row">
+        <span style="font-size:13px;color:var(--sub)">レベル：</span>
+        <div class="chips" id="lvChips" style="margin:0">
+          <div class="chip on" data-lv="all">全レベル</div>
+          <div class="chip" data-lv="3">差がつく問題だけ</div>
+        </div>
+      </div>
       <div class="row"><button class="btn primary" id="startTest">模試スタート</button></div>
+      ${Chiba.moshiHistoryHtml()}
     </div>`;
   area.querySelectorAll('#fieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
   area.querySelectorAll('#countChips .chip').forEach(c=>c.onclick=()=>{
     area.querySelectorAll('#countChips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');
+  });
+  area.querySelectorAll('#lvChips .chip').forEach(c=>c.onclick=()=>{
+    area.querySelectorAll('#lvChips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');
   });
   document.getElementById('startTest').onclick=startTest;
 }
@@ -772,21 +845,26 @@ function startTest(){
   const fields=[...document.querySelectorAll('#fieldChips .chip.on')].map(c=>c.dataset.f);
   if(!fields.length){alert('分野を1つ以上選んでください');return;}
   const n=+document.querySelector('#countChips .chip.on').dataset.n;
+  const lv=document.querySelector('#lvChips .chip.on').dataset.lv;
   let pool=[];
-  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach(q=>pool.push({...q,field:DATA[fk].name}))));
+  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach((q,qi)=>pool.push({...q,field:DATA[fk].name,id:`q:${u.id}:${qi}`}))));
+  if(lv==='3'){
+    pool=pool.filter(q=>q.lv===3);
+    if(!pool.length){alert('選んだ分野に「差がつく」問題がありません。分野を増やしてみよう。');return;}
+  }
   pool=shuffle(pool);
   if(n>0)pool=pool.slice(0,n);
-  testState={pool,answers:new Array(pool.length).fill(null),submitted:false};
+  testState={pool,answers:new Array(pool.length).fill(null),submitted:false,timer:null};
   renderTestQuestions();
 }
 function renderTestQuestions(){
   const {pool}=testState;
   const area=document.getElementById('testArea');
-  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p></div>`;
+  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p><div class="c-timer" id="testTimer"></div></div>`;
   pool.forEach((q,i)=>{
     html+=`<div class="q" data-i="${i}">
       <div class="qcount">${q.field}</div>
-      <div class="q-txt"><span class="num">問${i+1}.</span>${q.q}</div>
+      <div class="q-txt"><span class="num">問${i+1}.</span>${Chiba.lvTag(q.lv)}${q.q}</div>
       <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
       <div class="expl"><b>解説：</b>${q.e}</div>
     </div>`;
@@ -805,17 +883,21 @@ function renderTestQuestions(){
     });
   });
   document.getElementById('submitTest').onclick=gradeTest;
-  document.getElementById('cancelTest').onclick=renderTestIntro;
+  document.getElementById('cancelTest').onclick=()=>{if(testState.timer)testState.timer.stop();renderTestIntro();};
+  testState.timer=Chiba.startTimer('testTimer',pool.length*90);
 }
 function gradeTest(){
   const {pool,answers}=testState;
   const unanswered=answers.filter(a=>a===null).length;
   if(unanswered>0 && !confirm(`未回答が${unanswered}問あります。このまま採点しますか？`))return;
   testState.submitted=true;
+  const sec=testState.timer?testState.timer.stop():0;
   let correct=0;
   document.querySelectorAll('#testArea .q').forEach(qEl=>{
     const i=+qEl.dataset.i;const q=pool[i];
-    if(answers[i]===q.a)correct++;
+    const ok=answers[i]===q.a;
+    if(ok)correct++;
+    Chiba.record({id:q.id,type:'choice',q:q.q,opts:q.opts,a:q.a,e:q.e,field:q.field,lv:q.lv},ok);
     qEl.querySelectorAll('.opt').forEach((o,oi)=>{
       o.classList.add('disabled');o.style.borderColor='';
       if(oi===q.a)o.classList.add('correct');
@@ -824,6 +906,7 @@ function gradeTest(){
     qEl.querySelector('.expl').classList.add('show');
   });
   const pct=Math.round(correct/pool.length*100);
+  Chiba.saveMoshi({t:Date.now(),score:correct,total:pool.length,sec});
   let msg;
   if(pct>=90)msg='素晴らしい！合格圏内。この調子で苦手分野を仕上げよう。';
   else if(pct>=70)msg='good！あと一歩。まちがえた単元の要点を読み直そう。';
@@ -832,8 +915,9 @@ function gradeTest(){
   const card=document.createElement('div');
   card.className='result-card';
   card.innerHTML=`<div class="result-score">${correct} / ${pool.length}</div>
-    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%</div>
-    <div class="result-msg">${msg}</div>
+    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%　<span style="font-size:13px;color:var(--sub)">⏱ ${Math.floor(sec/60)}分${sec%60}秒</span></div>
+    <div class="result-msg">${msg}<br>まちがえた問題は「復習」タブへ自動で入りました。</div>
+    ${Chiba.breakdownHtml(pool,answers)}
     <div class="row" style="justify-content:center;margin-top:14px">
       <button class="btn primary" id="retryTest">もう一度</button>
     </div>`;
@@ -939,7 +1023,7 @@ function startQA(){
   const fields=[...document.querySelectorAll('#qaFieldChips .chip.on')].map(c=>c.dataset.f);
   if(!fields.length){alert('分野を1つ以上選んでください');return;}
   let deck=[];
-  fields.forEach(f=>QA[f].forEach(c=>deck.push({...c,field:QA_FIELDS[f]})));
+  fields.forEach(f=>QA[f].forEach((c,i)=>deck.push({...c,field:QA_FIELDS[f],id:`qa:${f}:${i}`})));
   deck=shuffle(deck);
   qaState={deck,total:deck.length,idx:0,ok:0,ng:0,revealed:false};
   renderQACard();
@@ -989,6 +1073,7 @@ function gradeCard(ok){
   const s=qaState;
   const card=s.deck.shift();
   s.revealed=false;
+  Chiba.record({id:card.id,type:'flash',q:card.q,a:card.a,field:card.field},ok);
   if(ok){s.ok++;}
   else{s.ng++; s.deck.push(card);} // まちがえたら山の最後へ戻す
   renderQACard();
@@ -1011,7 +1096,10 @@ const KIJUTSU={
    p:"「共通な辺」と「平行線→錯角」は合同証明の2大定番。錯角を使うときは必ず「AB∥DCより」と平行の根拠を書く。"},
   {q:"AB＝ACの二等辺三角形ABCで、頂角Aの二等分線と辺BCとの交点をDとする。このとき BD＝CD を証明せよ。",
    a:"△ABDと△ACDにおいて、<br>仮定より AB＝AC …①<br>ADは∠Aの二等分線だから ∠BAD＝∠CAD …②<br>ADは共通 …③<br>①②③より、2組の辺とその間の角がそれぞれ等しいから<br>△ABD≡△ACD<br>合同な図形の対応する辺は等しいから BD＝CD",
-   p:"結論が「辺が等しい」でも、まず三角形の合同を示す。最後の「合同な図形の対応する辺は等しいから」の一文を書き忘れると減点。"}
+   p:"結論が「辺が等しい」でも、まず三角形の合同を示す。最後の「合同な図形の対応する辺は等しいから」の一文を書き忘れると減点。"},
+  {q:"平行四辺形ABCDの対角線BD上に、BE＝DFとなる点E、F（EはBの側、FはDの側）をとる。このとき AE＝CF を証明せよ。",
+   a:"△ABEと△CDFにおいて、<br>平行四辺形の対辺は等しいから AB＝CD …①<br>仮定より BE＝DF …②<br>AB∥DCより、平行線の錯角は等しいから ∠ABE＝∠CDF …③<br>①②③より、2組の辺とその間の角がそれぞれ等しいから<br>△ABE≡△CDF<br>合同な図形の対応する辺は等しいから AE＝CF",
+   p:"平行四辺形とくれば「対辺が等しい」「対角が等しい」「対角線は中点で交わる」「平行→錯角」の4点セットから根拠を選ぶ。上位校では性質を根拠として書けるかで差がつく。", lv:3}
  ],
  souji:[
   {q:"△ABCの辺AB上に点D、辺AC上に点Eがあり、∠ADE＝∠ACB である。このとき △ADE∽△ACB を証明せよ。",
@@ -1019,7 +1107,10 @@ const KIJUTSU={
    p:"相似の証明はほぼ「2組の角がそれぞれ等しい」で決まる。まず共通な角がないか探すのが鉄則。対応する頂点の順番（A→A、D→C、E→B）にも注意。"},
   {q:"円Oの2つの弦ABとCDが、円の内部の点Pで交わっている。このとき △PAC∽△PDB を証明せよ。",
    a:"△PACと△PDBにおいて、<br>対頂角は等しいから ∠APC＝∠DPB …①<br>弧CBに対する円周角は等しいから ∠PAC＝∠PDB …②<br>①②より、2組の角がそれぞれ等しいから<br>△PAC∽△PDB",
-   p:"円がある相似証明では「同じ弧に対する円周角」、線分が交わっていれば「対頂角」。この2つの組み合わせが千葉の大問3の定番。"}
+   p:"円がある相似証明では「同じ弧に対する円周角」、線分が交わっていれば「対頂角」。この2つの組み合わせが千葉の大問3の定番。"},
+  {q:"ABを直径とする円Oの周上に点C（A、Bとは異なる）があり、CからABに垂線CHをひく。△ACH∽△CBH を証明し、CH²＝AH×BH が成り立つことを示せ。",
+   a:"△ACHと△CBHにおいて、<br>CH⊥ABより ∠AHC＝∠CHB＝90° …①<br>ABは直径だから、半円の弧に対する円周角より ∠ACB＝90°<br>よって ∠ACH＝90°−∠BCH、また△CBHで ∠CBH＝90°−∠BCH<br>したがって ∠ACH＝∠CBH …②<br>①②より、2組の角がそれぞれ等しいから △ACH∽△CBH<br>対応する辺の比より AH：CH＝CH：BH<br>よって CH²＝AH×BH",
+   p:"「直径→円周角90°」と「90°−同じ角」で角の等しさを言いかえる。相似→比例式→積の形（CH²＝AH×BH）まで書かせるのが上位校パターン。②の言いかえの2行が採点の核心。", lv:3}
  ],
  moji:[
   {q:"連続する3つの整数の和は3の倍数になる。この理由を文字を使って説明せよ。",
@@ -1030,7 +1121,10 @@ const KIJUTSU={
    p:"2けたの数＝10×(十の位)＋(一の位) と表すのがすべて。「ab」と書くと積になってしまうのでNG。"},
   {q:"奇数と奇数の和は偶数になる。この理由を文字を使って説明せよ。",
    a:"m、nを整数とすると、2つの奇数は 2m＋1、2n＋1 と表せる。<br>その和は (2m＋1)＋(2n＋1)＝2m＋2n＋2＝2(m＋n＋1)<br>m＋n＋1は整数だから、2(m＋n＋1)は偶数である。<br>よって、奇数と奇数の和は偶数になる。",
-   p:"2つの奇数は別々の文字（mとn）で表す。同じnを使うと「同じ奇数どうし」の話になってしまい減点。"}
+   p:"2つの奇数は別々の文字（mとn）で表す。同じnを使うと「同じ奇数どうし」の話になってしまい減点。"},
+  {q:"連続する2つの奇数の積に1を加えた数は、4の倍数になる。この理由を文字を使って説明せよ。",
+   a:"nを整数とすると、連続する2つの奇数は 2n−1、2n＋1 と表せる。<br>その積に1を加えると<br>(2n−1)(2n＋1)＋1＝4n²−1＋1＝4n²<br>n²は整数だから、4n²は4の倍数である。<br>よって、連続する2つの奇数の積に1を加えた数は4の倍数になる。",
+   p:"「連続する2つの奇数」は 2n−1 と 2n＋1（差が2）。和と差の積 (a＋b)(a−b)＝a²−b² を説明問題の中で使わせるのが上位校の定番。", lv:3}
  ],
  sakuzu:[
   {q:"∠XOYの二等分線を、コンパスと定規で作図する手順を説明せよ。",
@@ -1041,7 +1135,13 @@ const KIJUTSU={
    p:"「2点から等距離」→垂直二等分線 に言いかえるのが千葉の作図の決め手。条件が「2辺から等距離」なら角の二等分線、「最短距離・90°」なら垂線。"},
   {q:"線分ABを直径とする円を作図する手順を説明せよ。",
    a:"① 線分ABの垂直二等分線を作図し、ABとの交点（＝ABの中点）をOとする。<br>② Oを中心として、半径OA（＝OB）の円をかく。これが線分ABを直径とする円である。",
-   p:"「直径の円」→中心は中点→中点は垂直二等分線で求める、と逆算する。作図問題は結論から必要なものをさかのぼって考える。"}
+   p:"「直径の円」→中心は中点→中点は垂直二等分線で求める、と逆算する。作図問題は結論から必要なものをさかのぼって考える。"},
+  {q:"円の一部（弧）だけがかかれた図がある。この円の中心Oを作図で求める方法を説明せよ。",
+   a:"① 弧の上に3点A、B、Cをとる。<br>② 弦ABの垂直二等分線と、弦BCの垂直二等分線をそれぞれ作図する。<br>③ 2本の垂直二等分線の交点が円の中心Oである。<br>（円の中心は円周上のどの2点からも等距離だから、どの弦の垂直二等分線上にもある）",
+   p:"「中心＝円周上のどの点からも等距離」→垂直二等分線の交点、という言いかえ。千葉の作図は『等距離の言いかえ』で全部解ける。", lv:3},
+  {q:"△ABCの辺AB、辺ACの両方に接する円のうち、中心が辺BC上にある円の中心Pを作図する方法を説明せよ。",
+   a:"① ∠BACの二等分線を作図する。<br>② その二等分線と辺BCとの交点がPである。<br>（円が2辺AB、ACに接する⇔中心が2辺から等距離⇔中心は∠Aの二等分線上。そのうち辺BC上にある点がP）",
+   p:"「2辺に接する円の中心」＝「2辺から等距離」＝「角の二等分線上」。接する→等距離→二等分線、の言いかえ3段階を答案にも書けると強い。", lv:3}
  ]
 };
 function renderKijutsu(){
@@ -1054,11 +1154,16 @@ function renderKijutsu(){
     html+=`<div class="field-head"><span class="field-dot" style="background:${KJ_META[f].color}"></span><h2 style="font-size:15px">${KJ_META[f].name}</h2></div>`;
     KIJUTSU[f].forEach((k,i)=>{
       html+=`<div class="kj">
-        <div class="kj-q"><span class="num">問${i+1}.</span> ${k.q}</div>
+        <div class="kj-q"><span class="num">問${i+1}.</span> ${Chiba.lvTag(k.lv)}${k.q}</div>
         <button class="btn kj-btn" data-f="${f}" data-i="${i}">模範解答を見る</button>
         <div class="kj-a" id="kj-${f}-${i}">
           <span class="lbl">模範解答</span>${k.a}
           <div class="kj-point">🔑 ${k.p}</div>
+          <div class="row kj-grade" style="margin-top:10px">
+            <span style="font-size:12px;color:var(--sub);align-self:center">自分の答案は…</span>
+            <button class="btn kj-ng" data-f="${f}" data-i="${i}">× まだ書けない</button>
+            <button class="btn primary kj-ok" data-f="${f}" data-i="${i}">✓ 書けた</button>
+          </div>
         </div>
       </div>`;
     });
@@ -1071,6 +1176,14 @@ function renderKijutsu(){
       b.textContent=open?'解答を隠す':'模範解答を見る';
     };
   });
+  const gradeKj=(f,i,ok,btn)=>{
+    const k=KIJUTSU[f][i];
+    Chiba.record({id:`kj:${f}:${i}`,type:'flash',q:k.q,a:k.a,e:k.p,field:KJ_META[f].name,lv:k.lv},ok);
+    const row=btn.closest('.kj-grade');
+    row.innerHTML=`<span style="font-size:12px;color:var(--sub)">${ok?'✓ 記録しました。':'記録しました。「復習」タブでくり返し書く練習をしよう。'}</span>`;
+  };
+  area.querySelectorAll('.kj-ok').forEach(b=>b.onclick=()=>gradeKj(b.dataset.f,+b.dataset.i,true,b));
+  area.querySelectorAll('.kj-ng').forEach(b=>b.onclick=()=>gradeKj(b.dataset.f,+b.dataset.i,false,b));
 }
 
 /* ================= リセット ================= */

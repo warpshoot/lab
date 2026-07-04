@@ -180,6 +180,7 @@
     <div class="tab" data-f="nendai">年代</div>
     <div class="tab" data-f="kijutsu">記述</div>
     <div class="tab" data-f="test">模試</div>
+    <div class="tab" data-f="review">復習<span class="c-badge" id="reviewBadge"></span></div>
   </div>
 
   <div id="content"></div>
@@ -200,13 +201,19 @@
     <div id="testArea"></div>
   </section>
 
+  <section id="sec-review">
+    <div id="reviewArea"></div>
+  </section>
+
   <footer>
     千葉県公立高校入試（社会）学習教材 ・ 全範囲対応<br>
     進捗はこの端末に自動保存されます ・ <span class="reset" id="resetBtn">進捗をリセット</span>
   </footer>
 </div>
 
+<script src="../chiba-common.js"></script>
 <script>
+Chiba.init('shakai');
 /* =========================================================================
    千葉県公立高校 社会 教材データ
    分野: geo(地理) his(歴史) civ(公民)
@@ -374,6 +381,25 @@ geo:{ name:"地理", color:"var(--geo)", units:[
      {q:"2万5千分の1の地形図で、主曲線（細い等高線）は何mごとに引かれる？",opts:["5m","10m","20m","50m"],a:1,e:"2万5千分の1は10mごと、5万分の1は20mごと。"},
      {q:"等高線の間隔がせまい場所の土地のようすは？",opts:["傾斜が急","傾斜がゆるやか","平地","必ず谷になっている"],a:0,e:"間隔がせまい＝短い距離で高度が変わる＝傾斜が急。"},
      {q:"地図記号「卍」が表すものは？",opts:["神社","寺院","病院","記念碑"],a:1,e:"卍は寺院。神社は鳥居の形の記号。"}
+   ]},
+  {id:"g11", grade:"実戦", title:"地理の計算・資料読み取り ★差がつく",
+   points:[
+     "<span class='kw'>時差の計算</span>：経度15°で1時間。①2地点の経度差を出す（東経どうし・西経どうしは引き算、<span class='kw'>東経と西経は足し算</span>）②15で割る③<span class='kw'>東にある方が時刻が進んでいる</span>。",
+     "日付の変わり目に注意：時刻を引いてマイナスになったら<span class='kw'>前日</span>にさかのぼる。",
+     "<span class='kw'>縮尺</span>：実際の距離＝地図上の長さ×縮尺の分母。cmで計算して最後にkmへ（100000cm＝1km）。",
+     "<span class='kw'>人口密度</span>＝人口÷面積（人/km²）。「およそ」で問われたら概算でよい。",
+     "<span class='kw'>雨温図の判別</span>：①冬の降水量が多い→<span class='kw'>日本海側</span> ②年中少ない→<span class='kw'>瀬戸内・中央高地</span>（気温差で区別）③年中温暖多雨→太平洋側 ④冬の平均気温0℃未満→北海道。",
+     "統計・グラフは<span class='kw'>「最大・最小」「変化の向き」「他と違う動き」</span>の3点に印をつけてから設問を読む。"
+   ],
+   notes:["時差問題は「地球の図をかいて東西を確認」すると符号ミスが激減する","雨温図は「冬に注目」が鉄則。冬の降水量と冬の気温だけでほぼ判別できる"],
+   quiz:[
+     {q:"東京（東経135°）とロンドン（経度0°）の時差は9時間。東京が1月1日午後6時のとき、ロンドンは？",opts:["1月1日午前9時","1月1日午前3時","1月2日午前3時","12月31日午後9時"],a:0,e:"東京の方が東にあるので時刻が進んでいる。18時−9時間＝午前9時（同じ1月1日）。「東にある方が先」を図で確認。",lv:3},
+     {q:"東京（東経135°）とニューヨーク（西経75°）の時差は何時間？",opts:["14時間","4時間","10時間","21時間"],a:0,e:"東経と西経なので経度差は135＋75＝210°。210÷15＝14時間。「またぐときは足し算」が最重要ポイント。",lv:3},
+     {q:"2万5千分の1の地形図上で4cmの長さは、実際には？",opts:["1km","2.5km","250m","4km"],a:0,e:"4×25000＝100000cm＝1000m＝1km。「2万5千分の1で4cm＝1km」は暗記しておくと検算に使える。",lv:3},
+     {q:"5万分の1の地形図上で3cmの長さは、実際には？",opts:["1.5km","3km","0.6km","15km"],a:0,e:"3×50000＝150000cm＝1.5km。縮尺の分母が2倍なら同じ長さで実距離も2倍。",lv:3},
+     {q:"人口120万人、面積6000km²の県の人口密度は？",opts:["200人/km²","500人/km²","20人/km²","2000人/km²"],a:0,e:"1200000÷6000＝200人/km²。桁（万→0を4つ）の処理を丁寧に。",lv:3},
+     {q:"雨温図で「12月〜2月の降水量（降雪）が特に多い」都市が属する気候は？",opts:["日本海側の気候","太平洋側の気候","瀬戸内の気候","北海道の気候"],a:0,e:"冬の北西季節風が日本海の水分を運び、山地にぶつかって雪を降らせる。「冬に多い→日本海側」は即答できるように。",lv:3},
+     {q:"ピーマンの月別出荷量のグラフで、冬から春の出荷量が多い県として適切なのは？",opts:["宮崎県・高知県","長野県・群馬県","青森県・岩手県","新潟県・秋田県"],a:0,e:"温暖な気候を利用した促成栽培（宮崎平野・高知平野）。逆に夏の出荷が多ければ抑制栽培（長野・群馬の高冷地）。グラフの「山の位置」で栽培方法を判別する。",lv:3}
    ]}
 ]},
 his:{ name:"歴史", color:"var(--his)", units:[
@@ -812,7 +838,7 @@ function renderField(fkey){
 }
 function renderQuiz(uid,qi,q){
   return `<div class="q" data-uid="${uid}" data-qi="${qi}">
-    <div class="q-txt"><span class="num">Q${qi+1}.</span>${q.q}</div>
+    <div class="q-txt"><span class="num">Q${qi+1}.</span>${Chiba.lvTag(q.lv)}${q.q}</div>
     <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
     <div class="expl"><b>解説：</b>${q.e}</div>
   </div>`;
@@ -838,6 +864,7 @@ function bindEvents(){
       else if(f==='qa'){document.getElementById('sec-qa').classList.add('active'); if(!qaState)renderQAIntro();}
       else if(f==='nendai'){document.getElementById('sec-nendai').classList.add('active'); if(!ordState)renderNendaiIntro();}
       else if(f==='kijutsu'){document.getElementById('sec-kijutsu').classList.add('active'); renderKijutsu();}
+      else if(f==='review'){document.getElementById('sec-review').classList.add('active'); Chiba.renderReview('reviewArea');}
       else document.getElementById('sec-'+f).classList.add('active');
       window.scrollTo({top:0,behavior:'smooth'});
     };
@@ -847,9 +874,9 @@ function bindEvents(){
     h.onclick=()=>h.parentElement.classList.toggle('open');
   });
   // クイズ回答
-  document.querySelectorAll('.q').forEach(qEl=>{
+  document.querySelectorAll('#content .q').forEach(qEl=>{
     const uid=qEl.dataset.uid, qi=+qEl.dataset.qi;
-    const ans=findQuiz(uid,qi).a;
+    const qq=findQuiz(uid,qi), ans=qq.a;
     qEl.querySelectorAll('.opt').forEach(opt=>{
       opt.onclick=()=>{
         if(qEl.classList.contains('answered'))return;
@@ -861,6 +888,7 @@ function bindEvents(){
           if(i===chosen&&chosen!==ans)o.classList.add('wrong');
         });
         qEl.querySelector('.expl').classList.add('show');
+        Chiba.record({id:`q:${uid}:${qi}`,type:'choice',q:qq.q,opts:qq.opts,a:qq.a,e:qq.e,field:unitField(uid),lv:qq.lv},chosen===ans);
       };
     });
   });
@@ -882,6 +910,12 @@ function findQuiz(uid,qi){
     const u=f.units.find(u=>u.id===uid);
     if(u)return u.quiz[qi];
   }
+}
+function unitField(uid){
+  for(const f of Object.values(DATA)){
+    if(f.units.some(u=>u.id===uid))return f.name;
+  }
+  return '';
 }
 
 /* ================= 模試モード ================= */
@@ -906,6 +940,7 @@ function renderTestIntro(){
         </div>
       </div>
       <div class="row"><button class="btn primary" id="startTest">模試スタート</button></div>
+      ${Chiba.moshiHistoryHtml()}
     </div>`;
   area.querySelectorAll('#fieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
   area.querySelectorAll('#countChips .chip').forEach(c=>c.onclick=()=>{
@@ -919,16 +954,16 @@ function startTest(){
   if(!fields.length){alert('分野を1つ以上選んでください');return;}
   const n=+document.querySelector('#countChips .chip.on').dataset.n;
   let pool=[];
-  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach(q=>pool.push({...q,field:DATA[fk].name}))));
+  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach((q,qi)=>pool.push({...q,field:DATA[fk].name,id:`q:${u.id}:${qi}`}))));
   pool=shuffle(pool);
   if(n>0)pool=pool.slice(0,n);
-  testState={pool,answers:new Array(pool.length).fill(null),submitted:false};
+  testState={pool,answers:new Array(pool.length).fill(null),submitted:false,timer:null};
   renderTestQuestions();
 }
 function renderTestQuestions(){
   const {pool}=testState;
   const area=document.getElementById('testArea');
-  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p></div>`;
+  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p><div class="c-timer" id="testTimer"></div></div>`;
   pool.forEach((q,i)=>{
     html+=`<div class="q" data-i="${i}">
       <div class="qcount">${q.field}</div>
@@ -951,17 +986,21 @@ function renderTestQuestions(){
     });
   });
   document.getElementById('submitTest').onclick=gradeTest;
-  document.getElementById('cancelTest').onclick=renderTestIntro;
+  document.getElementById('cancelTest').onclick=()=>{if(testState.timer)testState.timer.stop();renderTestIntro();};
+  testState.timer=Chiba.startTimer('testTimer',pool.length*60);
 }
 function gradeTest(){
   const {pool,answers}=testState;
   const unanswered=answers.filter(a=>a===null).length;
   if(unanswered>0 && !confirm(`未回答が${unanswered}問あります。このまま採点しますか？`))return;
   testState.submitted=true;
+  const sec=testState.timer?testState.timer.stop():0;
   let correct=0;
   document.querySelectorAll('#testArea .q').forEach(qEl=>{
     const i=+qEl.dataset.i;const q=pool[i];
-    if(answers[i]===q.a)correct++;
+    const ok=answers[i]===q.a;
+    if(ok)correct++;
+    Chiba.record({id:q.id,type:'choice',q:q.q,opts:q.opts,a:q.a,e:q.e,field:q.field,lv:q.lv},ok);
     qEl.querySelectorAll('.opt').forEach((o,oi)=>{
       o.classList.add('disabled');o.style.borderColor='';
       if(oi===q.a)o.classList.add('correct');
@@ -970,6 +1009,7 @@ function gradeTest(){
     qEl.querySelector('.expl').classList.add('show');
   });
   const pct=Math.round(correct/pool.length*100);
+  Chiba.saveMoshi({t:Date.now(),score:correct,total:pool.length,sec});
   let msg;
   if(pct>=90)msg='素晴らしい！合格圏内。この調子で苦手分野を仕上げよう。';
   else if(pct>=70)msg='good！あと一歩。まちがえた単元の要点を読み直そう。';
@@ -978,8 +1018,9 @@ function gradeTest(){
   const card=document.createElement('div');
   card.className='result-card';
   card.innerHTML=`<div class="result-score">${correct} / ${pool.length}</div>
-    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%</div>
-    <div class="result-msg">${msg}</div>
+    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%　<span style="font-size:13px;color:var(--sub)">⏱ ${Math.floor(sec/60)}分${sec%60}秒</span></div>
+    <div class="result-msg">${msg}<br>まちがえた問題は「復習」タブへ自動で入りました。</div>
+    ${Chiba.breakdownHtml(pool,answers)}
     <div class="row" style="justify-content:center;margin-top:14px">
       <button class="btn primary" id="retryTest">もう一度</button>
     </div>`;
@@ -1087,7 +1128,7 @@ function startQA(){
   const fields=[...document.querySelectorAll('#qaFieldChips .chip.on')].map(c=>c.dataset.f);
   if(!fields.length){alert('分野を1つ以上選んでください');return;}
   let deck=[];
-  fields.forEach(f=>QA[f].forEach(c=>deck.push({...c,field:QA_FIELDS[f]})));
+  fields.forEach(f=>QA[f].forEach((c,i)=>deck.push({...c,field:QA_FIELDS[f],id:`qa:${f}:${i}`})));
   deck=shuffle(deck);
   qaState={deck,total:deck.length,ok:0,ng:0,revealed:false};
   renderQACard();
@@ -1137,6 +1178,7 @@ function gradeCard(ok){
   const s=qaState;
   const card=s.deck.shift();
   s.revealed=false;
+  Chiba.record({id:card.id,type:'flash',q:card.q,a:card.a,field:card.field},ok);
   if(ok){s.ok++;}
   else{s.ng++; s.deck.push(card);} // まちがえたら山の最後へ戻す
   renderQACard();
@@ -1329,6 +1371,10 @@ function renderOrdQuestion(){
     const correctOrder=[...q.events].map((ev,i)=>i).sort((a,b)=>q.events[a].y-q.events[b].y);
     const isCorrect=q.chosen.every((v,idx)=>v===correctOrder[idx]);
     if(isCorrect)s.ok++;
+    const sorted=[...q.events].sort((a,b)=>a.y-b.y);
+    Chiba.record({id:`nd:${sorted.map(ev=>ev.y).join('-')}`,type:'flash',
+      q:`【年代並べかえ】古い順に：${q.events.map(ev=>ev.e).join('　／　')}`,
+      a:sorted.map((ev,i)=>`${i+1}. ${ev.e}（${ev.y}年）`).join('<br>'),field:'年代並べかえ'},isCorrect);
     document.getElementById('ordList').classList.add('show-years');
     area.querySelectorAll('.ord-item').forEach(el=>{
       const i=+el.dataset.i;
@@ -1355,7 +1401,9 @@ const KIJUTSU={
   {q:"千葉県などで近郊農業がさかんな理由を説明せよ。",a:"大消費地である東京に近く、野菜などを新鮮なうちに、輸送費を安くおさえて出荷できるから。",p:"「大消費地に近い」「新鮮」「輸送費が安い」。"},
   {q:"日本の川が世界の川と比べて短く、流れが急である理由を説明せよ。",a:"国土がせまく山地が海岸近くまでせまっているため、山から海までの距離が短く標高差が大きいから。",p:"「山地が海岸近くまでせまる」＝距離が短く傾きが急。"},
   {q:"瀬戸内地方で一年を通して降水量が少ない理由を説明せよ。",a:"夏の南東季節風は四国山地に、冬の北西季節風は中国山地にさえぎられ、しめった空気が届きにくいから。",p:"2つの山地と季節風の関係を書く。"},
-  {q:"沖ノ鳥島で護岸工事が行われた理由を説明せよ。",a:"島が水没すると、その周囲の広大な排他的経済水域が失われてしまうから。",p:"「排他的経済水域を守るため」が核心。"}
+  {q:"沖ノ鳥島で護岸工事が行われた理由を説明せよ。",a:"島が水没すると、その周囲の広大な排他的経済水域が失われてしまうから。",p:"「排他的経済水域を守るため」が核心。"},
+  {q:"【資料読み取り】日本の食料自給率は約40％（カロリーベース）と主要国の中で低い。食料自給率が低いことの問題点を説明せよ。",a:"食料の多くを輸入に頼っているため、輸入相手国で不作や紛争などが起こると、食料を安定して確保できなくなるおそれがあるから。",p:"「輸入に頼る」→「相手国の事情で安定確保が難しくなる」の因果で書く。資料問題は数字（約40％）を引用すると加点されやすい。",lv:3},
+  {q:"【資料読み取り】日本の漁業別生産量のグラフでは、遠洋漁業が1970年代に大きく減少している。その理由を説明せよ。",a:"各国が排他的経済水域（200海里水域）を設定したことで、外国の沿岸で自由に漁ができなくなったから。石油危機による燃料費の上昇も影響した。",p:"「排他的経済水域の設定」が核心。グラフの転換点（1970年代）と歴史的できごとを結びつける問題は千葉頻出。",lv:3}
  ],
  his:[
   {q:"織田信長が楽市・楽座を行った目的を説明せよ。",a:"市場の税を免除し座の特権を廃止することで、だれでも自由に商売できるようにし、城下町の商工業を活発にするため。",p:"「税・座の特権をなくす」→「商工業をさかんに」。"},
@@ -1373,7 +1421,8 @@ const KIJUTSU={
   {q:"地方交付税交付金が国から配分される目的を説明せよ。",a:"地方公共団体の間にある財政収入の格差をおさえるため。",p:"「財政格差を減らす」。使いみち自由という点も加点。"},
   {q:"裁判員制度が導入された目的を説明せよ。",a:"国民の視点や感覚を裁判に反映させるとともに、国民の司法への理解と信頼を深めるため。",p:"「国民の感覚を反映」「司法への理解・信頼」。"},
   {q:"円高が日本の輸出企業にとって不利になる理由を説明せよ。",a:"円の価値が上がると外国での日本製品の価格が高くなり、売れにくくなるから。",p:"「海外での販売価格が上がる→売れにくい」。"},
-  {q:"不景気のときに政府が行う財政政策を、「公共投資」「税」の語を使って説明せよ。",a:"公共投資を増やして企業の仕事を増やすとともに、減税をして家計や企業のお金を増やし、経済を活発にする。",p:"「公共投資を増やす」「減税」の2点セット。"}
+  {q:"不景気のときに政府が行う財政政策を、「公共投資」「税」の語を使って説明せよ。",a:"公共投資を増やして企業の仕事を増やすとともに、減税をして家計や企業のお金を増やし、経済を活発にする。",p:"「公共投資を増やす」「減税」の2点セット。"},
+  {q:"【資料読み取り】日本の歳出に占める社会保障関係費の割合は年々増え続けている。その理由を説明せよ。",a:"少子高齢化が進み、年金や医療・介護などにかかる費用が増え続けているから。",p:"「少子高齢化」→「年金・医療・介護の給付が増える」。歳出グラフとセットの定番記述。",lv:3}
  ]
 };
 function renderKijutsu(){
@@ -1391,6 +1440,11 @@ function renderKijutsu(){
         <div class="kj-a" id="kj-${f}-${i}">
           <span class="lbl">模範解答</span>${k.a}
           <div class="kj-point">🔑 ${k.p}</div>
+          <div class="row kj-grade" style="margin-top:10px">
+            <span style="font-size:12px;color:var(--sub);align-self:center">自分の答案は…</span>
+            <button class="btn kj-ng" data-f="${f}" data-i="${i}">× まだ書けない</button>
+            <button class="btn primary kj-ok" data-f="${f}" data-i="${i}">✓ 書けた</button>
+          </div>
         </div>
       </div>`;
     });
@@ -1403,6 +1457,13 @@ function renderKijutsu(){
       b.textContent=open?'解答を隠す':'模範解答を見る';
     };
   });
+  const gradeKj=(f,i,ok,btn)=>{
+    const k=KIJUTSU[f][i];
+    Chiba.record({id:`kj:${f}:${i}`,type:'flash',q:`【記述】${k.q}`,a:k.a,e:k.p,field:'記述・'+QA_FIELDS[f],lv:k.lv},ok);
+    btn.closest('.kj-grade').innerHTML=`<span style="font-size:12px;color:var(--sub)">${ok?'✓ 記録しました。':'記録しました。「復習」タブでくり返し書く練習をしよう。'}</span>`;
+  };
+  area.querySelectorAll('.kj-ok').forEach(b=>b.onclick=()=>gradeKj(b.dataset.f,+b.dataset.i,true,b));
+  area.querySelectorAll('.kj-ng').forEach(b=>b.onclick=()=>gradeKj(b.dataset.f,+b.dataset.i,false,b));
 }
 
 /* ================= リセット ================= */

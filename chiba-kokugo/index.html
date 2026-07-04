@@ -157,7 +157,9 @@
     <div class="tab" data-f="kot">古典</div>
     <div class="tab" data-f="qa">一問一答</div>
     <div class="tab" data-f="sakubun">作文</div>
+    <div class="tab" data-f="kikitori">聞き取り</div>
     <div class="tab" data-f="test">模試</div>
+    <div class="tab" data-f="review">復習<span class="c-badge" id="reviewBadge"></span></div>
   </div>
 
   <div id="content"></div>
@@ -170,8 +172,16 @@
     <div id="sakubunArea"></div>
   </section>
 
+  <section id="sec-kikitori">
+    <div id="kikitoriArea"></div>
+  </section>
+
   <section id="sec-test">
     <div id="testArea"></div>
+  </section>
+
+  <section id="sec-review">
+    <div id="reviewArea"></div>
   </section>
 
   <footer>
@@ -180,7 +190,9 @@
   </footer>
 </div>
 
+<script src="../chiba-common.js"></script>
 <script>
+Chiba.init('kokugo');
 /* =========================================================================
    千葉県公立高校 国語 教材データ
    分野: kanji(漢字・語句) bun(文法・敬語) dok(読解) kot(古典)
@@ -528,6 +540,42 @@ kot:{ name:"古典", color:"var(--kot)", units:[
      {q:"漢文で「置き字」と呼ばれる「而」「於」の扱いは？",opts:["強く読む","最後に読む","読まない","ひらがなで読む"],a:2,e:"置き字は訓読では読まない。語と語の関係を示すだけの字。"},
      {q:"「論語」に記録されているのは誰の言葉？",opts:["孟子","孔子","老子","韓非子"],a:1,e:"孔子とその弟子たち。「子曰はく」の「子」は孔子を指す。儒教のもととなった書物。"},
      {q:"書き下し文で「不」はどう書く？",opts:["漢字のまま「不」","ひらがなで「ず」","読まない","カタカナで「ズ」"],a:1,e:"助動詞にあたる字はひらがなに直す。不→ず、也→なり、之→の（助詞のとき）。"}
+   ]},
+  {id:"kt5", grade:"実戦", title:"古文 実戦読解（児のそら寝）★差がつく",
+   points:[
+     "<b>【本文】宇治拾遺物語「児のそら寝」より</b>",
+     "　今は昔、比叡の山に児（ちご）ありけり。僧たち、宵のつれづれに、「いざ、かいもちひせむ」と言ひけるを、この児、心寄せに聞きけり。",
+     "　さりとて、し出（い）ださむを待ちて寝（ね）ざらむも、わろかりなむと思ひて、片方（かたかた）に寄りて、寝たるよしにて、出で来るを待ちけるほどに、すでにし出だしたるさまにて、ひしめき合ひたり。",
+     "<b>【読み方のコツ】</b>",
+     "古文読解は<span class='kw'>①主語の補足（誰が？）②理由（なぜ？）③現代仮名遣い</span>の3点セットで問われる。",
+     "主語は<span class='kw'>「を・に・ば」のあとで変わりやすく、「て」のあとは変わりにくい</span>。",
+     "登場人物に印をつけながら読む。この話なら「児」と「僧たち」の2者だけ。",
+     "<span class='kw'>心情・理由は直前の「〜と思ひて」</span>に書いてある。訳せなくても文の形で見抜ける。"
+   ],
+   notes:["千葉の古文は本文が短く、注釈も豊富。「全部訳す」のではなく、設問に関係する行だけ精読するのが時間内に解くコツ","「児のそら寝」＝眠ったふりをした子どもの失敗談。オチ（間が悪くて恥をかく）まで知っておくと読みが速い"],
+   quiz:[
+     {q:"「言ひける」を現代仮名遣いに直すと？",opts:["いいける","ゆいける","いひける","ええける"],a:0,e:"語中・語末のハ行（は・ひ・ふ・へ・ほ）は「わ・い・う・え・お」に直す。「言ひ」→「言い」。",lv:3},
+     {q:"「この児、心寄せに聞きけり」——「心寄せに」の意味として最も適切なものは？",opts:["期待して","悲しんで","うたがって","おそれて"],a:0,e:"「心寄せ」＝関心・期待を寄せること。ぼたもち（かいもちひ）を作ると聞いて期待した。",lv:3},
+     {q:"児が「寝たるよし」（寝たふり）をしたのはなぜか？",opts:["本当にねむかったから","できるのを起きて待つのは、みっともないと思ったから","僧たちにしかられたから","かいもちひがきらいだったから"],a:1,e:"直前の「し出ださむを待ちて寝ざらむも、わろかりなむと思ひて」が理由。「わろし」＝よくない・みっともない。理由は「〜と思ひて」の直前を探す。",lv:3},
+     {q:"「わろかりなむ」の「わろし」の意味は？",opts:["わるがしこい","よくない","おもしろい","めずらしい"],a:1,e:"「わろし」＝よくない（「悪し（あし）」ほど強くない）。古今異義語は入試の大好物。",lv:3}
+   ]},
+  {id:"kt6", grade:"実戦", title:"漢文 実戦読解（故事成語）★差がつく",
+   points:[
+     "<b>【本文】「矛盾」（韓非子より・書き下し文）</b>",
+     "　楚人（そひと）に盾（たて）と矛（ほこ）とを鬻（ひさ）ぐ者あり。之（これ）を誉（ほ）めて曰はく、「吾（わ）が盾の堅きこと、能（よ）く陥（とほ）すもの莫（な）きなり」と。",
+     "　又、其の矛を誉めて曰はく、「吾が矛の利（と）きこと、物に於（お）いて陥さざる無きなり」と。",
+     "　或（あ）るひと曰はく、「子（し）の矛を以（もつ）て、子の盾を陥さば何如（いかん）」と。其の人応（こた）ふること能はざるなり。",
+     "<b>【読み方のコツ】</b>",
+     "漢文の読解は<span class='kw'>①誰のセリフか ②指示語（之・其・子）が何を指すか ③話のオチ＝故事成語の意味</span>の3点。",
+     "「曰はく」のあとはセリフ。「〜と。」までがひとかたまり。",
+     "<span class='kw'>「子」＝あなた、「之」＝これ、「其」＝その</span>。この3字を置きかえながら読む。"
+   ],
+   notes:["故事成語は「話の内容→意味」をセットで問われる。矛盾・蛇足・五十歩百歩・推敲・漁夫の利・虎の威を借る狐は必修","「応ふること能はず」（答えられなかった）のようなオチの一文が内容一致問題の答えになりやすい"],
+   quiz:[
+     {q:"商人は自分の盾を何と言って誉めたか？",opts:["どんな物でも突き通せる","どんな物でも突き通せない（ほど堅い）","世界で一番美しい","とても軽い"],a:1,e:"「能く陥すもの莫きなり」＝突き通せるものはない（＝それほど堅い）。矛の宣伝文句（陥さざる無し）と対になっている。",lv:3},
+     {q:"「子の矛を以て、子の盾を陥さば何如」の「子」の意味は？",opts:["こども","先生","あなた","孔子"],a:2,e:"漢文の「子」は二人称「あなた」。論語の「子曰はく」の「子」（先生＝孔子）との使い分けに注意。",lv:3},
+     {q:"商人が「応ふること能はざる」だったのはなぜか？",opts:["質問の声が小さかったから","盾と矛の宣伝が食いちがっていて、どちらかがうそになるから","矛を売り切っていたから","客がこわかったから"],a:1,e:"最強の矛と最強の盾は両立しない。この話から「つじつまが合わないこと」を矛盾と言うようになった。",lv:3},
+     {q:"この話からできた「矛盾」の意味は？",opts:["武器がよく売れること","話のつじつまが合わないこと","二つのものが同じくらい強いこと","うそをついて物を売ること"],a:1,e:"故事成語は「話→意味」をセットで。矛盾＝前後のつじつまが合わないこと。",lv:3}
    ]}
 ]}
 };
@@ -579,7 +627,7 @@ function renderField(fkey){
 }
 function renderQuiz(uid,qi,q){
   return `<div class="q" data-uid="${uid}" data-qi="${qi}">
-    <div class="q-txt"><span class="num">Q${qi+1}.</span>${q.q}</div>
+    <div class="q-txt"><span class="num">Q${qi+1}.</span>${Chiba.lvTag(q.lv)}${q.q}</div>
     <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
     <div class="expl"><b>解説：</b>${q.e}</div>
   </div>`;
@@ -604,6 +652,8 @@ function bindEvents(){
       if(f==='test'){document.getElementById('sec-test').classList.add('active'); renderTestIntro();}
       else if(f==='qa'){document.getElementById('sec-qa').classList.add('active'); if(!qaState)renderQAIntro();}
       else if(f==='sakubun'){document.getElementById('sec-sakubun').classList.add('active'); renderSakubun();}
+      else if(f==='kikitori'){document.getElementById('sec-kikitori').classList.add('active'); renderKikitori();}
+      else if(f==='review'){document.getElementById('sec-review').classList.add('active'); Chiba.renderReview('reviewArea');}
       else document.getElementById('sec-'+f).classList.add('active');
       window.scrollTo({top:0,behavior:'smooth'});
     };
@@ -613,9 +663,9 @@ function bindEvents(){
     h.onclick=()=>h.parentElement.classList.toggle('open');
   });
   // クイズ回答
-  document.querySelectorAll('.q').forEach(qEl=>{
+  document.querySelectorAll('#content .q').forEach(qEl=>{
     const uid=qEl.dataset.uid, qi=+qEl.dataset.qi;
-    const ans=findQuiz(uid,qi).a;
+    const qq=findQuiz(uid,qi), ans=qq.a;
     qEl.querySelectorAll('.opt').forEach(opt=>{
       opt.onclick=()=>{
         if(qEl.classList.contains('answered'))return;
@@ -627,6 +677,7 @@ function bindEvents(){
           if(i===chosen&&chosen!==ans)o.classList.add('wrong');
         });
         qEl.querySelector('.expl').classList.add('show');
+        Chiba.record({id:`q:${uid}:${qi}`,type:'choice',q:qq.q,opts:qq.opts,a:qq.a,e:qq.e,field:unitField(uid),lv:qq.lv},chosen===ans);
       };
     });
   });
@@ -648,6 +699,12 @@ function findQuiz(uid,qi){
     const u=f.units.find(u=>u.id===uid);
     if(u)return u.quiz[qi];
   }
+}
+function unitField(uid){
+  for(const f of Object.values(DATA)){
+    if(f.units.some(u=>u.id===uid))return f.name;
+  }
+  return '';
 }
 
 /* ================= 模試モード ================= */
@@ -673,6 +730,7 @@ function renderTestIntro(){
         </div>
       </div>
       <div class="row"><button class="btn primary" id="startTest">模試スタート</button></div>
+      ${Chiba.moshiHistoryHtml()}
     </div>`;
   area.querySelectorAll('#fieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
   area.querySelectorAll('#countChips .chip').forEach(c=>c.onclick=()=>{
@@ -686,16 +744,16 @@ function startTest(){
   if(!fields.length){alert('分野を1つ以上選んでください');return;}
   const n=+document.querySelector('#countChips .chip.on').dataset.n;
   let pool=[];
-  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach(q=>pool.push({...q,field:DATA[fk].name}))));
+  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach((q,qi)=>pool.push({...q,field:DATA[fk].name,id:`q:${u.id}:${qi}`}))));
   pool=shuffle(pool);
   if(n>0)pool=pool.slice(0,n);
-  testState={pool,answers:new Array(pool.length).fill(null),submitted:false};
+  testState={pool,answers:new Array(pool.length).fill(null),submitted:false,timer:null};
   renderTestQuestions();
 }
 function renderTestQuestions(){
   const {pool}=testState;
   const area=document.getElementById('testArea');
-  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p></div>`;
+  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p><div class="c-timer" id="testTimer"></div></div>`;
   pool.forEach((q,i)=>{
     html+=`<div class="q" data-i="${i}">
       <div class="qcount">${q.field}</div>
@@ -718,17 +776,21 @@ function renderTestQuestions(){
     });
   });
   document.getElementById('submitTest').onclick=gradeTest;
-  document.getElementById('cancelTest').onclick=renderTestIntro;
+  document.getElementById('cancelTest').onclick=()=>{if(testState.timer)testState.timer.stop();renderTestIntro();};
+  testState.timer=Chiba.startTimer('testTimer',pool.length*60);
 }
 function gradeTest(){
   const {pool,answers}=testState;
   const unanswered=answers.filter(a=>a===null).length;
   if(unanswered>0 && !confirm(`未回答が${unanswered}問あります。このまま採点しますか？`))return;
   testState.submitted=true;
+  const sec=testState.timer?testState.timer.stop():0;
   let correct=0;
   document.querySelectorAll('#testArea .q').forEach(qEl=>{
     const i=+qEl.dataset.i;const q=pool[i];
-    if(answers[i]===q.a)correct++;
+    const ok=answers[i]===q.a;
+    if(ok)correct++;
+    Chiba.record({id:q.id,type:'choice',q:q.q,opts:q.opts,a:q.a,e:q.e,field:q.field,lv:q.lv},ok);
     qEl.querySelectorAll('.opt').forEach((o,oi)=>{
       o.classList.add('disabled');o.style.borderColor='';
       if(oi===q.a)o.classList.add('correct');
@@ -737,6 +799,7 @@ function gradeTest(){
     qEl.querySelector('.expl').classList.add('show');
   });
   const pct=Math.round(correct/pool.length*100);
+  Chiba.saveMoshi({t:Date.now(),score:correct,total:pool.length,sec});
   let msg;
   if(pct>=90)msg='素晴らしい！合格圏内。この調子で読解演習（過去問）に進もう。';
   else if(pct>=70)msg='good！あと一歩。まちがえた単元の要点を読み直そう。';
@@ -745,8 +808,9 @@ function gradeTest(){
   const card=document.createElement('div');
   card.className='result-card';
   card.innerHTML=`<div class="result-score">${correct} / ${pool.length}</div>
-    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%</div>
-    <div class="result-msg">${msg}</div>
+    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%　<span style="font-size:13px;color:var(--sub)">⏱ ${Math.floor(sec/60)}分${sec%60}秒</span></div>
+    <div class="result-msg">${msg}<br>まちがえた問題は「復習」タブへ自動で入りました。</div>
+    ${Chiba.breakdownHtml(pool,answers)}
     <div class="row" style="justify-content:center;margin-top:14px">
       <button class="btn primary" id="retryTest">もう一度</button>
     </div>`;
@@ -888,7 +952,7 @@ function startQA(){
   const fields=[...document.querySelectorAll('#qaFieldChips .chip.on')].map(c=>c.dataset.f);
   if(!fields.length){alert('分野を1つ以上選んでください');return;}
   let deck=[];
-  fields.forEach(f=>QA[f].forEach(c=>deck.push({...c,field:QA_FIELDS[f]})));
+  fields.forEach(f=>QA[f].forEach((c,i)=>deck.push({...c,field:QA_FIELDS[f],id:`qa:${f}:${i}`})));
   deck=shuffle(deck);
   qaState={deck,total:deck.length,ok:0,ng:0,revealed:false};
   renderQACard();
@@ -938,6 +1002,7 @@ function gradeCard(ok){
   const s=qaState;
   const card=s.deck.shift();
   s.revealed=false;
+  Chiba.record({id:card.id,type:'flash',q:card.q,a:card.a,field:card.field},ok);
   if(ok){s.ok++;}
   else{s.ng++; s.deck.push(card);} // まちがえたら山の最後へ戻す
   renderQACard();
@@ -1004,6 +1069,11 @@ function renderSakubun(){
       <div class="kj-a" id="kj-${i}">
         <span class="lbl">模範解答例</span>　${k.a}
         <div class="kj-point">🔑 ${k.p}</div>
+        <div class="row kj-grade" style="margin-top:10px">
+          <span style="font-size:12px;color:var(--sub);align-self:center">自分の作文は…</span>
+          <button class="btn kj-ng" data-i="${i}">× まだ書けない</button>
+          <button class="btn primary kj-ok" data-i="${i}">✓ 型どおり書けた</button>
+        </div>
       </div>
     </div>`;
   });
@@ -1014,6 +1084,70 @@ function renderSakubun(){
       const open=box.classList.toggle('show');
       b.textContent=open?'解答を隠す':'模範解答を見る';
     };
+  });
+  const gradeSk=(i,ok,btn)=>{
+    const k=SAKUBUN[i];
+    Chiba.record({id:`sk:${i}`,type:'flash',q:`【条件作文】${k.theme}：${k.q}`,a:k.a,e:k.p,field:'条件作文'},ok);
+    btn.closest('.kj-grade').innerHTML=`<span style="font-size:12px;color:var(--sub)">${ok?'✓ 記録しました。':'記録しました。「復習」タブでもう一度書く練習をしよう。'}</span>`;
+  };
+  area.querySelectorAll('.kj-ok').forEach(b=>b.onclick=()=>gradeSk(+b.dataset.i,true,b));
+  area.querySelectorAll('.kj-ng').forEach(b=>b.onclick=()=>gradeSk(+b.dataset.i,false,b));
+}
+
+/* ================= 聞き取り検査（音声つき演習） ================= */
+const KIKITORI=[
+ {id:"k1", kind:"話し合い", title:"学級会での話し合いを聞く（文化祭の出し物）",
+  script:[
+    {sp:"司会", text:"それでは、文化祭のクラスの出し物について話し合いを始めます。意見のある人は発言してください。"},
+    {sp:"田中", text:"私は演劇がいいと思います。去年の三年生の劇がとても心に残っているからです。クラス全員で一つの作品を作る経験は、きっと思い出になると思います。"},
+    {sp:"佐藤", text:"演劇もいいと思いますが、私はお化け屋敷を提案します。準備が大変そうという心配があるかもしれませんが、大道具係と衣装係に分かれて作業すれば、効率よく進められると思います。"},
+    {sp:"司会", text:"ありがとうございます。今、演劇とお化け屋敷という二つの案が出ました。田中さんは思い出になること、佐藤さんは分担して準備できることを理由にあげていましたね。次回は、それぞれの案に必要な費用を調べてから、もう一度話し合いたいと思います。"},
+  ],
+  note:"千葉の聞き取り検査は「話し合いの進め方」を問うのが定番。司会の役割（意見の整理・次回への持ちこし）に注目。",
+  qs:[
+    {q:"佐藤さんの発言の工夫として最も適切なものは？",
+     opts:["予想される心配に先回りしてこたえながら提案している","田中さんの意見を否定してから提案している","理由を言わずに結論だけ述べている","司会に質問してから提案している"],a:0,
+     e:"「準備が大変そうという心配があるかもしれませんが〜」と、反対意見を予想して先にこたえている。発言の意図・工夫を問うのが千葉の型。"},
+    {q:"司会の最後の発言の役割として最も適切なものは？",
+     opts:["自分の意見を主張している","出た意見を整理し、次回の見通しを示している","多数決で結論を出している","話し合いを打ち切っている"],a:1,
+     e:"二つの案と理由をまとめ（整理）、「費用を調べてから再討議」という次の予定を示している。司会の役割問題は頻出。"}
+  ]},
+ {id:"k2", kind:"発表", title:"調べ学習の発表を聞く（朝食と学力）",
+  script:[
+    {text:"私は、朝食と学習の関係について調べました。ある調査によると、毎日朝食を食べる中学生は、食べない中学生に比べて、テストの平均点が高いという結果が出ています。"},
+    {text:"ただし、これは朝食さえ食べれば成績が上がる、という意味ではないと私は考えました。朝食を毎日食べられる生活には、早寝早起きなどの規則正しい生活リズムがともなっていることが多いからです。"},
+    {text:"つまり、大切なのは朝食だけでなく、生活全体のリズムを整えることだと思います。皆さんも、まずは寝る時刻を決めることから始めてみませんか。"},
+  ],
+  note:"発表の聞き取りは「事実（調査結果）」と「発表者の考え」を聞き分けるのがポイント。「〜という結果」は事実、「〜と考えました」は意見。",
+  qs:[
+    {q:"発表者が「調査結果」として述べたことは？",
+     opts:["朝食を食べる中学生はテストの平均点が高い","朝食を食べれば必ず成績が上がる","早起きすると成績が上がる","寝る時刻を決めると朝食を食べられる"],a:0,
+     e:"調査結果＝「毎日朝食を食べる中学生は平均点が高い」。2は発表者が「そういう意味ではない」と否定している内容。事実と意見の区別が核心。"},
+    {q:"発表者の主張として最も適切なものは？",
+     opts:["朝食のメニューを工夫すべきだ","生活全体のリズムを整えることが大切だ","調査はあてにならない","テストの回数を減らすべきだ"],a:1,
+     e:"「つまり」のあとに主張が来る。「大切なのは〜生活全体のリズムを整えること」。接続語のあとを聞き逃さない。"}
+  ]},
+ {id:"k3", kind:"説明", title:"先生の連絡を聞く（職場体験の説明）",
+  script:[
+    {text:"来週の職場体験について連絡します。集合は月曜日の午前8時30分、場所は学校の正門前です。体験先へは班ごとに移動します。"},
+    {text:"服装は制服ですが、体験先が農園の班だけは、動きやすい服装で来てください。持ち物は、筆記用具とメモ帳、それから昼食です。飲み物は体験先で用意してくださるそうです。"},
+    {text:"なお、当日体調が悪い場合は、体験先ではなく、必ず学校に電話をしてください。それでは、実りある体験にしましょう。"},
+  ],
+  note:"連絡・説明の聞き取りは「例外」がねらわれる。「〜ですが、…だけは」「〜ではなく」のあとに注意してメモ。",
+  qs:[
+    {q:"動きやすい服装で行くのはどの生徒か？",
+     opts:["全員","農園で体験する班","午前の班","昼食を持っていく生徒"],a:1,
+     e:"原則は制服、「農園の班だけは」動きやすい服装。例外の「だけ」を聞き取る問題。"},
+    {q:"当日体調が悪いとき、どうするように言われたか？",
+     opts:["学校に電話する","体験先に電話する","班長に連絡する","保護者が体験先へ行く"],a:0,
+     e:"「体験先ではなく、必ず学校に」。「〜ではなく」の言いかえは聞き取り最頻出のひっかけ。"}
+  ]}
+];
+function renderKikitori(){
+  Chiba.renderListening('kikitoriArea', KIKITORI, {
+    lang:'ja-JP', rate:1.0, playLabel:'放送を再生',
+    title:'🎧 聞き取り検査 演習（大問1・配点約8点）',
+    intro:'聞き取り検査があるのは全国でも千葉県くらい。<b>形式に慣れるだけで確実に取れる8点</b>です。放送を流し、<b>数字・例外（〜だけ・〜ではなく）・接続語（つまり・しかし）をメモ</b>しながら聞こう。本番は放送前に選択肢に目を通す時間がある——ここでも先に設問を読んでから再生するのがおすすめ。'
   });
 }
 
