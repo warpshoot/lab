@@ -175,7 +175,9 @@
     <div class="tab" data-f="qa">単語カード</div>
     <div class="tab" data-f="narabe">並べかえ</div>
     <div class="tab" data-f="sakubun">英作文</div>
+    <div class="tab" data-f="jissen">リスニング・速読</div>
     <div class="tab" data-f="test">模試</div>
+    <div class="tab" data-f="review">復習<span class="c-badge" id="reviewBadge"></span></div>
   </div>
 
   <div id="content"></div>
@@ -192,8 +194,17 @@
     <div id="sakubunArea"></div>
   </section>
 
+  <section id="sec-jissen">
+    <div id="listenArea"></div>
+    <div id="sokudokuArea"></div>
+  </section>
+
   <section id="sec-test">
     <div id="testArea"></div>
+  </section>
+
+  <section id="sec-review">
+    <div id="reviewArea"></div>
   </section>
 
   <footer>
@@ -202,7 +213,9 @@
   </footer>
 </div>
 
+<script src="../chiba-common.js"></script>
 <script>
+Chiba.init('eigo');
 /* =========================================================================
    千葉県公立高校 英語 教材データ
    分野: gram(文法) voc(単語・熟語) kaiwa(会話表現) tech(読解・入試対策)
@@ -740,6 +753,8 @@ function bindEvents(){
       else if(f==='qa'){document.getElementById('sec-qa').classList.add('active'); if(!qaState)renderQAIntro();}
       else if(f==='narabe'){document.getElementById('sec-narabe').classList.add('active'); if(!nbState)renderNarabeIntro();}
       else if(f==='sakubun'){document.getElementById('sec-sakubun').classList.add('active'); renderSakubun();}
+      else if(f==='jissen'){document.getElementById('sec-jissen').classList.add('active'); renderJissen();}
+      else if(f==='review'){document.getElementById('sec-review').classList.add('active'); Chiba.renderReview('reviewArea');}
       else document.getElementById('sec-'+f).classList.add('active');
       window.scrollTo({top:0,behavior:'smooth'});
     };
@@ -749,14 +764,15 @@ function bindEvents(){
     h.onclick=()=>h.parentElement.classList.toggle('open');
   });
   // クイズ回答
-  document.querySelectorAll('.q').forEach(qEl=>{
+  document.querySelectorAll('#content .q').forEach(qEl=>{
     const uid=qEl.dataset.uid, qi=+qEl.dataset.qi;
-    const ans=findQuiz(uid,qi).a;
+    const qq=findQuiz(uid,qi), ans=qq.a;
     qEl.querySelectorAll('.opt').forEach(opt=>{
       opt.onclick=()=>{
         if(qEl.classList.contains('answered'))return;
         qEl.classList.add('answered');
         const chosen=+opt.dataset.oi;
+        Chiba.record({id:`q:${uid}:${qi}`,type:'choice',q:qq.q,opts:qq.opts,a:qq.a,e:qq.e,field:unitField(uid)},chosen===ans);
         qEl.querySelectorAll('.opt').forEach((o,i)=>{
           o.classList.add('disabled');
           if(i===ans)o.classList.add('correct');
@@ -785,6 +801,12 @@ function findQuiz(uid,qi){
     if(u)return u.quiz[qi];
   }
 }
+function unitField(uid){
+  for(const f of Object.values(DATA)){
+    if(f.units.some(u=>u.id===uid))return f.name;
+  }
+  return '';
+}
 
 /* ================= 模試モード ================= */
 let testState=null;
@@ -793,7 +815,7 @@ function renderTestIntro(){
   area.innerHTML=`
     <div class="test-intro">
       <h2>📝 実力チェック模試</h2>
-      <p>全分野からランダムに出題します。本番のように、まず自分で解いてから答え合わせをしよう。分野をしぼることもできます。</p>
+      <p>全分野からランダムに出題します。本番のように、まず自分で解いてから答え合わせをしよう。分野をしぼることもできます。タイマーが動くので<b>1問60秒</b>を目安に。まちがえた問題は自動で「復習」タブへ。</p>
       <div class="chips" id="fieldChips">
         <div class="chip on" data-f="gram">文法</div>
         <div class="chip on" data-f="voc">単語・熟語</div>
@@ -809,6 +831,7 @@ function renderTestIntro(){
         </div>
       </div>
       <div class="row"><button class="btn primary" id="startTest">模試スタート</button></div>
+      ${Chiba.moshiHistoryHtml()}
     </div>`;
   area.querySelectorAll('#fieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
   area.querySelectorAll('#countChips .chip').forEach(c=>c.onclick=()=>{
@@ -822,16 +845,16 @@ function startTest(){
   if(!fields.length){alert('分野を1つ以上選んでください');return;}
   const n=+document.querySelector('#countChips .chip.on').dataset.n;
   let pool=[];
-  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach(q=>pool.push({...q,field:DATA[fk].name}))));
+  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach((q,qi)=>pool.push({...q,field:DATA[fk].name,id:`q:${u.id}:${qi}`}))));
   pool=shuffle(pool);
   if(n>0)pool=pool.slice(0,n);
-  testState={pool,answers:new Array(pool.length).fill(null),submitted:false};
+  testState={pool,answers:new Array(pool.length).fill(null),submitted:false,timer:null};
   renderTestQuestions();
 }
 function renderTestQuestions(){
   const {pool}=testState;
   const area=document.getElementById('testArea');
-  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p></div>`;
+  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p><div class="c-timer" id="testTimer"></div></div>`;
   pool.forEach((q,i)=>{
     html+=`<div class="q" data-i="${i}">
       <div class="qcount">${q.field}</div>
@@ -854,17 +877,21 @@ function renderTestQuestions(){
     });
   });
   document.getElementById('submitTest').onclick=gradeTest;
-  document.getElementById('cancelTest').onclick=renderTestIntro;
+  document.getElementById('cancelTest').onclick=()=>{if(testState.timer)testState.timer.stop();renderTestIntro();};
+  testState.timer=Chiba.startTimer('testTimer',pool.length*60);
 }
 function gradeTest(){
   const {pool,answers}=testState;
   const unanswered=answers.filter(a=>a===null).length;
   if(unanswered>0 && !confirm(`未回答が${unanswered}問あります。このまま採点しますか？`))return;
   testState.submitted=true;
+  const sec=testState.timer?testState.timer.stop():0;
   let correct=0;
   document.querySelectorAll('#testArea .q').forEach(qEl=>{
     const i=+qEl.dataset.i;const q=pool[i];
-    if(answers[i]===q.a)correct++;
+    const ok=answers[i]===q.a;
+    if(ok)correct++;
+    Chiba.record({id:q.id,type:'choice',q:q.q,opts:q.opts,a:q.a,e:q.e,field:q.field},ok);
     qEl.querySelectorAll('.opt').forEach((o,oi)=>{
       o.classList.add('disabled');o.style.borderColor='';
       if(oi===q.a)o.classList.add('correct');
@@ -873,6 +900,7 @@ function gradeTest(){
     qEl.querySelector('.expl').classList.add('show');
   });
   const pct=Math.round(correct/pool.length*100);
+  Chiba.saveMoshi({t:Date.now(),score:correct,total:pool.length,sec});
   let msg;
   if(pct>=90)msg='素晴らしい！合格圏内。この調子で並べかえ・英作文も仕上げよう。';
   else if(pct>=70)msg='good！あと一歩。まちがえた単元の要点を読み直そう。';
@@ -881,8 +909,9 @@ function gradeTest(){
   const card=document.createElement('div');
   card.className='result-card';
   card.innerHTML=`<div class="result-score">${correct} / ${pool.length}</div>
-    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%</div>
-    <div class="result-msg">${msg}</div>
+    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%　<span style="font-size:13px;color:var(--sub)">⏱ ${Math.floor(sec/60)}分${sec%60}秒</span></div>
+    <div class="result-msg">${msg}<br>まちがえた問題は「復習」タブへ自動で入りました。</div>
+    ${Chiba.breakdownHtml(pool,answers)}
     <div class="row" style="justify-content:center;margin-top:14px">
       <button class="btn primary" id="retryTest">もう一度</button>
     </div>`;
@@ -1001,10 +1030,10 @@ function startQA(){
   if(!fields.length){alert('分野を1つ以上選んでください');return;}
   const dir=document.querySelector('#qaDirChips .chip.on').dataset.d;
   let deck=[];
-  fields.forEach(f=>QA[f].forEach(c=>{
+  fields.forEach(f=>QA[f].forEach((c,i)=>{
     const q = dir==='e2j' ? c.en : c.ja;
     const a = dir==='e2j' ? c.ja : c.en;
-    deck.push({q,a,field:QA_FIELDS[f]});
+    deck.push({q,a,field:QA_FIELDS[f],id:`qa:${f}:${i}:${dir}`});
   }));
   deck=shuffle(deck);
   qaState={deck,total:deck.length,ok:0,ng:0,revealed:false};
@@ -1055,6 +1084,7 @@ function gradeCard(ok){
   const s=qaState;
   const card=s.deck.shift();
   s.revealed=false;
+  Chiba.record({id:card.id,type:'flash',q:card.q,a:card.a,field:card.field},ok);
   if(ok){s.ok++;}
   else{s.ng++; s.deck.push(card);} // まちがえたら山の最後へ戻す
   renderQACard();
@@ -1109,7 +1139,25 @@ const NARABE=[
   ans:"Do you know what time the concert starts?", note:"間接疑問文：what timeのあとは主語＋動詞（the concert starts）。"},
  {grade:"中3", ja:"もし私があなたなら、その本を買うでしょう。",
   words:["If","I","were","you","I","would","buy","the","book"],
-  ans:"If I were you, I would buy the book.", note:"仮定法過去。be動詞はwere、後半はwould＋原形。"}
+  ans:"If I were you, I would buy the book.", note:"仮定法過去。be動詞はwere、後半はwould＋原形。"},
+ {grade:"中3★", ja:"彼が撮った写真はとても美しかった。",
+  words:["The","pictures","he","took","were","very","beautiful"],
+  ans:"The pictures he took were very beautiful.", note:"接触節（関係代名詞の省略）：The pictures (which) he took。主語が長くなっても動詞were を見失わない。上位校頻出。"},
+ {grade:"中3★", ja:"私は2時間ずっとテニスをしています。",
+  words:["I","have","been","playing","tennis","for","two","hours"],
+  ans:"I have been playing tennis for two hours.", note:"現在完了進行形 have been -ing「ずっと〜し続けている」。期間は for＋時間。"},
+ {grade:"中3★", ja:"これは私が今までに見た中でいちばん美しい景色です。",
+  words:["This","is","the","most","beautiful","view","I","have","ever","seen"],
+  ans:"This is the most beautiful view I have ever seen.", note:"最上級＋(that) I have ever 過去分詞「今までに〜した中でいちばん…」。丸ごと型で覚える。"},
+ {grade:"中3★", ja:"父は私が宿題をするのを手伝ってくれました。",
+  words:["My","father","helped","me","do","my","homework"],
+  ans:"My father helped me do my homework.", note:"help＋人＋動詞の原形（原形不定詞）。to を入れない形が現行課程の重要事項。"},
+ {grade:"中3★", ja:"この箱は重すぎて私には運べません。",
+  words:["This","box","is","too","heavy","for","me","to","carry"],
+  ans:"This box is too heavy for me to carry.", note:"too＋形容詞＋for A＋to 〜「Aには〜できないほど…すぎる」。for meの位置がねらわれる。"},
+ {grade:"中3★", ja:"この歌は世界中の多くの人に歌われています。",
+  words:["This","song","is","sung","by","many","people","around","the","world"],
+  ans:"This song is sung by many people around the world.", note:"受け身 be＋過去分詞。sing−sang−sung の変化と by 〜（〜によって）。"}
 ];
 let nbState=null;
 function renderNarabeIntro(){
@@ -1183,6 +1231,7 @@ function renderNBQuestion(){
     done=true;
     const ok=built.join(' ')===p.words.join(' ');
     if(ok)s.correct++;
+    Chiba.record({id:`nb:${s.order[s.idx]}`,type:'flash',q:`【並べかえ】${p.ja}`,a:p.ans,e:p.note,field:'並べかえ'},ok);
     const res=document.getElementById('nbResult');
     res.className='nb-result show '+(ok?'good':'bad');
     res.innerHTML=`${ok?'⭕ 正解！':'❌ ざんねん…'}<div class="ans">${p.ans}</div><div class="note">💡 ${p.note}</div>`;
@@ -1268,6 +1317,11 @@ function renderSakubun(){
         <div class="kj-a" id="kj-${f}-${i}">
           <span class="lbl">解答例</span>${k.a}
           <div class="kj-point">🔑 ${k.p}</div>
+          <div class="row kj-grade" style="margin-top:10px">
+            <span style="font-size:12px;color:var(--sub);align-self:center">自分の答案は…</span>
+            <button class="btn kj-ng" data-f="${f}" data-i="${i}">× まだ書けない</button>
+            <button class="btn primary kj-ok" data-f="${f}" data-i="${i}">✓ 書けた</button>
+          </div>
         </div>
       </div>`;
     });
@@ -1278,6 +1332,175 @@ function renderSakubun(){
       const box=document.getElementById(`kj-${b.dataset.f}-${b.dataset.i}`);
       const open=box.classList.toggle('show');
       b.textContent=open?'解答例を隠す':'解答例を見る';
+    };
+  });
+  const gradeSk=(f,i,ok,btn)=>{
+    const k=SAKUBUN[f].items[i];
+    Chiba.record({id:`sk:${f}:${i}`,type:'flash',q:`【英作文】${k.q}`,a:k.a,e:k.p,field:'英作文'},ok);
+    btn.closest('.kj-grade').innerHTML=`<span style="font-size:12px;color:var(--sub)">${ok?'✓ 記録しました。':'記録しました。「復習」タブでくり返し書く練習をしよう。'}</span>`;
+  };
+  area.querySelectorAll('.kj-ok').forEach(b=>b.onclick=()=>gradeSk(b.dataset.f,+b.dataset.i,true,b));
+  area.querySelectorAll('.kj-ng').forEach(b=>b.onclick=()=>gradeSk(b.dataset.f,+b.dataset.i,false,b));
+}
+
+/* ================= リスニング演習（音声つき） ================= */
+const LISTEN=[
+ {id:"l1", kind:"応答選択", title:"対話への応答①（千葉No.1形式）",
+  script:[
+    {sp:"A", text:"Have you finished your homework?"},
+    {sp:"B", text:"Not yet. Math is really difficult for me."},
+  ],
+  note:"最後の発言への「自然な返し」を選ぶ形式。会話の流れ（宿題がまだ→はげます／手伝う）をつかむ。",
+  qs:[
+    {q:"Bの発言に対するAの応答として最も適切なものは？",
+     opts:["Don't worry. I can help you after lunch.","Yes, I went to the library yesterday.","I like your new bag very much.","It was rainy last Sunday."],a:0,
+     e:"「まだ終わっていない、数学が難しい」→ 助けを申し出る応答が自然。他の選択肢は話題がずれている。"}
+  ]},
+ {id:"l2", kind:"応答選択", title:"対話への応答②（道案内）",
+  script:[
+    {sp:"A", text:"Excuse me. Could you tell me the way to the station?"},
+    {sp:"B", text:"Sure. Go straight along this street and turn left at the second corner. You'll see it on your right."},
+  ],
+  note:"道案内は turn left/right・corner・on your right などの決まり文句を聞き取る。",
+  qs:[
+    {q:"Bの発言に対するAの応答として最も適切なものは？",
+     opts:["Thank you very much. You're so kind.","I'm fine, thank you. And you?","Nice to meet you, too.","Here you are."],a:0,
+     e:"道を教えてもらった→お礼を言うのが自然。あいさつの定型文にまどわされない。"}
+  ]},
+ {id:"l3", kind:"対話Q&A", title:"対話を聞いて質問に答える（週末の予定）",
+  script:[
+    {sp:"Kenta", text:"Ms. Brown, do you have any plans for this weekend?"},
+    {sp:"Ms. Brown", text:"Yes, Kenta. I'm going to visit Kyoto with my sister. She has never been there."},
+    {sp:"Kenta", text:"That's nice! How will you go there?"},
+    {sp:"Ms. Brown", text:"We wanted to go by plane, but it was too expensive. So we will take the train."},
+    {sp:"Kenta", text:"I see. I hope you'll have a good time."},
+  ],
+  note:"「最初に言った手段（plane）」ではなく「実際に選んだ手段（train）」を問うのが定番のひっかけ。",
+  qs:[
+    {q:"Who will go to Kyoto with Ms. Brown?",
+     opts:["Her sister.","Kenta.","Her mother.","Her friend."],a:0,
+     e:"I'm going to visit Kyoto with my sister と言っている。"},
+    {q:"How will Ms. Brown go to Kyoto?",
+     opts:["By train.","By plane.","By bus.","By car."],a:0,
+     e:"飛行機は too expensive だったので So we will take the train。but/so の後ろに答えが来るパターンは超頻出。"}
+  ]},
+ {id:"l4", kind:"モノローグ", title:"校内放送を聞いて質問に答える（遠足のお知らせ）",
+  script:[
+    {text:"Good morning, everyone. This is an announcement about tomorrow's school trip."},
+    {text:"We will meet at the station at eight thirty. The bus will leave at eight forty-five, so please don't be late."},
+    {text:"It will rain tomorrow afternoon, so please bring an umbrella with you."},
+    {text:"You don't need to bring lunch because we will make curry at the camp. That's all. Thank you."},
+  ],
+  note:"数字（時刻）は「集合時刻」と「出発時刻」の2つが出てくる。メモを取り分けるのがコツ。",
+  qs:[
+    {q:"What time will the bus leave?",
+     opts:["At 8:45.","At 8:30.","At 8:15.","At 9:45."],a:0,
+     e:"集合は8:30、バスの出発は8:45。2つの時刻の使い分けを問うのが定番。"},
+    {q:"What do the students need to bring?",
+     opts:["An umbrella.","Lunch.","A camera.","Money."],a:0,
+     e:"午後は雨→ bring an umbrella。lunch は don't need to bring（カレーを作るから）。"}
+  ]}
+];
+
+/* ================= 速読トレーニング ================= */
+const SOKUDOKU=[
+ {id:"r1", title:"物語文：海辺のそうじ", words:135, target:90,
+  text:`Last summer, Yuki visited her grandmother in a small town near the sea. Every morning, they walked along the beach together and talked about many things. One day, Yuki found an old man who was cleaning the beach alone. Her grandmother said, "He has been cleaning this beach every morning for twenty years." Yuki was surprised and asked him why he did it. He smiled and said, "When I was a child, this beach was very beautiful. I want children to see the beautiful sea, too." Yuki decided to help him during her stay. On her last day, the old man gave her a photo of the beach which was taken thirty years ago. The sea in the photo was as beautiful as the sea in front of her. She still keeps the photo in her room.`,
+  qs:[
+   {q:"Why was Yuki surprised?",
+    opts:["Because the old man has been cleaning the beach every morning for twenty years.","Because her grandmother cleaned the beach alone.","Because the beach was very dirty.","Because the old man took a photo of her."],a:0,
+    e:"祖母の He has been cleaning this beach every morning for twenty years を聞いておどろいた。"},
+   {q:"What did the old man give Yuki?",
+    opts:["An old photo of the beach.","A beautiful shell.","A letter.","A picture Yuki drew."],a:0,
+    e:"gave her a photo of the beach which was taken thirty years ago。"},
+   {q:"本文の内容に合うものは？",
+    opts:["Yuki helped the old man clean the beach during her stay.","Yuki visited the town with her sister.","The old man stopped cleaning the beach last year.","The sea was more beautiful thirty years ago than now."],a:0,
+    e:"Yuki decided to help him during her stay とある。写真の海は「今の海と同じくらい美しい（as beautiful as）」なので4は誤り。"}
+  ]},
+ {id:"r2", title:"説明文：水を大切に", words:122, target:80,
+  text:`Do you know how much water you use every day? In Japan, one person uses about 300 liters of water a day. We use water not only for drinking but also for washing, cooking, and cleaning. However, in some countries, people cannot get clean water easily. Some children have to walk for many hours to get water every day, so they cannot go to school. To solve this problem, many groups around the world are working hard. For example, they build wells in villages and teach people how to keep water clean. We can also do something in our daily lives. If we turn off the water while we are brushing our teeth, we can save about six liters each time. Small actions by many people can make a big difference.`,
+  qs:[
+   {q:"How much water does one person use a day in Japan?",
+    opts:["About 300 liters.","About 30 liters.","About 6 liters.","About 3,000 liters."],a:0,
+    e:"one person uses about 300 liters of water a day。数字の聞き取り・読み取りは必ず出る。"},
+   {q:"Why can't some children go to school?",
+    opts:["Because they have to walk for many hours to get water.","Because there are no schools in their villages.","Because they have to build wells.","Because they don't like studying."],a:0,
+    e:"so（だから）の前に理由：walk for many hours to get water every day, so they cannot go to school。"},
+   {q:"本文の内容に合うものは？",
+    opts:["Turning off the water while brushing our teeth saves about six liters each time.","Japanese people use less water than people in other countries.","Building wells is the only way to solve the water problem.","We use water only for drinking."],a:0,
+    e:"最後から2文目に一致。only（〜だけ）を含む選択肢は本文と照らすとたいてい誤り。"}
+  ]}
+];
+
+let skState={};
+function renderJissen(){
+  Chiba.renderListening('listenArea', LISTEN, {
+    lang:'en-US', rate:0.92, playLabel:'放送を再生（英語）',
+    title:'🎧 リスニング演習',
+    intro:'千葉県の英語は<b>リスニングの配点が約3割</b>。音声を流して、本番のつもりで解こう（本番は2回放送）。聞き取れなかったら台本を見て、そのあと<b>音声だけで正解できるまで</b>くり返すのが伸びるコツ。'
+  });
+  renderSokudoku();
+}
+function renderSokudoku(){
+  const area=document.getElementById('sokudokuArea');
+  let html=`<div class="test-intro" style="margin-top:16px">
+    <h2>⏱ 長文速読トレーニング</h2>
+    <p style="margin:0">本番は60分で長文2題＋対話文。<b>1分あたり100語（WPM100）</b>で読めると余裕が生まれる。「読み始める」を押すと本文とタイマーが出るので、読み終わったらすぐストップ→設問へ。</p>
+  </div>`;
+  SOKUDOKU.forEach((p,pi)=>{
+    html+=`<div class="unit open" style="margin-top:12px">
+      <div class="unit-head" style="cursor:default">
+        <span class="unit-grade">${p.words}語</span>
+        <span class="unit-title">${p.title}</span>
+        <span style="font-size:12px;color:var(--sub)">目標 ${p.target}秒</span>
+      </div>
+      <div class="unit-body" style="display:block" id="sd-${pi}">
+        <div class="row" style="margin:10px 0"><button class="btn primary sd-start" data-pi="${pi}">読み始める</button></div>
+      </div>
+    </div>`;
+  });
+  area.innerHTML=html;
+  area.querySelectorAll('.sd-start').forEach(b=>{
+    b.onclick=()=>{
+      const pi=+b.dataset.pi, p=SOKUDOKU[pi];
+      const box=document.getElementById('sd-'+pi);
+      skState[pi]={t0:Date.now()};
+      box.innerHTML=`
+        <div class="c-timer" id="sdTimer-${pi}"></div>
+        <div style="font-size:15px;line-height:1.9;margin:10px 0;padding:14px;background:var(--panel2);border-radius:10px">${p.text}</div>
+        <div class="row"><button class="btn primary sd-done" data-pi="${pi}">読み終わった！</button></div>`;
+      skState[pi].timer=Chiba.startTimer('sdTimer-'+pi, p.target);
+      box.querySelector('.sd-done').onclick=()=>{
+        const sec=Math.max(1,skState[pi].timer.stop());
+        const wpm=Math.round(p.words/sec*60);
+        const judge=sec<=p.target?'⭕ 目標クリア！':'△ もう少し。何度も読んで速くしよう';
+        let qhtml=`<div style="font-size:13px;margin:10px 0"><b>${sec}秒</b>（WPM ${wpm}）｜目標 ${p.target}秒 ｜ ${judge}</div>`;
+        qhtml+=p.qs.map((q,qi)=>`<div class="q sd-q" data-pi="${pi}" data-qi="${qi}">
+          <div class="q-txt"><span class="num">Q${qi+1}.</span>${q.q}</div>
+          <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
+          <div class="expl"><b>解説：</b>${q.e}</div>
+        </div>`).join('');
+        qhtml+=`<div class="row"><button class="btn sd-retry" data-pi="${pi}">本文をもう一度読む</button></div>`;
+        box.innerHTML=qhtml;
+        box.querySelectorAll('.sd-q').forEach(qEl=>{
+          const qi=+qEl.dataset.qi, q=p.qs[qi];
+          qEl.querySelectorAll('.opt').forEach(opt=>{
+            opt.onclick=()=>{
+              if(qEl.classList.contains('answered'))return;
+              qEl.classList.add('answered');
+              const chosen=+opt.dataset.oi, ok=chosen===q.a;
+              qEl.querySelectorAll('.opt').forEach((o,i)=>{
+                o.classList.add('disabled');
+                if(i===q.a)o.classList.add('correct');
+                if(i===chosen&&!ok)o.classList.add('wrong');
+              });
+              qEl.querySelector('.expl').classList.add('show');
+              Chiba.record({id:`sd:${p.id}:${qi}`,type:'choice',q:`【速読・${p.title}】${q.q}`,opts:q.opts,a:q.a,e:q.e,field:'速読'},ok);
+            };
+          });
+        });
+        box.querySelector('.sd-retry').onclick=()=>b.onclick();
+      };
     };
   });
 }

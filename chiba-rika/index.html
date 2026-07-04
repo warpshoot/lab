@@ -155,7 +155,9 @@
     <div class="tab" data-f="geo">地学</div>
     <div class="tab" data-f="qa">一問一答</div>
     <div class="tab" data-f="kijutsu">記述</div>
+    <div class="tab" data-f="keisan">計算特訓</div>
     <div class="tab" data-f="test">模試</div>
+    <div class="tab" data-f="review">復習<span class="c-badge" id="reviewBadge"></span></div>
   </div>
 
   <div id="content"></div>
@@ -168,8 +170,16 @@
     <div id="kijutsuArea"></div>
   </section>
 
+  <section id="sec-keisan">
+    <div id="keisanArea"></div>
+  </section>
+
   <section id="sec-test">
     <div id="testArea"></div>
+  </section>
+
+  <section id="sec-review">
+    <div id="reviewArea"></div>
   </section>
 
   <footer>
@@ -178,7 +188,9 @@
   </footer>
 </div>
 
+<script src="../chiba-common.js"></script>
 <script>
+Chiba.init('rika');
 /* =========================================================================
    千葉県公立高校 理科 教材データ
    分野: phys(物理) chem(化学) bio(生物) geo(地学)
@@ -707,7 +719,7 @@ function renderField(fkey){
 }
 function renderQuiz(uid,qi,q){
   return `<div class="q" data-uid="${uid}" data-qi="${qi}">
-    <div class="q-txt"><span class="num">Q${qi+1}.</span>${q.q}</div>
+    <div class="q-txt"><span class="num">Q${qi+1}.</span>${Chiba.lvTag(q.lv)}${q.q}</div>
     <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
     <div class="expl"><b>解説：</b>${q.e}</div>
   </div>`;
@@ -732,6 +744,8 @@ function bindEvents(){
       if(f==='test'){document.getElementById('sec-test').classList.add('active'); renderTestIntro();}
       else if(f==='qa'){document.getElementById('sec-qa').classList.add('active'); if(!qaState)renderQAIntro();}
       else if(f==='kijutsu'){document.getElementById('sec-kijutsu').classList.add('active'); renderKijutsu();}
+      else if(f==='keisan'){document.getElementById('sec-keisan').classList.add('active'); renderKeisan();}
+      else if(f==='review'){document.getElementById('sec-review').classList.add('active'); Chiba.renderReview('reviewArea');}
       else document.getElementById('sec-'+f).classList.add('active');
       window.scrollTo({top:0,behavior:'smooth'});
     };
@@ -741,9 +755,9 @@ function bindEvents(){
     h.onclick=()=>h.parentElement.classList.toggle('open');
   });
   // クイズ回答
-  document.querySelectorAll('.q').forEach(qEl=>{
+  document.querySelectorAll('#content .q').forEach(qEl=>{
     const uid=qEl.dataset.uid, qi=+qEl.dataset.qi;
-    const ans=findQuiz(uid,qi).a;
+    const qq=findQuiz(uid,qi), ans=qq.a;
     qEl.querySelectorAll('.opt').forEach(opt=>{
       opt.onclick=()=>{
         if(qEl.classList.contains('answered'))return;
@@ -755,6 +769,7 @@ function bindEvents(){
           if(i===chosen&&chosen!==ans)o.classList.add('wrong');
         });
         qEl.querySelector('.expl').classList.add('show');
+        Chiba.record({id:`q:${uid}:${qi}`,type:'choice',q:qq.q,opts:qq.opts,a:qq.a,e:qq.e,field:unitField(uid),lv:qq.lv},chosen===ans);
       };
     });
   });
@@ -777,6 +792,12 @@ function findQuiz(uid,qi){
     const u=f.units.find(u=>u.id===uid);
     if(u)return u.quiz[qi];
   }
+}
+function unitField(uid){
+  for(const f of Object.values(DATA)){
+    if(f.units.some(u=>u.id===uid))return f.name;
+  }
+  return '';
 }
 
 /* ================= 模試モード ================= */
@@ -802,6 +823,7 @@ function renderTestIntro(){
         </div>
       </div>
       <div class="row"><button class="btn primary" id="startTest">模試スタート</button></div>
+      ${Chiba.moshiHistoryHtml()}
     </div>`;
   area.querySelectorAll('#fieldChips .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
   area.querySelectorAll('#countChips .chip').forEach(c=>c.onclick=()=>{
@@ -815,16 +837,16 @@ function startTest(){
   if(!fields.length){alert('分野を1つ以上選んでください');return;}
   const n=+document.querySelector('#countChips .chip.on').dataset.n;
   let pool=[];
-  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach(q=>pool.push({...q,field:DATA[fk].name}))));
+  fields.forEach(fk=>DATA[fk].units.forEach(u=>u.quiz.forEach((q,qi)=>pool.push({...q,field:DATA[fk].name,id:`q:${u.id}:${qi}`}))));
   pool=shuffle(pool);
   if(n>0)pool=pool.slice(0,n);
-  testState={pool,answers:new Array(pool.length).fill(null),submitted:false};
+  testState={pool,answers:new Array(pool.length).fill(null),submitted:false,timer:null};
   renderTestQuestions();
 }
 function renderTestQuestions(){
   const {pool}=testState;
   const area=document.getElementById('testArea');
-  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p></div>`;
+  let html=`<div class="test-intro" style="padding:14px 18px"><h2 style="font-size:15px">模試（全${pool.length}問）</h2><p style="margin:0">すべて解いたら下の「採点する」を押そう。</p><div class="c-timer" id="testTimer"></div></div>`;
   pool.forEach((q,i)=>{
     html+=`<div class="q" data-i="${i}">
       <div class="qcount">${q.field}</div>
@@ -847,17 +869,21 @@ function renderTestQuestions(){
     });
   });
   document.getElementById('submitTest').onclick=gradeTest;
-  document.getElementById('cancelTest').onclick=renderTestIntro;
+  document.getElementById('cancelTest').onclick=()=>{if(testState.timer)testState.timer.stop();renderTestIntro();};
+  testState.timer=Chiba.startTimer('testTimer',pool.length*75);
 }
 function gradeTest(){
   const {pool,answers}=testState;
   const unanswered=answers.filter(a=>a===null).length;
   if(unanswered>0 && !confirm(`未回答が${unanswered}問あります。このまま採点しますか？`))return;
   testState.submitted=true;
+  const sec=testState.timer?testState.timer.stop():0;
   let correct=0;
   document.querySelectorAll('#testArea .q').forEach(qEl=>{
     const i=+qEl.dataset.i;const q=pool[i];
-    if(answers[i]===q.a)correct++;
+    const ok=answers[i]===q.a;
+    if(ok)correct++;
+    Chiba.record({id:q.id,type:'choice',q:q.q,opts:q.opts,a:q.a,e:q.e,field:q.field,lv:q.lv},ok);
     qEl.querySelectorAll('.opt').forEach((o,oi)=>{
       o.classList.add('disabled');o.style.borderColor='';
       if(oi===q.a)o.classList.add('correct');
@@ -866,6 +892,7 @@ function gradeTest(){
     qEl.querySelector('.expl').classList.add('show');
   });
   const pct=Math.round(correct/pool.length*100);
+  Chiba.saveMoshi({t:Date.now(),score:correct,total:pool.length,sec});
   let msg;
   if(pct>=90)msg='素晴らしい！合格圏内。この調子で苦手分野を仕上げよう。';
   else if(pct>=70)msg='good！あと一歩。まちがえた単元の要点を読み直そう。';
@@ -874,8 +901,9 @@ function gradeTest(){
   const card=document.createElement('div');
   card.className='result-card';
   card.innerHTML=`<div class="result-score">${correct} / ${pool.length}</div>
-    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%</div>
-    <div class="result-msg">${msg}</div>
+    <div style="font-size:18px;font-weight:700;margin-top:4px">正答率 ${pct}%　<span style="font-size:13px;color:var(--sub)">⏱ ${Math.floor(sec/60)}分${sec%60}秒</span></div>
+    <div class="result-msg">${msg}<br>まちがえた問題は「復習」タブへ自動で入りました。</div>
+    ${Chiba.breakdownHtml(pool,answers)}
     <div class="row" style="justify-content:center;margin-top:14px">
       <button class="btn primary" id="retryTest">もう一度</button>
     </div>`;
@@ -967,7 +995,7 @@ function startQA(){
   const fields=[...document.querySelectorAll('#qaFieldChips .chip.on')].map(c=>c.dataset.f);
   if(!fields.length){alert('分野を1つ以上選んでください');return;}
   let deck=[];
-  fields.forEach(f=>QA[f].forEach(c=>deck.push({...c,field:QA_FIELDS[f]})));
+  fields.forEach(f=>QA[f].forEach((c,i)=>deck.push({...c,field:QA_FIELDS[f],id:`qa:${f}:${i}`})));
   deck=shuffle(deck);
   qaState={deck,total:deck.length,idx:0,ok:0,ng:0,revealed:false};
   renderQACard();
@@ -1017,6 +1045,7 @@ function gradeCard(ok){
   const s=qaState;
   const card=s.deck.shift();
   s.revealed=false;
+  Chiba.record({id:card.id,type:'flash',q:card.q,a:card.a,field:card.field},ok);
   if(ok){s.ok++;}
   else{s.ng++; s.deck.push(card);} // まちがえたら山の最後へ戻す
   renderQACard();
@@ -1063,6 +1092,11 @@ function renderKijutsu(){
         <div class="kj-a" id="kj-${f}-${i}">
           <span class="lbl">模範解答</span>${k.a}
           <div class="kj-point">🔑 ${k.p}</div>
+          <div class="row kj-grade" style="margin-top:10px">
+            <span style="font-size:12px;color:var(--sub);align-self:center">自分の答案は…</span>
+            <button class="btn kj-ng" data-f="${f}" data-i="${i}">× まだ書けない</button>
+            <button class="btn primary kj-ok" data-f="${f}" data-i="${i}">✓ 書けた</button>
+          </div>
         </div>
       </div>`;
     });
@@ -1074,6 +1108,102 @@ function renderKijutsu(){
       const open=box.classList.toggle('show');
       b.textContent=open?'解答を隠す':'模範解答を見る';
     };
+  });
+  const gradeKj=(f,i,ok,btn)=>{
+    const k=KIJUTSU[f][i];
+    Chiba.record({id:`kj:${f}:${i}`,type:'flash',q:`【記述】${k.q}`,a:k.a,e:k.p,field:'記述・'+QA_FIELDS[f]},ok);
+    btn.closest('.kj-grade').innerHTML=`<span style="font-size:12px;color:var(--sub)">${ok?'✓ 記録しました。':'記録しました。「復習」タブでくり返し書く練習をしよう。'}</span>`;
+  };
+  area.querySelectorAll('.kj-ok').forEach(b=>b.onclick=()=>gradeKj(b.dataset.f,+b.dataset.i,true,b));
+  area.querySelectorAll('.kj-ng').forEach(b=>b.onclick=()=>gradeKj(b.dataset.f,+b.dataset.i,false,b));
+}
+
+/* ================= 計算特訓 ================= */
+const KEISAN=[
+ {f:"物理", q:"抵抗に6Vの電圧を加えると0.3Aの電流が流れた。この抵抗の大きさは？",
+  opts:["20Ω","18Ω","2Ω","0.05Ω"],a:0,
+  e:"オームの法則 R＝V÷I＝6÷0.3＝20Ω。V＝IRの三角形（Vが上）で、求めたいものを隠すと式が出る。"},
+ {f:"物理", q:"10Ωと30Ωの抵抗を直列につなぎ、全体に8Vの電圧を加えた。回路に流れる電流は？",
+  opts:["0.2A","0.8A","0.27A","2A"],a:0,lv:3,
+  e:"直列の合成抵抗＝10＋30＝40Ω。I＝V÷R＝8÷40＝0.2A。直列は「抵抗は足し算、電流はどこも同じ」。"},
+ {f:"物理", q:"100V−500W と表示されたドライヤーを100Vで使うと、流れる電流は？",
+  opts:["5A","0.2A","50A","500A"],a:0,
+  e:"電力 P＝VI より I＝P÷V＝500÷100＝5A。「100V−500W」表示の問題は毎年どこかで出る。"},
+ {f:"物理", q:"40Wの電球を30分間使ったときの電力量は？",
+  opts:["72000J","1200J","2400J","120000J"],a:0,lv:3,
+  e:"電力量＝電力×時間（秒）。30分＝1800秒なので 40×1800＝72000J。分を秒に直し忘れるのが最多ミス。"},
+ {f:"物理", q:"重さ20Nの物体を1.5m持ち上げるのに6秒かかった。このときの仕事率は？",
+  opts:["5W","30W","180W","0.45W"],a:0,lv:3,
+  e:"仕事＝力×距離＝20×1.5＝30J。仕事率＝仕事÷時間＝30÷6＝5W。2段階計算は途中の値（30J）をメモする。"},
+ {f:"物理", q:"1秒間に50打点する記録タイマーで、5打点間隔のテープの長さが4cmだった。この間の平均の速さは？",
+  opts:["40cm/s","20cm/s","4cm/s","200cm/s"],a:0,lv:3,
+  e:"5打点＝5/50秒＝0.1秒。速さ＝4cm÷0.1s＝40cm/s。「5打点＝0.1秒」（東日本50Hz）への変換が第一関門。"},
+ {f:"物理", q:"重さ40Nの直方体を、縦0.2m×横0.1mの面を下にして床に置いた。床が受ける圧力は？",
+  opts:["2000Pa","200Pa","0.8Pa","800Pa"],a:0,lv:3,
+  e:"面積＝0.2×0.1＝0.02m²。圧力＝力÷面積＝40÷0.02＝2000Pa。cm²で計算しないこと（Paはm²あたり）。"},
+ {f:"化学", q:"水80gに食塩20gをとかした食塩水の質量パーセント濃度は？",
+  opts:["20％","25％","24％","80％"],a:0,
+  e:"濃度＝溶質÷溶液（全体）×100＝20÷(80＋20)×100＝20％。分母は「水＋食塩」の100g。水だけで割ると25％になってしまう（ワナ）。"},
+ {f:"化学", q:"質量パーセント濃度15％の食塩水200gにとけている食塩の質量は？",
+  opts:["30g","15g","20g","35g"],a:0,lv:3,
+  e:"溶質＝溶液×濃度＝200×0.15＝30g。「濃度から溶質を逆算」は差がつく方向。"},
+ {f:"化学", q:"質量27g、体積10cm³の金属の密度は？",
+  opts:["2.7g/cm³","270g/cm³","0.37g/cm³","37g/cm³"],a:0,
+  e:"密度＝質量÷体積＝27÷10＝2.7g/cm³（アルミニウムの値）。単位（g/cm³）から式を思い出せる。"},
+ {f:"化学", q:"銅と酸素は質量比4：1で化合する。銅2.0gを完全に酸化させると、できる酸化銅は何g？",
+  opts:["2.5g","2.4g","0.5g","8.0g"],a:0,lv:3,
+  e:"化合する酸素＝2.0×(1/4)＝0.5g。酸化銅＝銅＋酸素＝2.0＋0.5＝2.5g。「できる物質＝反応物の和」（質量保存）を忘れない。"},
+ {f:"化学", q:"マグネシウムと酸素は質量比3：2で化合する。マグネシウム1.5gと化合する酸素は何g？",
+  opts:["1.0g","2.25g","0.75g","2.5g"],a:0,lv:3,
+  e:"3：2＝1.5：x → x＝1.0g。比例式 3x＝2×1.5 を機械的に。銅（4：1）とマグネシウム（3：2）の比は暗記必須。"},
+ {f:"生物", q:"丸（A）としわ（a）のエンドウで、Aaどうしをかけ合わせた。子に現れる丸：しわの比は？",
+  opts:["3：1","1：1","2：1","1：3"],a:0,lv:3,
+  e:"AA：Aa：aa＝1：2：1。丸（AAとAa）：しわ（aa）＝3：1。表をかいて数えるのが確実。"},
+ {f:"地学", q:"気温25℃（飽和水蒸気量23.1g/m³）の空気1m³に11.5gの水蒸気が含まれている。湿度はおよそ？",
+  opts:["50％","23％","67％","11.5％"],a:0,lv:3,
+  e:"湿度＝実際の水蒸気量÷飽和水蒸気量×100＝11.5÷23.1×100≒50％。「その気温の飽和水蒸気量」を分母にする。"},
+ {f:"地学", q:"P波の速さを6km/s、S波の速さを3km/sとする。震源から120km離れた地点の初期微動継続時間は？",
+  opts:["20秒","40秒","60秒","10秒"],a:0,lv:3,
+  e:"P波到着＝120÷6＝20秒、S波到着＝120÷3＝40秒。初期微動継続時間＝40−20＝20秒。震源距離に比例することも覚えておく。"},
+ {f:"地学", q:"ある地震で、震源から60km地点の初期微動継続時間が10秒だった。初期微動継続時間が15秒の地点の震源距離はおよそ？",
+  opts:["90km","40km","120km","75km"],a:0,lv:3,
+  e:"初期微動継続時間は震源距離に比例する。60：10＝x：15 → x＝90km。比例とみなして解くのが入試の定石。"}
+];
+function renderKeisan(){
+  const area=document.getElementById('keisanArea');
+  let html=`<div class="test-intro">
+    <h2>🧮 計算特訓（差がつく計算問題）</h2>
+    <p style="margin:0">理科の上位層の失点は<b>ほぼ計算</b>。公式に入れる前に「単位をそろえる」（分→秒、cm²→m²）だけで正答率が跳ね上がる。解説の<b>解法ステップ</b>まで読んで、同じ手順を自分の言葉で言えるようにしよう。まちがえた問題は「復習」タブへ。</p>
+  </div>`;
+  let lastF='';
+  KEISAN.forEach((q,i)=>{
+    if(q.f!==lastF){
+      lastF=q.f;
+      html+=`<div class="field-head" style="margin-top:16px"><h2 style="font-size:15px">${q.f}の計算</h2></div>`;
+    }
+    html+=`<div class="q ks-q" data-i="${i}">
+      <div class="q-txt"><span class="num">Q${i+1}.</span>${Chiba.lvTag(q.lv)}${q.q}</div>
+      <div class="opts">${q.opts.map((o,oi)=>`<div class="opt" data-oi="${oi}">${o}</div>`).join('')}</div>
+      <div class="expl"><b>解法：</b>${q.e}</div>
+    </div>`;
+  });
+  area.innerHTML=html;
+  area.querySelectorAll('.ks-q').forEach(qEl=>{
+    const i=+qEl.dataset.i, q=KEISAN[i];
+    qEl.querySelectorAll('.opt').forEach(opt=>{
+      opt.onclick=()=>{
+        if(qEl.classList.contains('answered'))return;
+        qEl.classList.add('answered');
+        const chosen=+opt.dataset.oi, ok=chosen===q.a;
+        qEl.querySelectorAll('.opt').forEach((o,oi)=>{
+          o.classList.add('disabled');
+          if(oi===q.a)o.classList.add('correct');
+          if(oi===chosen&&!ok)o.classList.add('wrong');
+        });
+        qEl.querySelector('.expl').classList.add('show');
+        Chiba.record({id:`ks:${i}`,type:'choice',q:`【計算】${q.q}`,opts:q.opts,a:q.a,e:q.e,field:'計算・'+q.f,lv:q.lv},ok);
+      };
+    });
   });
 }
 
