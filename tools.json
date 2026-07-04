@@ -16,6 +16,11 @@
       "description": "Turn-based countdown timer for board games"
     },
     {
+      "path": "./chiba-nyushi/",
+      "title": "千葉県 入試対策ポータル",
+      "description": "千葉県公立高校入試 5教科対策のポータル。進捗と入試カウントダウン付き"
+    },
+    {
       "path": "./chiba-eigo/",
       "title": "千葉県 英語対策",
       "description": "千葉県公立高校入試 英語の要点整理と確認テスト・並べかえ・英作文"
