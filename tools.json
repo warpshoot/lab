@@ -96,6 +96,11 @@
       "description": "Convert images to manga-style halftone backgrounds"
     },
     {
+      "path": "./morph/",
+      "title": "Morph",
+      "description": "2枚の画像を対応点メッシュでモーフィング。スライダー操作・静止画/動画(WebM)出力"
+    },
+    {
       "path": "./noise/",
       "title": "Noise",
       "description": "Image to animated GIF via procedural noise"
