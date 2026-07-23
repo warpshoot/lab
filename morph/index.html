@@ -231,10 +231,39 @@
         <input type="file" id="fileB" accept="image/*">
     </section>
 
-    <!-- STEP 2: preview -->
+    <!-- STEP 2: correspondence points (main) -->
     <section class="panel">
-        <h2><span class="step-num">2</span>スライダーで変化を楽しむ</h2>
-        <p class="hint">スライダーを動かすとAからBへ連続的に変化します。任意の位置で静止画、全体を動画として書き出せます。</p>
+        <h2><span class="step-num">2</span>対応点を指定する</h2>
+        <p class="hint">
+            「目は目へ」「口は口へ」のように、前後の画像で対応する位置を打つと、その部分が正しく重なりながら変形します。これがこのアプリの核です。<br>
+            <b>追加モード</b>がオンのとき画像をクリック→両方に点が追加されます。あとは各画像で点をドラッグして位置を合わせてください。点をダブルクリックで削除。目・鼻・口・輪郭など数点を合わせるほどきれいに変形します。
+        </p>
+        <div class="toolbar">
+            <button id="addMode">＋ 追加モード</button>
+            <button id="delPoint" class="ghost" disabled>選択点を削除</button>
+            <button id="clearPoints" class="ghost">対応点をクリア</button>
+            <div class="divider"></div>
+            <button id="toggleMesh" class="ghost active">メッシュ表示</button>
+            <span class="status" id="ptCount" style="margin-left:6px"></span>
+        </div>
+        <div class="editor">
+            <div class="edwrap empty" id="edA" data-side="a">
+                <span class="tag" style="display:none">A</span>
+                <span class="ph">画像A</span>
+                <svg class="mesh" id="meshA"></svg>
+            </div>
+            <div class="edwrap empty" id="edB" data-side="b">
+                <span class="tag" style="display:none">B</span>
+                <span class="ph">画像B</span>
+                <svg class="mesh" id="meshB"></svg>
+            </div>
+        </div>
+    </section>
+
+    <!-- STEP 3: preview & export -->
+    <section class="panel">
+        <h2><span class="step-num">3</span>スライダーで変化を楽しむ・書き出す</h2>
+        <p class="hint">スライダーを動かすと、指定した対応点に沿ってAからBへ連続的に変化します。任意の位置で静止画、全体を動画として書き出せます。</p>
         <div class="stage">
             <div class="canvas-holder" id="holder">
                 <span class="ph" id="stagePh">画像を2枚えらぶとプレビューが表示されます</span>
@@ -265,35 +294,6 @@
         </div>
     </section>
 
-    <!-- STEP 3: correspondence points (option) -->
-    <section class="panel">
-        <h2><span class="step-num">3</span>対応点を指定（オプション）</h2>
-        <p class="hint">
-            「目は目へ」「口は口へ」のように、前後の画像で対応する位置を打つと、その部分が正しく重なりながら変形します。<br>
-            <b>追加モード</b>をオンにして画像をクリック→両方に点が追加されます。あとは各画像で点をドラッグして位置を合わせてください。点をダブルクリックで削除。
-        </p>
-        <div class="toolbar">
-            <button id="addMode">＋ 追加モード</button>
-            <button id="delPoint" class="ghost" disabled>選択点を削除</button>
-            <button id="clearPoints" class="ghost">対応点をクリア</button>
-            <div class="divider"></div>
-            <button id="toggleMesh" class="ghost active">メッシュ表示</button>
-            <span class="status" id="ptCount" style="margin-left:6px"></span>
-        </div>
-        <div class="editor">
-            <div class="edwrap empty" id="edA" data-side="a">
-                <span class="tag" style="display:none">A</span>
-                <span class="ph">画像A</span>
-                <svg class="mesh" id="meshA"></svg>
-            </div>
-            <div class="edwrap empty" id="edB" data-side="b">
-                <span class="tag" style="display:none">B</span>
-                <span class="ph">画像B</span>
-                <svg class="mesh" id="meshB"></svg>
-            </div>
-        </div>
-    </section>
-
     <div class="foot">すべてブラウザ内で処理されます。画像はどこにも送信されません。</div>
 </div>
 
@@ -306,7 +306,7 @@
     let points = [];                  // {ax,ay,bx,by,base}  normalized 0..1
     let tris = [];                    // [[i,j,k], ...]
     let selected = -1;
-    let addMode = false;
+    let addMode = true;
     let showMesh = true;
     let playing = false, playRAF = 0;
 
@@ -460,7 +460,7 @@
         }
         renderMesh();
         const nUser = points.length-8;
-        $('ptCount').textContent = nUser>0 ? `対応点 ${nUser} 組` : 'まだ対応点はありません（クロスフェードのみ）';
+        $('ptCount').textContent = nUser>0 ? `対応点 ${nUser} 組` : '画像をクリックして対応点を打ってください';
     }
 
     function renderMesh(){
@@ -710,6 +710,11 @@
     window.addEventListener('resize', ()=>{ /* svg viewBox is relative */ });
 
     // ---------- init ----------
+    (function syncAddBtn(){
+        const b=$('addMode');
+        b.classList.toggle('active', addMode);
+        b.textContent = addMode ? '＋ 追加モード（ON）' : '＋ 追加モード';
+    })();
     initBase();
 })();
 </script>
