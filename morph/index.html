@@ -223,11 +223,12 @@
     .modal-head b { font-size: .95rem; }
     .modal-head .modal-hint { display: block; color: var(--text-dim); font-size: .76rem; margin-top: 3px; }
     .crop-area {
-        position: relative; margin: 16px; align-self: center;
+        position: relative; margin: 8px; padding: 20px; align-self: center;
         line-height: 0; touch-action: none; user-select: none;
-        background: #000;
+        background: #000; overflow: hidden;
     }
-    .crop-area img { display: block; max-width: 84vw; max-height: 64vh; width: auto; height: auto; }
+    .crop-frame { position: relative; line-height: 0; }
+    .crop-area img { display: block; max-width: 80vw; max-height: 62vh; width: auto; height: auto; }
     .crop-rect {
         position: absolute; box-sizing: border-box;
         border: 1px solid rgba(255,255,255,.9);
@@ -255,6 +256,47 @@
     .modal-foot {
         display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
         padding: 14px 18px; border-top: 1px solid var(--border);
+    }
+
+    /* kill tap-delay / double-tap zoom on interactive controls */
+    button, select, input[type=range], .drop, .recrop { touch-action: manipulation; }
+
+    /* magnifier loupe shown while dragging a point on touch */
+    #loupe {
+        position: fixed; width: 132px; height: 132px; border-radius: 50%;
+        border: 3px solid rgba(255,255,255,.9);
+        box-shadow: 0 4px 16px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.5);
+        z-index: 200; pointer-events: none; display: none;
+        background: #000;
+    }
+    #loupe.show { display: block; }
+
+    /* ---- touch / coarse-pointer tuning ---- */
+    @media (pointer: coarse) {
+        .dot { width: 22px; height: 22px; margin: -11px 0 0 -11px; font-size: 11px; }
+        .dot.base { width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; }
+        /* invisible enlarged hit area so fingers can grab points easily */
+        .dot::after { content:''; position:absolute; left:50%; top:50%; width:44px; height:44px; transform:translate(-50%,-50%); }
+        .ch { width: 22px; height: 22px; margin: -11px 0 0 -11px; }
+        .ch::after { content:''; position:absolute; left:50%; top:50%; width:44px; height:44px; transform:translate(-50%,-50%); }
+        input[type=range]::-webkit-slider-thumb { width: 26px; height: 26px; }
+        input[type=range]::-moz-range-thumb { width: 24px; height: 24px; }
+        button { padding: 11px 16px; }
+        .recrop { padding: 8px 12px; }
+    }
+
+    @media (max-width: 560px) {
+        header { padding: 14px 16px; }
+        .wrap { padding: 16px; gap: 16px; }
+        .panel { padding: 16px; border-radius: 10px; }
+        .controls { gap: 8px; }
+        .toolbar { gap: 8px; }
+        .divider { display: none; }
+        .modal-inner { max-width: 96vw; max-height: 94vh; }
+        .crop-area { margin: 4px; padding: 18px; }
+        .crop-area img { max-width: 78vw; max-height: 54vh; }
+        .modal-foot { gap: 8px 10px; padding: 12px 14px; }
+        #loupe { width: 116px; height: 116px; }
     }
 </style>
 </head>
@@ -359,6 +401,8 @@
     <div class="foot">すべてブラウザ内で処理されます。画像はどこにも送信されません。</div>
 </div>
 
+<canvas id="loupe" width="132" height="132"></canvas>
+
 <!-- crop modal -->
 <div class="modal" id="cropModal" hidden>
     <div class="modal-inner">
@@ -367,11 +411,13 @@
             <span class="modal-hint">枠をドラッグで移動、角・辺をドラッグでサイズ変更。顔だけを囲むと「顔モーフィング」に。</span>
         </div>
         <div class="crop-area" id="cropArea">
-            <img id="cropImg" alt="">
-            <div class="crop-rect" id="cropRect">
-                <span class="ch" data-h="nw"></span><span class="ch" data-h="n"></span><span class="ch" data-h="ne"></span>
-                <span class="ch" data-h="w"></span><span class="ch" data-h="e"></span>
-                <span class="ch" data-h="sw"></span><span class="ch" data-h="s"></span><span class="ch" data-h="se"></span>
+            <div class="crop-frame">
+                <img id="cropImg" alt="">
+                <div class="crop-rect" id="cropRect">
+                    <span class="ch" data-h="nw"></span><span class="ch" data-h="n"></span><span class="ch" data-h="ne"></span>
+                    <span class="ch" data-h="w"></span><span class="ch" data-h="e"></span>
+                    <span class="ch" data-h="sw"></span><span class="ch" data-h="s"></span><span class="ch" data-h="se"></span>
+                </div>
             </div>
         </div>
         <div class="modal-foot">
@@ -858,8 +904,41 @@
         }, 'image/png');
     }
 
+    // ---------- magnifier loupe (touch precision) ----------
+    const loupe=$('loupe'), lctx=loupe.getContext('2d');
+    const LOUPE=loupe.width, LZOOM=3;
+    function showLoupe(side, nx, ny, clientX, clientY){
+        const img = side==='a'?imgA:imgB;
+        if(!img) return;
+        const iw=img.naturalWidth, ih=img.naturalHeight;
+        const cx=nx*iw, cy=ny*ih;
+        const srcR = LOUPE/(2*LZOOM);
+        lctx.setTransform(1,0,0,1,0,0);
+        lctx.clearRect(0,0,LOUPE,LOUPE);
+        lctx.save();
+        lctx.beginPath(); lctx.arc(LOUPE/2,LOUPE/2,LOUPE/2,0,Math.PI*2); lctx.clip();
+        lctx.fillStyle='#111'; lctx.fillRect(0,0,LOUPE,LOUPE);
+        try { lctx.drawImage(img, cx-srcR, cy-srcR, srcR*2, srcR*2, 0,0,LOUPE,LOUPE); } catch(_){}
+        // crosshair on the exact point
+        lctx.strokeStyle='rgba(255,90,140,.95)'; lctx.lineWidth=1.5;
+        lctx.beginPath();
+        lctx.moveTo(LOUPE/2-12,LOUPE/2); lctx.lineTo(LOUPE/2+12,LOUPE/2);
+        lctx.moveTo(LOUPE/2,LOUPE/2-12); lctx.lineTo(LOUPE/2,LOUPE/2+12);
+        lctx.stroke();
+        lctx.restore();
+        // position above the finger, clamped to viewport
+        const vw=window.innerWidth, vh=window.innerHeight, sz=loupe.offsetWidth||LOUPE;
+        let lx=clientX - sz/2, ly=clientY - sz - 28;
+        if(ly < 8) ly = clientY + 28;                 // near top → below finger
+        lx=Math.max(8, Math.min(lx, vw-sz-8));
+        ly=Math.max(8, Math.min(ly, vh-sz-8));
+        loupe.style.left=lx+'px'; loupe.style.top=ly+'px';
+        loupe.classList.add('show');
+    }
+    function hideLoupe(){ loupe.classList.remove('show'); }
+
     // ---------- point interaction ----------
-    let dragIdx=-1, dragSide='a', dragDotEl=null;
+    let dragIdx=-1, dragSide='a', dragDotEl=null, dragTouch=false;
     function relPos(wrap, clientX, clientY){
         const r=wrap.getBoundingClientRect();
         return {
@@ -878,9 +957,10 @@
                 const idx=+dotEl.dataset.idx;
                 selected = idx;
                 $('delPoint').disabled = points[idx].base;
-                dragIdx=idx; dragSide=side; dragDotEl=dotEl;
+                dragIdx=idx; dragSide=side; dragDotEl=dotEl; dragTouch=(e.pointerType==='touch');
                 try { dotEl.setPointerCapture(e.pointerId); } catch(_){}
                 renderEditors();
+                if(dragTouch){ const p=points[idx]; showLoupe(side, side==='a'?p.ax:p.bx, side==='a'?p.ay:p.by, e.clientX, e.clientY); }
                 e.preventDefault();
                 return;
             }
@@ -905,9 +985,10 @@
                 const twin = other.querySelector('.dot[data-idx="'+dragIdx+'"]');
                 if(twin){ twin.style.left=(pos.x*100)+'%'; twin.style.top=(pos.y*100)+'%'; }
             }
+            if(dragTouch) showLoupe(side, pos.x, pos.y, e.clientX, e.clientY);
             renderMesh(); drawPreview();
         });
-        function endDrag(){ if(dragIdx>=0){ dragIdx=-1; dragDotEl=null; retri(); } }
+        function endDrag(){ if(dragIdx>=0){ dragIdx=-1; dragDotEl=null; dragTouch=false; hideLoupe(); retri(); } }
         wrap.addEventListener('pointerup', endDrag);
         wrap.addEventListener('pointercancel', endDrag);
         wrap.addEventListener('dblclick', e=>{
