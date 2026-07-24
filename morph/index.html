@@ -199,6 +199,105 @@
     @media (max-width: 720px) {
         .uploads, .editor { grid-template-columns: 1fr; }
     }
+
+    /* ---- recrop button on drop ---- */
+    .recrop {
+        position: absolute; top: 8px; right: 8px; z-index: 6;
+        font-size: .7rem; padding: 4px 9px; border-radius: 20px;
+        background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.25); color: #fff;
+    }
+    .recrop:hover { background: rgba(0,0,0,.8); }
+
+    /* ---- crop modal ---- */
+    .modal {
+        position: fixed; inset: 0; z-index: 100;
+        background: rgba(0,0,0,.8);
+        display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal[hidden] { display: none; }
+    .modal-inner {
+        background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;
+        max-width: 92vw; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .modal-head { padding: 14px 18px; border-bottom: 1px solid var(--border); }
+    .modal-head b { font-size: .95rem; }
+    .modal-head .modal-hint { display: block; color: var(--text-dim); font-size: .76rem; margin-top: 3px; }
+    .crop-area {
+        position: relative; margin: 8px; padding: 20px; align-self: center;
+        line-height: 0; touch-action: none; user-select: none;
+        background: #000; overflow: hidden;
+    }
+    .crop-frame { position: relative; line-height: 0; }
+    .crop-area img { display: block; max-width: 80vw; max-height: 62vh; width: auto; height: auto; }
+    .crop-rect {
+        position: absolute; box-sizing: border-box;
+        border: 1px solid rgba(255,255,255,.9);
+        box-shadow: 0 0 0 9999px rgba(0,0,0,.55);
+        cursor: move;
+    }
+    .crop-rect::before, .crop-rect::after {
+        content: ''; position: absolute; background: rgba(255,255,255,.35);
+    }
+    .crop-rect::before { left: 33.33%; right: 33.33%; top: 0; bottom: 0; border-left: 1px solid rgba(255,255,255,.35); border-right: 1px solid rgba(255,255,255,.35); background: none; }
+    .crop-rect::after { top: 33.33%; bottom: 33.33%; left: 0; right: 0; border-top: 1px solid rgba(255,255,255,.35); border-bottom: 1px solid rgba(255,255,255,.35); background: none; }
+    .ch {
+        position: absolute; width: 14px; height: 14px; z-index: 2;
+        background: #fff; border: 1px solid rgba(0,0,0,.5); border-radius: 2px;
+        margin: -7px 0 0 -7px;
+    }
+    .ch[data-h=nw]{left:0;top:0;cursor:nwse-resize}
+    .ch[data-h=ne]{left:100%;top:0;cursor:nesw-resize}
+    .ch[data-h=se]{left:100%;top:100%;cursor:nwse-resize}
+    .ch[data-h=sw]{left:0;top:100%;cursor:nesw-resize}
+    .ch[data-h=n]{left:50%;top:0;cursor:ns-resize}
+    .ch[data-h=s]{left:50%;top:100%;cursor:ns-resize}
+    .ch[data-h=e]{left:100%;top:50%;cursor:ew-resize}
+    .ch[data-h=w]{left:0;top:50%;cursor:ew-resize}
+    .modal-foot {
+        display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        padding: 14px 18px; border-top: 1px solid var(--border);
+    }
+
+    /* kill tap-delay / double-tap zoom on interactive controls */
+    button, select, input[type=range], .drop, .recrop { touch-action: manipulation; }
+
+    /* magnifier loupe shown while dragging a point on touch */
+    #loupe {
+        position: fixed; width: 132px; height: 132px; border-radius: 50%;
+        border: 3px solid rgba(255,255,255,.9);
+        box-shadow: 0 4px 16px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.5);
+        z-index: 200; pointer-events: none; display: none;
+        background: #000;
+    }
+    #loupe.show { display: block; }
+
+    /* ---- touch / coarse-pointer tuning ---- */
+    @media (pointer: coarse) {
+        .dot { width: 22px; height: 22px; margin: -11px 0 0 -11px; font-size: 11px; }
+        .dot.base { width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; }
+        /* invisible enlarged hit area so fingers can grab points easily */
+        .dot::after { content:''; position:absolute; left:50%; top:50%; width:44px; height:44px; transform:translate(-50%,-50%); }
+        .ch { width: 22px; height: 22px; margin: -11px 0 0 -11px; }
+        .ch::after { content:''; position:absolute; left:50%; top:50%; width:44px; height:44px; transform:translate(-50%,-50%); }
+        input[type=range]::-webkit-slider-thumb { width: 26px; height: 26px; }
+        input[type=range]::-moz-range-thumb { width: 24px; height: 24px; }
+        button { padding: 11px 16px; }
+        .recrop { padding: 8px 12px; }
+    }
+
+    @media (max-width: 560px) {
+        header { padding: 14px 16px; }
+        .wrap { padding: 16px; gap: 16px; }
+        .panel { padding: 16px; border-radius: 10px; }
+        .controls { gap: 8px; }
+        .toolbar { gap: 8px; }
+        .divider { display: none; }
+        .modal-inner { max-width: 96vw; max-height: 94vh; }
+        .crop-area { margin: 4px; padding: 18px; }
+        .crop-area img { max-width: 78vw; max-height: 54vh; }
+        .modal-foot { gap: 8px 10px; padding: 12px 14px; }
+        #loupe { width: 116px; height: 116px; }
+    }
 </style>
 </head>
 <body>
@@ -220,15 +319,20 @@
                 <span class="tag">A（変化前）</span>
                 <span class="ph">画像A を選択<br>クリック / ドロップ</span>
                 <img id="imgA-el" alt="" hidden>
+                <button class="recrop" id="recropA" hidden>✂ トリミング</button>
             </div>
             <div class="drop" id="dropB">
                 <span class="tag">B（変化後）</span>
                 <span class="ph">画像B を選択<br>クリック / ドロップ</span>
                 <img id="imgB-el" alt="" hidden>
+                <button class="recrop" id="recropB" hidden>✂ トリミング</button>
             </div>
         </div>
         <input type="file" id="fileA" accept="image/*">
         <input type="file" id="fileB" accept="image/*">
+        <div class="controls" style="margin-top:14px">
+            <button id="swapAB" class="ghost" disabled>⇄ A と B を入れ替え</button>
+        </div>
     </section>
 
     <!-- STEP 2: correspondence points (main) -->
@@ -297,11 +401,58 @@
     <div class="foot">すべてブラウザ内で処理されます。画像はどこにも送信されません。</div>
 </div>
 
+<canvas id="loupe" width="132" height="132"></canvas>
+
+<!-- crop modal -->
+<div class="modal" id="cropModal" hidden>
+    <div class="modal-inner">
+        <div class="modal-head">
+            <b id="cropTitle">トリミング</b>
+            <span class="modal-hint">枠をドラッグで移動、角・辺をドラッグでサイズ変更。顔だけを囲むと「顔モーフィング」に。</span>
+        </div>
+        <div class="crop-area" id="cropArea">
+            <div class="crop-frame">
+                <img id="cropImg" alt="">
+                <div class="crop-rect" id="cropRect">
+                    <span class="ch" data-h="nw"></span><span class="ch" data-h="n"></span><span class="ch" data-h="ne"></span>
+                    <span class="ch" data-h="w"></span><span class="ch" data-h="e"></span>
+                    <span class="ch" data-h="sw"></span><span class="ch" data-h="s"></span><span class="ch" data-h="se"></span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <div class="field">
+                <span>回転</span>
+                <button id="rotL" class="ghost" title="左90°">⟲</button>
+                <input type="range" id="rotSlider" min="-180" max="180" step="1" value="0" style="width:110px">
+                <button id="rotR" class="ghost" title="右90°">⟳</button>
+                <span id="rotVal" style="width:36px;text-align:right;font-variant-numeric:tabular-nums">0°</span>
+            </div>
+            <div class="field"><label>比率
+                <select id="cropAspect">
+                    <option value="free">自由</option>
+                    <option value="1">1:1</option>
+                    <option value="0.75">3:4</option>
+                    <option value="1.3333">4:3</option>
+                </select>
+            </label></div>
+            <button id="cropReset" class="ghost">全体</button>
+            <span style="flex:1"></span>
+            <button id="cropCancel" class="ghost">キャンセル</button>
+            <button id="cropApply" class="primary">適用</button>
+        </div>
+    </div>
+</div>
+
 <script>
 "use strict";
 (function(){
     // ---------- state ----------
-    let imgA = null, imgB = null;      // Image objects
+    let imgA = null, imgB = null;      // working (possibly cropped) Image objects
+    let origA = null, origB = null;    // original loaded Image objects
+    let cropNormA = null, cropNormB = null; // last crop rect, normalized {x,y,w,h} (null = full)
+    let cropAngleA = 0, cropAngleB = 0; // last rotation (deg) per side
+    let urlA = '', urlB = '';          // working image object URLs (for thumbnails)
     let W = 0, H = 0;                  // output canvas size
     let points = [];                  // {ax,ay,bx,by,base}  normalized 0..1
     let tris = [];                    // [[i,j,k], ...]
@@ -491,23 +642,30 @@
         const url = URL.createObjectURL(file);
         const im = new Image();
         im.onload = ()=>{
-            if(side==='a') imgA=im; else imgB=im;
-            // thumbnail on drop zone
-            const el = side==='a'?$('imgA-el'):$('imgB-el');
-            el.src = url; el.hidden=false;
-            const drop = side==='a'?$('dropA'):$('dropB');
-            drop.querySelector('.ph').style.display='none';
-            // editor image
-            const wrap = side==='a'?$('edA'):$('edB');
-            wrap.classList.remove('empty');
-            wrap.querySelector('.ph').style.display='none';
-            wrap.querySelector('.tag').style.display='';
-            let edimg = wrap.querySelector('img');
-            if(!edimg){ edimg=document.createElement('img'); wrap.insertBefore(edimg, wrap.firstChild); }
-            edimg.src = url;
-            onReady();
+            if(side==='a'){ origA=im; cropNormA=null; cropAngleA=0; }
+            else { origB=im; cropNormB=null; cropAngleB=0; }
+            openCrop(side); // let the user trim right away
         };
         im.src = url;
+    }
+
+    // called after crop applied/skipped: `image` is loaded, `url` is its object URL
+    function finalizeImage(side, image, url){
+        if(side==='a'){ imgA=image; urlA=url; } else { imgB=image; urlB=url; }
+        const el = side==='a'?$('imgA-el'):$('imgB-el');
+        el.src = url; el.hidden=false;
+        const drop = side==='a'?$('dropA'):$('dropB');
+        drop.querySelector('.ph').style.display='none';
+        (side==='a'?$('recropA'):$('recropB')).hidden = false;
+        // editor image
+        const wrap = side==='a'?$('edA'):$('edB');
+        wrap.classList.remove('empty');
+        wrap.querySelector('.ph').style.display='none';
+        wrap.querySelector('.tag').style.display='';
+        let edimg = wrap.querySelector('img');
+        if(!edimg){ edimg=document.createElement('img'); wrap.insertBefore(edimg, wrap.firstChild); }
+        edimg.src = url;
+        onReady();
     }
 
     function onReady(){
@@ -522,9 +680,30 @@
             stage.hidden=false; $('stagePh').style.display='none';
             $('slider').disabled=false;
             $('playBtn').disabled=false; $('savePng').disabled=false; $('saveVideo').disabled=false;
+            $('swapAB').disabled=false;
+        } else {
+            const ph=$('stagePh');
+            ph.style.display='';
+            ph.textContent = (imgA||imgB) ? 'もう1枚の画像をえらんでください' : '画像を2枚えらぶとプレビューが表示されます';
         }
         renderAll();
     }
+
+    function swapAB(){
+        if(!imgA || !imgB) return;
+        [imgA,imgB]=[imgB,imgA];
+        [origA,origB]=[origB,origA];
+        [cropNormA,cropNormB]=[cropNormB,cropNormA];
+        [cropAngleA,cropAngleB]=[cropAngleB,cropAngleA];
+        [urlA,urlB]=[urlB,urlA];
+        [lastCropUrlA,lastCropUrlB]=[lastCropUrlB,lastCropUrlA];
+        for(const p of points){ const tx=p.ax, ty=p.ay; p.ax=p.bx; p.ay=p.by; p.bx=tx; p.by=ty; }
+        $('imgA-el').src=urlA; $('imgB-el').src=urlB;
+        const ea=$('edA').querySelector('img'), eb=$('edB').querySelector('img');
+        if(ea) ea.src=urlA; if(eb) eb.src=urlB;
+        onReady();
+    }
+    $('swapAB').addEventListener('click', swapAB);
 
     // ---------- drop zones ----------
     function setupDrop(dropId, fileId, side){
@@ -541,8 +720,225 @@
     setupDrop('dropA','fileA','a');
     setupDrop('dropB','fileB','b');
 
+    $('recropA').addEventListener('click', e=>{ e.stopPropagation(); if(origA) openCrop('a'); });
+    $('recropB').addEventListener('click', e=>{ e.stopPropagation(); if(origB) openCrop('b'); });
+
+    // ---------- crop modal ----------
+    let cropSide='a', cropDispW=0, cropDispH=0, cropRect={x:0,y:0,w:0,h:0};
+    let cropAngle=0, cropBaseCanvas=null, cropBaseW=0, cropBaseH=0;
+    let lastCropUrlA='', lastCropUrlB=''; // crop-generated blob URLs, revoked when replaced
+    let cropDrag=null; // {mode:'move'|dir, sx,sy, rect0}
+    const cropModal=$('cropModal'), cropImg=$('cropImg'), cropRectEl=$('cropRect'), cropArea=$('cropArea');
+
+    // build a (rotation-baked) source canvas from the original, capped for performance
+    function buildCropBase(){
+        const orig = cropSide==='a'?origA:origB;
+        const a = cropAngle*Math.PI/180;
+        const ow=orig.naturalWidth, oh=orig.naturalHeight;
+        const cos=Math.abs(Math.cos(a)), sin=Math.abs(Math.sin(a));
+        const fbw=ow*cos+oh*sin, fbh=ow*sin+oh*cos;
+        const cap=1600, k=Math.min(1, cap/Math.max(fbw,fbh));
+        const bw=Math.max(1,Math.round(fbw*k)), bh=Math.max(1,Math.round(fbh*k));
+        const c=document.createElement('canvas'); c.width=bw; c.height=bh;
+        const x=c.getContext('2d');
+        x.translate(bw/2,bh/2); x.rotate(a); x.scale(k,k); x.drawImage(orig,-ow/2,-oh/2);
+        cropBaseCanvas=c; cropBaseW=bw; cropBaseH=bh;
+    }
+
+    // load current base into the modal <img>, measure display size, then run cb()
+    function showBase(cb){
+        const measure=()=>{
+            const r=cropImg.getBoundingClientRect();
+            cropDispW=r.width; cropDispH=r.height;
+            cb();
+        };
+        cropImg.src = cropBaseCanvas.toDataURL();
+        // decode() resolves even when the data URL is byte-identical to the current one
+        (cropImg.decode ? cropImg.decode().then(measure).catch(measure) : (cropImg.onload=measure));
+    }
+
+    function openCrop(side){
+        cropSide=side;
+        cropAngle = side==='a'?cropAngleA:cropAngleB;
+        const norm = side==='a'?cropNormA:cropNormB;
+        $('cropTitle').textContent = '画像'+side.toUpperCase()+' をトリミング';
+        $('cropAspect').value='free';
+        $('rotSlider').value=cropAngle; $('rotVal').textContent=cropAngle+'°';
+        cropModal.hidden=false;
+        buildCropBase();
+        showBase(()=>{
+            if(norm){ cropRect = { x:norm.x*cropDispW, y:norm.y*cropDispH, w:norm.w*cropDispW, h:norm.h*cropDispH }; }
+            else { cropRect = { x:0, y:0, w:cropDispW, h:cropDispH }; }
+            clampRect(); applyCropRect();
+        });
+    }
+
+    let rebuildScheduled=false, rebuildNorm=null;
+    function scheduleRebuild(){
+        if(rebuildScheduled) return;
+        rebuildScheduled=true;
+        // keep the current selection proportionally while the base reshapes
+        rebuildNorm = cropDispW ? { x:cropRect.x/cropDispW, y:cropRect.y/cropDispH, w:cropRect.w/cropDispW, h:cropRect.h/cropDispH } : null;
+        requestAnimationFrame(()=>{
+            rebuildScheduled=false;
+            const n=rebuildNorm;
+            buildCropBase();
+            showBase(()=>{
+                if(n){ cropRect = { x:n.x*cropDispW, y:n.y*cropDispH, w:n.w*cropDispW, h:n.h*cropDispH }; }
+                else { cropRect = { x:0, y:0, w:cropDispW, h:cropDispH }; }
+                clampRect(); applyCropRect();
+            });
+        });
+    }
+    function setAngle(deg){
+        cropAngle = ((deg % 360) + 540) % 360 - 180; // wrap to (-180,180]
+        $('rotSlider').value=cropAngle; $('rotVal').textContent=cropAngle+'°';
+        scheduleRebuild(); // coalesced: only the latest angle is rebuilt per frame
+    }
+    $('rotSlider').addEventListener('input', ()=> setAngle(parseInt($('rotSlider').value)||0));
+    $('rotL').addEventListener('click', ()=> setAngle(cropAngle-90));
+    $('rotR').addEventListener('click', ()=> setAngle(cropAngle+90));
+    function applyCropRect(){
+        cropRectEl.style.left=cropRect.x+'px';
+        cropRectEl.style.top=cropRect.y+'px';
+        cropRectEl.style.width=cropRect.w+'px';
+        cropRectEl.style.height=cropRect.h+'px';
+    }
+    function clampRect(){
+        cropRect.w=Math.max(16,Math.min(cropRect.w,cropDispW));
+        cropRect.h=Math.max(16,Math.min(cropRect.h,cropDispH));
+        cropRect.x=Math.max(0,Math.min(cropRect.x,cropDispW-cropRect.w));
+        cropRect.y=Math.max(0,Math.min(cropRect.y,cropDispH-cropRect.h));
+    }
+    function aspectVal(){ const v=$('cropAspect').value; return v==='free'?0:parseFloat(v); }
+
+    cropArea.addEventListener('pointerdown', e=>{
+        const handle=e.target.closest('.ch');
+        const onRect=e.target===cropRectEl;
+        if(!handle && !onRect) return;
+        e.preventDefault();
+        try { cropArea.setPointerCapture(e.pointerId); } catch(_){}
+        cropDrag={ mode: handle?handle.dataset.h:'move', sx:e.clientX, sy:e.clientY, rect0:{...cropRect} };
+    });
+    cropArea.addEventListener('pointermove', e=>{
+        if(!cropDrag) return;
+        const dx=e.clientX-cropDrag.sx, dy=e.clientY-cropDrag.sy;
+        const r0=cropDrag.rect0, m=cropDrag.mode, ar=aspectVal();
+        if(m==='move'){
+            cropRect={ x:r0.x+dx, y:r0.y+dy, w:r0.w, h:r0.h };
+            clampRect(); applyCropRect(); return;
+        }
+        let l=r0.x, t=r0.y, rr=r0.x+r0.w, bb=r0.y+r0.h;
+        if(m.includes('w')) l=Math.min(r0.x+dx, rr-16);
+        if(m.includes('e')) rr=Math.max(r0.x+r0.w+dx, l+16);
+        if(m.includes('n')) t=Math.min(r0.y+dy, bb-16);
+        if(m.includes('s')) bb=Math.max(r0.y+r0.h+dy, t+16);
+        l=Math.max(0,l); t=Math.max(0,t); rr=Math.min(cropDispW,rr); bb=Math.min(cropDispH,bb);
+        let w=rr-l, h=bb-t;
+        if(ar){
+            const corner = (m.length===2);
+            if(corner || m==='e' || m==='w'){ h=w/ar; if(m.includes('n')) t=bb-h; else bb=t+h; }
+            else { w=h*ar; if(m.includes('w')) l=rr-w; else rr=l+w; }
+            w=rr-l; h=bb-t;
+        }
+        cropRect={x:l,y:t,w,h}; clampRect(); applyCropRect();
+    });
+    function endCropDrag(){ cropDrag=null; }
+    cropArea.addEventListener('pointerup', endCropDrag);
+    cropArea.addEventListener('pointercancel', endCropDrag);
+
+    $('cropAspect').addEventListener('change', ()=>{
+        const ar=aspectVal(); if(!ar) return;
+        // re-fit current rect to aspect, centered
+        const cx=cropRect.x+cropRect.w/2, cy=cropRect.y+cropRect.h/2;
+        let w=cropRect.w, h=w/ar;
+        if(h>cropDispH){ h=cropDispH; w=h*ar; }
+        if(w>cropDispW){ w=cropDispW; h=w/ar; }
+        cropRect={ x:cx-w/2, y:cy-h/2, w, h }; clampRect(); applyCropRect();
+    });
+    $('cropReset').addEventListener('click', ()=>{
+        $('cropAspect').value='free';
+        cropRect={x:0,y:0,w:cropDispW,h:cropDispH}; applyCropRect();
+    });
+    function cancelCrop(){
+        cropModal.hidden=true;
+        // first-time load with no working image yet -> use the full original
+        const has = cropSide==='a'?imgA:imgB;
+        if(!has){ useFull(cropSide); }
+    }
+    $('cropCancel').addEventListener('click', cancelCrop);
+    $('cropApply').addEventListener('click', ()=> doCrop(cropSide));
+    // click the dark backdrop (outside the dialog) to cancel
+    cropModal.addEventListener('pointerdown', e=>{ if(e.target===cropModal) cancelCrop(); });
+    // keyboard: Esc = cancel, Enter = apply
+    document.addEventListener('keydown', e=>{
+        if(cropModal.hidden) return;
+        if(e.key==='Escape'){ e.preventDefault(); cancelCrop(); }
+        else if(e.key==='Enter'){ e.preventDefault(); doCrop(cropSide); }
+    });
+
+    function useFull(side){
+        const orig=side==='a'?origA:origB;
+        if(side==='a'){ cropNormA=null; cropAngleA=0; } else { cropNormB=null; cropAngleB=0; }
+        finalizeImage(side, orig, orig.src);
+    }
+    function doCrop(side){
+        const sc = cropBaseW/cropDispW; // display px -> base px
+        const sx=Math.round(cropRect.x*sc), sy=Math.round(cropRect.y*sc);
+        const sw=Math.max(1,Math.round(cropRect.w*sc)), sh=Math.max(1,Math.round(cropRect.h*sc));
+        const norm={ x:cropRect.x/cropDispW, y:cropRect.y/cropDispH, w:cropRect.w/cropDispW, h:cropRect.h/cropDispH };
+        if(side==='a'){ cropNormA=norm; cropAngleA=cropAngle; } else { cropNormB=norm; cropAngleB=cropAngle; }
+        const c=document.createElement('canvas'); c.width=sw; c.height=sh;
+        c.getContext('2d').drawImage(cropBaseCanvas, sx,sy,sw,sh, 0,0,sw,sh);
+        c.toBlob(blob=>{
+            const url=URL.createObjectURL(blob);
+            const im=new Image();
+            im.onload=()=>{
+                // free the previous crop blob for this side (never the original file URL)
+                const prev = side==='a'?lastCropUrlA:lastCropUrlB;
+                if(prev) URL.revokeObjectURL(prev);
+                if(side==='a') lastCropUrlA=url; else lastCropUrlB=url;
+                cropModal.hidden=true; finalizeImage(side, im, url);
+            };
+            im.src=url;
+        }, 'image/png');
+    }
+
+    // ---------- magnifier loupe (touch precision) ----------
+    const loupe=$('loupe'), lctx=loupe.getContext('2d');
+    const LOUPE=loupe.width, LZOOM=3;
+    function showLoupe(side, nx, ny, clientX, clientY){
+        const img = side==='a'?imgA:imgB;
+        if(!img) return;
+        const iw=img.naturalWidth, ih=img.naturalHeight;
+        const cx=nx*iw, cy=ny*ih;
+        const srcR = LOUPE/(2*LZOOM);
+        lctx.setTransform(1,0,0,1,0,0);
+        lctx.clearRect(0,0,LOUPE,LOUPE);
+        lctx.save();
+        lctx.beginPath(); lctx.arc(LOUPE/2,LOUPE/2,LOUPE/2,0,Math.PI*2); lctx.clip();
+        lctx.fillStyle='#111'; lctx.fillRect(0,0,LOUPE,LOUPE);
+        try { lctx.drawImage(img, cx-srcR, cy-srcR, srcR*2, srcR*2, 0,0,LOUPE,LOUPE); } catch(_){}
+        // crosshair on the exact point
+        lctx.strokeStyle='rgba(255,90,140,.95)'; lctx.lineWidth=1.5;
+        lctx.beginPath();
+        lctx.moveTo(LOUPE/2-12,LOUPE/2); lctx.lineTo(LOUPE/2+12,LOUPE/2);
+        lctx.moveTo(LOUPE/2,LOUPE/2-12); lctx.lineTo(LOUPE/2,LOUPE/2+12);
+        lctx.stroke();
+        lctx.restore();
+        // position above the finger, clamped to viewport
+        const vw=window.innerWidth, vh=window.innerHeight, sz=loupe.offsetWidth||LOUPE;
+        let lx=clientX - sz/2, ly=clientY - sz - 28;
+        if(ly < 8) ly = clientY + 28;                 // near top → below finger
+        lx=Math.max(8, Math.min(lx, vw-sz-8));
+        ly=Math.max(8, Math.min(ly, vh-sz-8));
+        loupe.style.left=lx+'px'; loupe.style.top=ly+'px';
+        loupe.classList.add('show');
+    }
+    function hideLoupe(){ loupe.classList.remove('show'); }
+
     // ---------- point interaction ----------
-    let dragIdx=-1, dragSide='a';
+    let dragIdx=-1, dragSide='a', dragDotEl=null, dragTouch=false;
     function relPos(wrap, clientX, clientY){
         const r=wrap.getBoundingClientRect();
         return {
@@ -561,9 +957,10 @@
                 const idx=+dotEl.dataset.idx;
                 selected = idx;
                 $('delPoint').disabled = points[idx].base;
-                dragIdx=idx; dragSide=side;
-                dotEl.setPointerCapture(e.pointerId);
+                dragIdx=idx; dragSide=side; dragDotEl=dotEl; dragTouch=(e.pointerType==='touch');
+                try { dotEl.setPointerCapture(e.pointerId); } catch(_){}
                 renderEditors();
+                if(dragTouch){ const p=points[idx]; showLoupe(side, side==='a'?p.ax:p.bx, side==='a'?p.ay:p.by, e.clientX, e.clientY); }
                 e.preventDefault();
                 return;
             }
@@ -580,12 +977,18 @@
             const pos=relPos(wrap, e.clientX, e.clientY);
             const p=points[dragIdx];
             if(side==='a'){ p.ax=pos.x; p.ay=pos.y; } else { p.bx=pos.x; p.by=pos.y; }
-            if(p.base){ // keep base point synced on both images
+            // fast path: move just the dragged dot, not the whole DOM
+            if(dragDotEl){ dragDotEl.style.left=(pos.x*100)+'%'; dragDotEl.style.top=(pos.y*100)+'%'; }
+            if(p.base){ // keep base point synced on both images (move its twin too)
                 if(side==='a'){ p.bx=pos.x; p.by=pos.y; } else { p.ax=pos.x; p.ay=pos.y; }
+                const other = side==='a' ? $('edB') : $('edA');
+                const twin = other.querySelector('.dot[data-idx="'+dragIdx+'"]');
+                if(twin){ twin.style.left=(pos.x*100)+'%'; twin.style.top=(pos.y*100)+'%'; }
             }
-            renderEditors(); drawPreview();
+            if(dragTouch) showLoupe(side, pos.x, pos.y, e.clientX, e.clientY);
+            renderMesh(); drawPreview();
         });
-        function endDrag(){ if(dragIdx>=0){ dragIdx=-1; retri(); } }
+        function endDrag(){ if(dragIdx>=0){ dragIdx=-1; dragDotEl=null; dragTouch=false; hideLoupe(); retri(); } }
         wrap.addEventListener('pointerup', endDrag);
         wrap.addEventListener('pointercancel', endDrag);
         wrap.addEventListener('dblclick', e=>{
@@ -611,6 +1014,16 @@
     });
     $('toggleMesh').addEventListener('click', function(){
         showMesh=!showMesh; this.classList.toggle('active', showMesh); renderMesh();
+    });
+    // Delete / Backspace removes the selected (non-base) point
+    document.addEventListener('keydown', e=>{
+        if(!cropModal.hidden) return;
+        const tag=(e.target.tagName||'').toLowerCase();
+        if(tag==='input' || tag==='select' || tag==='textarea') return;
+        if((e.key==='Delete'||e.key==='Backspace') && selected>=0 && !points[selected].base){
+            e.preventDefault();
+            points.splice(selected,1); selected=-1; $('delPoint').disabled=true; retri();
+        }
     });
 
     // ---------- slider / play ----------
