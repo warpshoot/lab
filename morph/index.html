@@ -372,6 +372,13 @@
             </div>
         </div>
         <div class="modal-foot">
+            <div class="field">
+                <span>回転</span>
+                <button id="rotL" class="ghost" title="左90°">⟲</button>
+                <input type="range" id="rotSlider" min="-180" max="180" step="1" value="0" style="width:110px">
+                <button id="rotR" class="ghost" title="右90°">⟳</button>
+                <span id="rotVal" style="width:36px;text-align:right;font-variant-numeric:tabular-nums">0°</span>
+            </div>
             <div class="field"><label>比率
                 <select id="cropAspect">
                     <option value="free">自由</option>
@@ -395,6 +402,7 @@
     let imgA = null, imgB = null;      // working (possibly cropped) Image objects
     let origA = null, origB = null;    // original loaded Image objects
     let cropNormA = null, cropNormB = null; // last crop rect, normalized {x,y,w,h} (null = full)
+    let cropAngleA = 0, cropAngleB = 0; // last rotation (deg) per side
     let urlA = '', urlB = '';          // working image object URLs (for thumbnails)
     let W = 0, H = 0;                  // output canvas size
     let points = [];                  // {ax,ay,bx,by,base}  normalized 0..1
@@ -585,8 +593,8 @@
         const url = URL.createObjectURL(file);
         const im = new Image();
         im.onload = ()=>{
-            if(side==='a'){ origA=im; } else { origB=im; }
-            if(side==='a') cropNormA=null; else cropNormB=null; // reset to full for new image
+            if(side==='a'){ origA=im; cropNormA=null; cropAngleA=0; }
+            else { origB=im; cropNormB=null; cropAngleB=0; }
             openCrop(side); // let the user trim right away
         };
         im.src = url;
@@ -647,31 +655,67 @@
 
     // ---------- crop modal ----------
     let cropSide='a', cropDispW=0, cropDispH=0, cropRect={x:0,y:0,w:0,h:0};
+    let cropAngle=0, cropBaseCanvas=null, cropBaseW=0, cropBaseH=0;
     let cropDrag=null; // {mode:'move'|dir, sx,sy, rect0}
     const cropModal=$('cropModal'), cropImg=$('cropImg'), cropRectEl=$('cropRect'), cropArea=$('cropArea');
 
+    // build a (rotation-baked) source canvas from the original, capped for performance
+    function buildCropBase(){
+        const orig = cropSide==='a'?origA:origB;
+        const a = cropAngle*Math.PI/180;
+        const ow=orig.naturalWidth, oh=orig.naturalHeight;
+        const cos=Math.abs(Math.cos(a)), sin=Math.abs(Math.sin(a));
+        const fbw=ow*cos+oh*sin, fbh=ow*sin+oh*cos;
+        const cap=1600, k=Math.min(1, cap/Math.max(fbw,fbh));
+        const bw=Math.max(1,Math.round(fbw*k)), bh=Math.max(1,Math.round(fbh*k));
+        const c=document.createElement('canvas'); c.width=bw; c.height=bh;
+        const x=c.getContext('2d');
+        x.translate(bw/2,bh/2); x.rotate(a); x.scale(k,k); x.drawImage(orig,-ow/2,-oh/2);
+        cropBaseCanvas=c; cropBaseW=bw; cropBaseH=bh;
+    }
+
+    // load current base into the modal <img>, measure display size, then run cb()
+    function showBase(cb){
+        cropImg.onload=()=>{
+            cropImg.onload=null;
+            const r=cropImg.getBoundingClientRect();
+            cropDispW=r.width; cropDispH=r.height;
+            cb();
+        };
+        cropImg.src = cropBaseCanvas.toDataURL();
+    }
+
     function openCrop(side){
         cropSide=side;
-        const orig = side==='a'?origA:origB;
+        cropAngle = side==='a'?cropAngleA:cropAngleB;
         const norm = side==='a'?cropNormA:cropNormB;
         $('cropTitle').textContent = '画像'+side.toUpperCase()+' をトリミング';
         $('cropAspect').value='free';
+        $('rotSlider').value=cropAngle; $('rotVal').textContent=cropAngle+'°';
         cropModal.hidden=false;
-        cropImg.src = orig.src;
-        // wait for layout so displayed size is known (retry until non-zero)
-        let tries=0;
-        (function measure(){
-            const r = cropImg.getBoundingClientRect();
-            if((r.width<2 || r.height<2) && tries++<30){ requestAnimationFrame(measure); return; }
-            cropDispW = r.width; cropDispH = r.height;
-            if(norm){
-                cropRect = { x:norm.x*cropDispW, y:norm.y*cropDispH, w:norm.w*cropDispW, h:norm.h*cropDispH };
-            } else {
-                cropRect = { x:0, y:0, w:cropDispW, h:cropDispH };
-            }
-            applyCropRect();
-        })();
+        buildCropBase();
+        showBase(()=>{
+            if(norm){ cropRect = { x:norm.x*cropDispW, y:norm.y*cropDispH, w:norm.w*cropDispW, h:norm.h*cropDispH }; }
+            else { cropRect = { x:0, y:0, w:cropDispW, h:cropDispH }; }
+            clampRect(); applyCropRect();
+        });
     }
+
+    function setAngle(deg){
+        cropAngle = ((deg % 360) + 540) % 360 - 180; // wrap to (-180,180]
+        $('rotSlider').value=cropAngle; $('rotVal').textContent=cropAngle+'°';
+        // keep the current selection proportionally while the base reshapes
+        const n = cropDispW ? { x:cropRect.x/cropDispW, y:cropRect.y/cropDispH, w:cropRect.w/cropDispW, h:cropRect.h/cropDispH } : null;
+        buildCropBase();
+        showBase(()=>{
+            if(n){ cropRect = { x:n.x*cropDispW, y:n.y*cropDispH, w:n.w*cropDispW, h:n.h*cropDispH }; }
+            else { cropRect = { x:0, y:0, w:cropDispW, h:cropDispH }; }
+            clampRect(); applyCropRect();
+        });
+    }
+    $('rotSlider').addEventListener('input', ()=> setAngle(parseInt($('rotSlider').value)||0));
+    $('rotL').addEventListener('click', ()=> setAngle(cropAngle-90));
+    $('rotR').addEventListener('click', ()=> setAngle(cropAngle+90));
     function applyCropRect(){
         cropRectEl.style.left=cropRect.x+'px';
         cropRectEl.style.top=cropRect.y+'px';
@@ -744,18 +788,17 @@
 
     function useFull(side){
         const orig=side==='a'?origA:origB;
-        if(side==='a') cropNormA=null; else cropNormB=null;
+        if(side==='a'){ cropNormA=null; cropAngleA=0; } else { cropNormB=null; cropAngleB=0; }
         finalizeImage(side, orig, orig.src);
     }
     function doCrop(side){
-        const orig=side==='a'?origA:origB;
-        const sc = orig.naturalWidth/cropDispW; // disp->natural
+        const sc = cropBaseW/cropDispW; // display px -> base px
         const sx=Math.round(cropRect.x*sc), sy=Math.round(cropRect.y*sc);
         const sw=Math.max(1,Math.round(cropRect.w*sc)), sh=Math.max(1,Math.round(cropRect.h*sc));
         const norm={ x:cropRect.x/cropDispW, y:cropRect.y/cropDispH, w:cropRect.w/cropDispW, h:cropRect.h/cropDispH };
-        if(side==='a') cropNormA=norm; else cropNormB=norm;
+        if(side==='a'){ cropNormA=norm; cropAngleA=cropAngle; } else { cropNormB=norm; cropAngleB=cropAngle; }
         const c=document.createElement('canvas'); c.width=sw; c.height=sh;
-        c.getContext('2d').drawImage(orig, sx,sy,sw,sh, 0,0,sw,sh);
+        c.getContext('2d').drawImage(cropBaseCanvas, sx,sy,sw,sh, 0,0,sw,sh);
         c.toBlob(blob=>{
             const url=URL.createObjectURL(blob);
             const im=new Image();
