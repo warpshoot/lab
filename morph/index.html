@@ -343,6 +343,9 @@
             <b>追加モード</b>がオンのとき画像をクリック→両方に点が追加されます。あとは各画像で点をドラッグして位置を合わせてください。点をダブルクリックで削除。目・鼻・口・輪郭など数点を合わせるほどきれいに変形します。
         </p>
         <div class="toolbar">
+            <button id="undoBtn" class="ghost" disabled title="元に戻す (Ctrl/⌘+Z)">↶ 元に戻す</button>
+            <button id="redoBtn" class="ghost" disabled title="やり直し (Ctrl/⌘+Shift+Z)">↷ やり直し</button>
+            <div class="divider"></div>
             <button id="addMode">＋ 追加モード</button>
             <button id="delPoint" class="ghost" disabled>選択点を削除</button>
             <button id="clearPoints" class="ghost">対応点をクリア</button>
@@ -456,6 +459,7 @@
     let W = 0, H = 0;                  // output canvas size
     let points = [];                  // {ax,ay,bx,by,base}  normalized 0..1
     let tris = [];                    // [[i,j,k], ...]
+    let history = [], histIndex = -1; // undo/redo snapshots of `points`
     let selected = -1;
     let addMode = true;
     let showMesh = true;
@@ -523,6 +527,28 @@
         tris = delaunay(mid);
         renderAll();
     }
+
+    // ---------- undo / redo (snapshots of `points`) ----------
+    function snapshot(){ return points.map(p=>({ax:p.ax,ay:p.ay,bx:p.bx,by:p.by,base:p.base})); }
+    function updateUndoRedo(){
+        $('undoBtn').disabled = histIndex<=0;
+        $('redoBtn').disabled = histIndex>=history.length-1;
+    }
+    function commit(){                       // record current points if they changed
+        const snap = snapshot();
+        if(histIndex>=0 && JSON.stringify(snap)===JSON.stringify(history[histIndex])) return;
+        history.length = histIndex+1;        // drop any redo tail
+        history.push(snap); histIndex++;
+        updateUndoRedo();
+    }
+    function restore(snap){
+        points = snap.map(p=>({ax:p.ax,ay:p.ay,bx:p.bx,by:p.by,base:p.base}));
+        selected = -1; $('delPoint').disabled = true;
+        retri();
+        updateUndoRedo();
+    }
+    function undo(){ if(histIndex>0){ histIndex--; restore(history[histIndex]); } }
+    function redo(){ if(histIndex<history.length-1){ histIndex++; restore(history[histIndex]); } }
 
     // ---------- morph rendering ----------
     function affineTri(ctx, img, s, d){
@@ -698,6 +724,8 @@
         [urlA,urlB]=[urlB,urlA];
         [lastCropUrlA,lastCropUrlB]=[lastCropUrlB,lastCropUrlA];
         for(const p of points){ const tx=p.ax, ty=p.ay; p.ax=p.bx; p.ay=p.by; p.bx=tx; p.by=ty; }
+        // keep undo history consistent with the new A/B orientation
+        for(const snap of history){ for(const p of snap){ const tx=p.ax, ty=p.ay; p.ax=p.bx; p.ay=p.by; p.bx=tx; p.by=ty; } }
         $('imgA-el').src=urlA; $('imgB-el').src=urlB;
         const ea=$('edA').querySelector('img'), eb=$('edB').querySelector('img');
         if(ea) ea.src=urlA; if(eb) eb.src=urlB;
@@ -959,7 +987,10 @@
                 $('delPoint').disabled = points[idx].base;
                 dragIdx=idx; dragSide=side; dragDotEl=dotEl; dragTouch=(e.pointerType==='touch');
                 try { dotEl.setPointerCapture(e.pointerId); } catch(_){}
-                renderEditors();
+                // update the selection highlight in place — do NOT rebuild the dots,
+                // otherwise the dragged element detaches and a ghost stays at the origin
+                document.querySelectorAll('.editor .dot.sel').forEach(d=>d.classList.remove('sel'));
+                document.querySelectorAll('.editor .dot[data-idx="'+idx+'"]').forEach(d=>d.classList.add('sel'));
                 if(dragTouch){ const p=points[idx]; showLoupe(side, side==='a'?p.ax:p.bx, side==='a'?p.ay:p.by, e.clientX, e.clientY); }
                 e.preventDefault();
                 return;
@@ -968,7 +999,7 @@
                 const pos=relPos(wrap, e.clientX, e.clientY);
                 points.push({ax:pos.x, ay:pos.y, bx:pos.x, by:pos.y, base:false});
                 selected=points.length-1;
-                retri();
+                retri(); commit();
                 e.preventDefault();
             }
         });
@@ -988,14 +1019,14 @@
             if(dragTouch) showLoupe(side, pos.x, pos.y, e.clientX, e.clientY);
             renderMesh(); drawPreview();
         });
-        function endDrag(){ if(dragIdx>=0){ dragIdx=-1; dragDotEl=null; dragTouch=false; hideLoupe(); retri(); } }
+        function endDrag(){ if(dragIdx>=0){ dragIdx=-1; dragDotEl=null; dragTouch=false; hideLoupe(); retri(); commit(); } }
         wrap.addEventListener('pointerup', endDrag);
         wrap.addEventListener('pointercancel', endDrag);
         wrap.addEventListener('dblclick', e=>{
             const dotEl=e.target.closest('.dot');
             if(dotEl){
                 const idx=+dotEl.dataset.idx;
-                if(!points[idx].base){ points.splice(idx,1); selected=-1; $('delPoint').disabled=true; retri(); }
+                if(!points[idx].base){ points.splice(idx,1); selected=-1; $('delPoint').disabled=true; retri(); commit(); }
             }
         });
     }
@@ -1007,22 +1038,27 @@
         this.textContent = addMode ? '＋ 追加モード（ON）' : '＋ 追加モード';
     });
     $('delPoint').addEventListener('click', ()=>{
-        if(selected>=0 && !points[selected].base){ points.splice(selected,1); selected=-1; $('delPoint').disabled=true; retri(); }
+        if(selected>=0 && !points[selected].base){ points.splice(selected,1); selected=-1; $('delPoint').disabled=true; retri(); commit(); }
     });
     $('clearPoints').addEventListener('click', ()=>{
-        points = points.filter(p=>p.base); selected=-1; $('delPoint').disabled=true; retri();
+        points = points.filter(p=>p.base); selected=-1; $('delPoint').disabled=true; retri(); commit();
     });
     $('toggleMesh').addEventListener('click', function(){
         showMesh=!showMesh; this.classList.toggle('active', showMesh); renderMesh();
     });
-    // Delete / Backspace removes the selected (non-base) point
+    $('undoBtn').addEventListener('click', undo);
+    $('redoBtn').addEventListener('click', redo);
+    // keyboard: Delete/Backspace = remove selected point; Ctrl/⌘+Z = undo; +Shift or Ctrl+Y = redo
     document.addEventListener('keydown', e=>{
         if(!cropModal.hidden) return;
         const tag=(e.target.tagName||'').toLowerCase();
         if(tag==='input' || tag==='select' || tag==='textarea') return;
+        const mod = e.ctrlKey || e.metaKey;
+        if(mod && (e.key==='z' || e.key==='Z')){ e.preventDefault(); if(e.shiftKey) redo(); else undo(); return; }
+        if(mod && (e.key==='y' || e.key==='Y')){ e.preventDefault(); redo(); return; }
         if((e.key==='Delete'||e.key==='Backspace') && selected>=0 && !points[selected].base){
             e.preventDefault();
-            points.splice(selected,1); selected=-1; $('delPoint').disabled=true; retri();
+            points.splice(selected,1); selected=-1; $('delPoint').disabled=true; retri(); commit();
         }
     });
 
@@ -1129,6 +1165,7 @@
         b.textContent = addMode ? '＋ 追加モード（ON）' : '＋ 追加モード';
     })();
     initBase();
+    history = [snapshot()]; histIndex = 0; updateUndoRedo(); // seed baseline for undo/redo
 })();
 </script>
 </body>
