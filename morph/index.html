@@ -303,9 +303,6 @@
 <body>
 <header>
     <h1>Morph</h1>
-    <span class="sub">2枚の画像をなめらかに変形合成</span>
-    <span style="flex:1"></span>
-    <a class="back" href="../">← Lab</a>
 </header>
 
 <div class="wrap">
@@ -313,7 +310,6 @@
     <!-- STEP 1: upload -->
     <section class="panel">
         <h2><span class="step-num">1</span>画像を2枚えらぶ</h2>
-        <p class="hint">クリックして選択、またはドラッグ&ドロップ。<b>2枚まとめて選ぶ／ドロップすると自動でA・Bにセット</b>されます（1枚目→A、2枚目→B）。似た構図・向きの写真ほどきれいにモーフィングできます。</p>
         <div class="uploads">
             <div class="drop" id="dropA">
                 <span class="tag">A（変化前）</span>
@@ -338,10 +334,6 @@
     <!-- STEP 2: correspondence points (main) -->
     <section class="panel">
         <h2><span class="step-num">2</span>対応点を指定する</h2>
-        <p class="hint">
-            「目は目へ」「口は口へ」のように、前後の画像で対応する位置を打つと、その部分が正しく重なりながら変形します。これがこのアプリの核です。<br>
-            <b>追加モード</b>がオンのとき画像をクリック→両方に点が追加されます。あとは各画像で点をドラッグして位置を合わせてください。点をダブルクリックで削除。目・鼻・口・輪郭など数点を合わせるほどきれいに変形します。
-        </p>
         <div class="toolbar">
             <button id="undoBtn" class="ghost" disabled title="元に戻す (Ctrl/⌘+Z)">↶ 元に戻す</button>
             <button id="redoBtn" class="ghost" disabled title="やり直し (Ctrl/⌘+Shift+Z)">↷ やり直し</button>
@@ -370,7 +362,6 @@
     <!-- STEP 3: preview & export -->
     <section class="panel">
         <h2><span class="step-num">3</span>スライダーで変化を楽しむ・書き出す</h2>
-        <p class="hint">スライダーを動かすと、指定した対応点に沿ってAからBへ連続的に変化します。任意の位置で静止画、全体を動画として書き出せます。</p>
         <div class="stage">
             <div class="canvas-holder" id="holder">
                 <span class="ph" id="stagePh">画像を2枚えらぶとプレビューが表示されます</span>
@@ -401,7 +392,6 @@
         </div>
     </section>
 
-    <div class="foot">すべてブラウザ内で処理されます。画像はどこにも送信されません。</div>
 </div>
 
 <canvas id="loupe" width="132" height="132"></canvas>
@@ -411,7 +401,6 @@
     <div class="modal-inner">
         <div class="modal-head">
             <b id="cropTitle">トリミング</b>
-            <span class="modal-hint">枠をドラッグで移動、角・辺をドラッグでサイズ変更。顔だけを囲むと「顔モーフィング」に。</span>
         </div>
         <div class="crop-area" id="cropArea">
             <div class="crop-frame">
