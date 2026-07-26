@@ -552,9 +552,11 @@
 
     // ---------- morph rendering ----------
     function affineTri(ctx, img, s, d){
-        // clip to (slightly inflated) dest triangle, map source->dest
+        // clip to (slightly inflated) dest triangle, map source->dest.
+        // The inflation makes neighbouring triangles overlap so the anti-aliased
+        // clip edges are covered by an opaque neighbour → no gaps within a layer.
         const cx=(d[0].x+d[1].x+d[2].x)/3, cy=(d[0].y+d[1].y+d[2].y)/3;
-        const pad = 0.7;
+        const pad = 1.2;
         const di = d.map(p=>{ const vx=p.x-cx, vy=p.y-cy, l=Math.hypot(vx,vy)||1; return {x:p.x+vx/l*pad, y:p.y+vy/l*pad}; });
         ctx.save();
         ctx.beginPath();
@@ -592,15 +594,28 @@
         }
     }
 
+    // offscreen layers so each warped image is an opaque single image before
+    // blending — this avoids per-triangle double-blend seams during the morph
+    let offA=null, offAc=null, offB=null, offBc=null;
+    function ensureOff(){
+        if(!offA){ offA=document.createElement('canvas'); offAc=offA.getContext('2d');
+                   offB=document.createElement('canvas'); offBc=offB.getContext('2d'); }
+        if(offA.width!==W || offA.height!==H){ offA.width=W; offA.height=H; offB.width=W; offB.height=H; }
+    }
     function renderMorph(t){
         if(!imgA || !imgB) return;
+        ensureOff();
+        // warp A and B into their own opaque layers
+        offAc.setTransform(1,0,0,1,0,0); offAc.globalAlpha=1; offAc.clearRect(0,0,W,H);
+        layer(offAc, imgA, 'a', t);
+        offBc.setTransform(1,0,0,1,0,0); offBc.globalAlpha=1; offBc.clearRect(0,0,W,H);
+        layer(offBc, imgB, 'b', t);
+        // composite once: exact cross-dissolve, no seams
         sctx.setTransform(1,0,0,1,0,0);
-        sctx.clearRect(0,0,W,H);
-        sctx.globalAlpha = 1;
-        layer(sctx, imgA, 'a', t);
-        sctx.globalAlpha = t;
-        layer(sctx, imgB, 'b', t);
-        sctx.globalAlpha = 1;
+        sctx.globalAlpha=1; sctx.clearRect(0,0,W,H);
+        sctx.drawImage(offA,0,0);
+        sctx.globalAlpha=t; sctx.drawImage(offB,0,0);
+        sctx.globalAlpha=1;
     }
 
     function currentT(){ return (+$('slider').value)/1000; }
