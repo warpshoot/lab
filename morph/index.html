@@ -422,10 +422,12 @@
             </div>
             <div class="field"><label>比率
                 <select id="cropAspect">
-                    <option value="free">自由</option>
-                    <option value="1">1:1</option>
+                    <option value="1" selected>1:1</option>
                     <option value="0.75">3:4</option>
                     <option value="1.3333">4:3</option>
+                    <option value="0.5625">9:16</option>
+                    <option value="1.7778">16:9</option>
+                    <option value="free">自由</option>
                 </select>
             </label></div>
             <button id="cropReset" class="ghost">全体</button>
@@ -444,6 +446,7 @@
     let origA = null, origB = null;    // original loaded Image objects
     let cropNormA = null, cropNormB = null; // last crop rect, normalized {x,y,w,h} (null = full)
     let cropAngleA = 0, cropAngleB = 0; // last rotation (deg) per side
+    let cropAspectA = '1', cropAspectB = '1'; // last crop aspect per side (default 1:1)
     let urlA = '', urlB = '';          // working image object URLs (for thumbnails)
     let W = 0, H = 0;                  // output canvas size
     let points = [];                  // {ax,ay,bx,by,base}  normalized 0..1
@@ -687,8 +690,8 @@
         const url = URL.createObjectURL(file);
         const im = new Image();
         im.onload = ()=>{
-            if(side==='a'){ origA=im; cropNormA=null; cropAngleA=0; }
-            else { origB=im; cropNormB=null; cropAngleB=0; }
+            if(side==='a'){ origA=im; cropNormA=null; cropAngleA=0; cropAspectA='1'; }
+            else { origB=im; cropNormB=null; cropAngleB=0; cropAspectB='1'; }
             openCrop(side); // let the user trim right away
         };
         im.src = url;
@@ -810,15 +813,24 @@
         cropAngle = side==='a'?cropAngleA:cropAngleB;
         const norm = side==='a'?cropNormA:cropNormB;
         $('cropTitle').textContent = '画像'+side.toUpperCase()+' をトリミング';
-        $('cropAspect').value='free';
+        $('cropAspect').value = side==='a'?cropAspectA:cropAspectB;
         $('rotSlider').value=cropAngle; $('rotVal').textContent=cropAngle+'°';
         cropModal.hidden=false;
         buildCropBase();
         showBase(()=>{
-            if(norm){ cropRect = { x:norm.x*cropDispW, y:norm.y*cropDispH, w:norm.w*cropDispW, h:norm.h*cropDispH }; }
-            else { cropRect = { x:0, y:0, w:cropDispW, h:cropDispH }; }
-            clampRect(); applyCropRect();
+            if(norm){ cropRect = { x:norm.x*cropDispW, y:norm.y*cropDispH, w:norm.w*cropDispW, h:norm.h*cropDispH }; clampRect(); }
+            else { cropRect = { x:0, y:0, w:cropDispW, h:cropDispH }; fitAspect(aspectVal()); } // new image → start at the selected ratio
+            applyCropRect();
         });
+    }
+    // fit a centred rectangle of the given aspect (0 = free/full) inside the base
+    function fitAspect(ar){
+        if(!ar){ cropRect={x:0,y:0,w:cropDispW,h:cropDispH}; clampRect(); return; }
+        const cx=cropRect.x+cropRect.w/2, cy=cropRect.y+cropRect.h/2;
+        let w=cropRect.w, h=w/ar;
+        if(h>cropDispH){ h=cropDispH; w=h*ar; }
+        if(w>cropDispW){ w=cropDispW; h=w/ar; }
+        cropRect={ x:cx-w/2, y:cy-h/2, w, h }; clampRect();
     }
 
     let rebuildScheduled=false, rebuildNorm=null;
@@ -834,7 +846,9 @@
             showBase(()=>{
                 if(n){ cropRect = { x:n.x*cropDispW, y:n.y*cropDispH, w:n.w*cropDispW, h:n.h*cropDispH }; }
                 else { cropRect = { x:0, y:0, w:cropDispW, h:cropDispH }; }
-                clampRect(); applyCropRect();
+                const ar=aspectVal();
+                if(ar) fitAspect(ar); else clampRect(); // keep the locked ratio after the base reshapes
+                applyCropRect();
             });
         });
     }
@@ -896,17 +910,15 @@
     cropArea.addEventListener('pointercancel', endCropDrag);
 
     $('cropAspect').addEventListener('change', ()=>{
-        const ar=aspectVal(); if(!ar) return;
-        // re-fit current rect to aspect, centered
-        const cx=cropRect.x+cropRect.w/2, cy=cropRect.y+cropRect.h/2;
-        let w=cropRect.w, h=w/ar;
-        if(h>cropDispH){ h=cropDispH; w=h*ar; }
-        if(w>cropDispW){ w=cropDispW; h=w/ar; }
-        cropRect={ x:cx-w/2, y:cy-h/2, w, h }; clampRect(); applyCropRect();
+        const v=$('cropAspect').value;
+        if(cropSide==='a') cropAspectA=v; else cropAspectB=v;
+        fitAspect(aspectVal()); applyCropRect();   // snap current crop to the chosen ratio
     });
     $('cropReset').addEventListener('click', ()=>{
+        // escape hatch: use the whole image (free ratio)
         $('cropAspect').value='free';
-        cropRect={x:0,y:0,w:cropDispW,h:cropDispH}; applyCropRect();
+        if(cropSide==='a') cropAspectA='free'; else cropAspectB='free';
+        cropRect={x:0,y:0,w:cropDispW,h:cropDispH}; clampRect(); applyCropRect();
     });
     function cancelCrop(){
         cropModal.hidden=true;
