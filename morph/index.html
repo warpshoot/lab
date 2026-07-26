@@ -313,7 +313,7 @@
     <!-- STEP 1: upload -->
     <section class="panel">
         <h2><span class="step-num">1</span>画像を2枚えらぶ</h2>
-        <p class="hint">クリックして選択、またはドラッグ&ドロップ。似た構図・向きの写真ほどきれいにモーフィングできます。</p>
+        <p class="hint">クリックして選択、またはドラッグ&ドロップ。<b>2枚まとめて選ぶ／ドロップすると自動でA・Bにセット</b>されます（1枚目→A、2枚目→B）。似た構図・向きの写真ほどきれいにモーフィングできます。</p>
         <div class="uploads">
             <div class="drop" id="dropA">
                 <span class="tag">A（変化前）</span>
@@ -328,8 +328,8 @@
                 <button class="recrop" id="recropB" hidden>✂ トリミング</button>
             </div>
         </div>
-        <input type="file" id="fileA" accept="image/*">
-        <input type="file" id="fileB" accept="image/*">
+        <input type="file" id="fileA" accept="image/*" multiple>
+        <input type="file" id="fileB" accept="image/*" multiple>
         <div class="controls" style="margin-top:14px">
             <button id="swapAB" class="ghost" disabled>⇄ A と B を入れ替え</button>
         </div>
@@ -678,6 +678,21 @@
     function renderAll(){ renderEditors(); drawPreview(); }
 
     // ---------- image loading ----------
+    let pendingLoad = [];   // queue of {side, file} to load after the current crop finishes
+
+    // entry point from a file input / drop: 1 file → that side; 2+ files → A then B
+    function handleFiles(fileList, side){
+        const imgs = [...fileList].filter(f=>f.type.startsWith('image/'));
+        if(imgs.length===0) return;
+        if(imgs.length===1){ loadImage(imgs[0], side); return; }
+        // multiple selected: assign first→A, second→B automatically
+        pendingLoad = [{side:'b', file:imgs[1]}];
+        loadImage(imgs[0], 'a');   // B is loaded once A's crop is done
+    }
+    function processNextPending(){
+        if(pendingLoad.length){ const {side,file}=pendingLoad.shift(); loadImage(file, side); }
+    }
+
     function loadImage(file, side){
         if(!file || !file.type.startsWith('image/')) return;
         const url = URL.createObjectURL(file);
@@ -707,6 +722,7 @@
         if(!edimg){ edimg=document.createElement('img'); wrap.insertBefore(edimg, wrap.firstChild); }
         edimg.src = url;
         onReady();
+        processNextPending();   // if two files were chosen, load B after A's crop
     }
 
     function onReady(){
@@ -752,12 +768,12 @@
     function setupDrop(dropId, fileId, side){
         const drop=$(dropId), file=$(fileId);
         drop.addEventListener('click', ()=>file.click());
-        file.addEventListener('change', e=>{ if(e.target.files[0]) loadImage(e.target.files[0], side); });
+        file.addEventListener('change', e=>{ handleFiles(e.target.files, side); e.target.value=''; });
         drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('drag'); });
         drop.addEventListener('dragleave', ()=>drop.classList.remove('drag'));
         drop.addEventListener('drop', e=>{
             e.preventDefault(); drop.classList.remove('drag');
-            if(e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0], side);
+            if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files, side);
         });
     }
     setupDrop('dropA','fileA','a');
