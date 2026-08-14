@@ -951,7 +951,26 @@
     };
   }
 
-  /* ===== 書き出し ===== */
+  /* ===== 書き出し =====
+     html2canvas が読み込めていないと書き出しが全部失敗する。しかも参照した時点で
+     即例外になるため、後片付けが走らず⚙ボタンが消えたままになっていた。
+     使う直前に存在を確かめ、無ければCDNから取り直す。 */
+  let _h2c=null;
+  function ensureH2C(){
+    if(typeof html2canvas==='function') return Promise.resolve();
+    if(_h2c) return _h2c;
+    _h2c=new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      s.onload=()=>typeof html2canvas==='function'?res():rej(new Error('html2canvas を読み込めませんでした'));
+      s.onerror=()=>rej(new Error('html2canvas が見つかりません。vendor/html2canvas.min.js を読めず、CDNにも接続できませんでした'));
+      document.head.appendChild(s);
+    });
+    _h2c.catch(()=>{ _h2c=null; });   // 次回また試せるようにする
+    return _h2c;
+  }
+  function render(target,opts){ return ensureH2C().then(()=>html2canvas(target,opts)); }
+
   function lastRow(){
     const rows=[...chat.children].filter(el=>el.classList.contains('row')&&el!==typingRow);
     return rows[rows.length-1]||null;
@@ -997,11 +1016,11 @@
 
     const bg=trans?null:(document.body.classList.contains('dark')?'#10141a':'#ffffff');
     const name=el?'koma.png':(isPhone?'message.png':'message-part.png');
-    html2canvas(target,{backgroundColor:bg,scale,logging:false})
+    render(target,{backgroundColor:bg,scale,logging:false})
       .then(c=>new Promise(r=>c.toBlob(r,'image/png')))
       .then(blob=>saveFiles([[name,blob]]))
       .then(restore)
-      .catch(e=>{ restore(); alert('書き出しに失敗しました: '+e); });
+      .catch(e=>{ restore(); alert('書き出しに失敗しました: '+(e&&e.message||e)); });
   }
 
   /* ===== レイヤー書き出し（editor 用） =====
@@ -1079,7 +1098,7 @@
       chat.scrollTop=chat.scrollHeight;
     };
 
-    const shot=(bg)=>html2canvas(phone,{backgroundColor:bg,scale,logging:false})
+    const shot=(bg)=>render(phone,{backgroundColor:bg,scale,logging:false})
       .then(c=>new Promise(r=>c.toBlob(r,'image/png')));
 
     // 既読チェックは「送った少しあと」に付けたいので別レイヤーに回す
@@ -1110,7 +1129,7 @@
       if(check) files.push(['mono.png',check]);
       return saveFiles(files);
     }).then(restore)
-      .catch(e=>{ restore(); alert('レイヤー書き出しに失敗しました: '+e); });
+      .catch(e=>{ restore(); alert('レイヤー書き出しに失敗しました: '+(e&&e.message||e)); });
   }
 
   /* 選択モード：バブルをタップして対象を決める
