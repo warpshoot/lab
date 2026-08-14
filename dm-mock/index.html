@@ -67,6 +67,23 @@
   }
   .out .bubble{ background:var(--out-bubble); color:var(--out-text); border-radius:20px; }
   .in .bubble{ background:var(--in-bubble); color:var(--in-text); border-radius:20px; }
+  /* 添付ファイル */
+  .bubble.attach{ display:flex; align-items:center; gap:10px; padding:11px 13px; cursor:default; }
+  .att-icon{
+    width:36px; height:36px; border-radius:9px; flex-shrink:0; font-size:19px;
+    display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.22);
+  }
+  .in .att-icon{ background:rgba(0,0,0,.07); }
+  .att-meta{ min-width:0; }
+  .att-name{ font-size:14.5px; font-weight:600; outline:none; word-break:break-all; line-height:1.3; }
+  .att-size{ font-size:11.5px; opacity:.72; outline:none; margin-top:2px; }
+  .bubble.attach-img{ padding:0; background:transparent !important; }
+  .att-photo{ width:156px; height:200px; border-radius:16px; background-size:cover; background-position:center; }
+  .att-photo.ph{ background:linear-gradient(160deg,#ccd2d8,#a7aeb6); position:relative; }
+  .att-photo.ph::after{
+    content:'🖼'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:40px; opacity:.6;
+  }
   .time{ font-size:11px; color:var(--sub); align-self:flex-end; margin:0 4px 3px; white-space:nowrap; display:flex; align-items:center; gap:2px; }
   .out .time{ order:-1; }
   .time-val{ outline:none; cursor:text; border-radius:3px; padding:1px 2px; }
@@ -251,7 +268,10 @@
       <button class="dir-btn in" id="dirIn" onclick="setDir('in')">相手から（受信）</button>
       <button class="dir-btn out active" id="dirOut" onclick="setDir('out')">自分から（送信）</button>
     </div>
-    <button id="typingBtn" class="typing-toggle" onclick="toggleTyping()">💬 入力中を表示</button>
+    <div class="dir-row">
+      <button id="typingBtn" class="typing-toggle" style="flex:1" onclick="toggleTyping()">💬 入力中を表示</button>
+      <button class="typing-toggle" onclick="openAttach()">📎 添付</button>
+    </div>
     <div class="input-row">
       <textarea id="input" rows="1" placeholder="メッセージ"></textarea>
       <button class="send-btn" onclick="send()">➤</button>
@@ -264,6 +284,33 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="8" r="4"/><path d="M4 21c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 9.5 9.5 0 0 1-4-.9L3 21l1.9-5.5a9.5 9.5 0 0 1-.9-4A8.38 8.38 0 0 1 12.5 3 8.38 8.38 0 0 1 21 11.5z"/></svg>
+  </div>
+
+  <div class="overlay" id="attachOverlay">
+    <div class="panel">
+      <h3>添付ファイル</h3>
+      <div class="field"><label>種類</label>
+        <select id="attKind" class="set-select">
+          <option value="file">ファイル</option>
+          <option value="image">画像</option>
+        </select>
+      </div>
+      <div class="field" id="attNameField"><label>ファイル名</label><input type="text" id="attName" value="履歴書.pdf"></div>
+      <div class="field" id="attSizeField"><label>サイズ</label><input type="text" id="attSize" value="1.2 MB"></div>
+      <div class="field" id="attImgField" style="display:none">
+        <label>画像（選ばなければ枠だけ出ます）</label>
+        <input type="file" id="attFile" accept="image/*" hidden>
+        <div class="panel-btns">
+          <button class="upload-btn" onclick="document.getElementById('attFile').click()">画像を選ぶ</button>
+          <button class="upload-btn" onclick="clearAttImg()">画像を消す</button>
+        </div>
+        <span class="file-name" id="attFileName"></span>
+      </div>
+      <div class="panel-btns">
+        <button class="upload-btn" onclick="closeAttach()">キャンセル</button>
+        <button class="done-btn" onclick="addAttach()">追加</button>
+      </div>
+    </div>
   </div>
 
   <div class="overlay" id="overlay">
@@ -420,9 +467,30 @@
     'linear-gradient(135deg,#8d99ae,#43485a)'
   ];
 
-  function makeRow(side,text,time){
+  function makeRow(side,text,time,attach){
     const row=document.createElement('div'); row.className='row '+side;
-    const bubble=document.createElement('div'); bubble.className='bubble'; bubble.contentEditable='true'; bubble.textContent=text;
+    const bubble=document.createElement('div'); bubble.className='bubble';
+    if(attach){
+      // 添付は data 属性に持たせ、表示中の編集はそこから読み直す
+      row.dataset.attach=JSON.stringify(attach);
+      bubble.classList.add('attach');
+      if(attach.kind==='image'){
+        bubble.classList.add('attach-img');
+        const ph=document.createElement('div'); ph.className='att-photo';
+        if(attach.src) ph.style.backgroundImage='url('+attach.src+')'; else ph.classList.add('ph');
+        bubble.appendChild(ph);
+      }else{
+        const ic=document.createElement('div'); ic.className='att-icon'; ic.textContent='📄';
+        const meta=document.createElement('div'); meta.className='att-meta';
+        const nm=document.createElement('div'); nm.className='att-name'; nm.contentEditable='true'; nm.textContent=attach.name||'ファイル';
+        const sz=document.createElement('div'); sz.className='att-size'; sz.contentEditable='true'; sz.textContent=attach.size||'';
+        [nm,sz].forEach(e=>e.addEventListener('keydown',ev=>{ if(ev.key==='Enter'){ ev.preventDefault(); e.blur(); } }));
+        meta.appendChild(nm); meta.appendChild(sz);
+        bubble.appendChild(ic); bubble.appendChild(meta);
+      }
+    }else{
+      bubble.contentEditable='true'; bubble.textContent=text;
+    }
 
     const tm=document.createElement('span'); tm.className='time';
     const tv=document.createElement('span'); tv.className='time-val'; tv.contentEditable='true'; tv.textContent=time;
@@ -555,6 +623,41 @@
     document.querySelectorAll('.del').forEach(d=>d.style.display='');
   }
 
+  /* ===== 添付ファイル ===== */
+  let attImg=null;
+  function openAttach(){ document.getElementById('attachOverlay').classList.add('open'); }
+  function closeAttach(){ document.getElementById('attachOverlay').classList.remove('open'); }
+  function clearAttImg(){ attImg=null; document.getElementById('attFileName').textContent=''; }
+  document.getElementById('attKind').addEventListener('change',function(){
+    const isImg=this.value==='image';
+    document.getElementById('attImgField').style.display=isImg?'':'none';
+    document.getElementById('attNameField').style.display=isImg?'none':'';
+    document.getElementById('attSizeField').style.display=isImg?'none':'';
+  });
+  document.getElementById('attFile').addEventListener('change',function(e){
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{ attImg=ev.target.result; document.getElementById('attFileName').textContent=f.name; };
+    r.readAsDataURL(f);
+    this.value='';
+  });
+  function addAttach(){
+    const kind=document.getElementById('attKind').value;
+    const attach=(kind==='image')
+      ? { kind:'image', src:attImg||null }
+      : { kind:'file', name:document.getElementById('attName').value||'ファイル', size:document.getElementById('attSize').value||'' };
+    const time=advanceMockTime();
+    const row=makeRow(dir,'',time,attach);
+    const last=typingRow ? typingRow.previousElementSibling : chat.lastElementChild;
+    if(last && last.classList.contains('row') && !last.classList.contains(dir)) row.classList.add('gap');
+    if(typingRow) chat.insertBefore(row,typingRow); else chat.appendChild(row);
+    pop(row);
+    chat.scrollTop=chat.scrollHeight;
+    updateStatusBarTime();
+    closeAttach();
+    scheduleSave();
+  }
+
   function openPanel(){
     document.getElementById('toolbar').classList.remove('open');
     document.getElementById('overlay').classList.add('open');
@@ -644,14 +747,18 @@
   function nowHM(){ return fmtMin(nowMinutes()); }
 
   function sampleState(){
-    const t=nowHM();
+    const t=nowHM(), t0=fmtMin(nowMinutes()-4);   // 履歴書を送った少しあとに返信が来る
     return {
-      name:'もんめ', theme:themeColors[0], firstTime:t,
+      name:'もんめ', theme:themeColors[0], firstTime:t0,
       sig:4, wifi:3, bat:30, sbShow:true, sbTime:t,
       avatarColor:palette[0], avatarImg:null,
       showTime:true, showCheck:true, dark:false, autoTime:true,
       exportRange:'phone', exportScale:3, transparent:false, layerGap:24, splitCheck:true, exportFull:true,
-      msgs:[{ side:'in', text:SAMPLE_TEXT, time:t, unread:false, gap:false }]
+      msgs:[
+        { side:'out', text:'', time:t0, unread:false, gap:false,
+          attach:{ kind:'file', name:'履歴書.pdf', size:'1.2 MB' } },
+        { side:'in', text:SAMPLE_TEXT, time:t, unread:false, gap:true }
+      ]
     };
   }
 
@@ -669,13 +776,27 @@
   function collectMsgs(){
     return [...chat.children]
       .filter(el=>el.classList.contains('row') && el!==typingRow)
-      .map(el=>({
-        side: el.classList.contains('out')?'out':'in',
-        text: el.querySelector('.bubble') ? el.querySelector('.bubble').textContent : '',
-        time: el.querySelector('.time-val') ? el.querySelector('.time-val').textContent.trim() : '',
-        unread: !!el.querySelector('.check.unread'),
-        gap: el.classList.contains('gap')
-      }));
+      .map(el=>{
+        let attach=null;
+        if(el.dataset.attach){
+          try{ attach=JSON.parse(el.dataset.attach); }catch(e){}
+          if(attach){   // 表示中に書き換えられた名前・サイズを拾う
+            const nm=el.querySelector('.att-name'), sz=el.querySelector('.att-size');
+            if(nm) attach.name=nm.textContent.trim();
+            if(sz) attach.size=sz.textContent.trim();
+          }
+        }
+        const bubble=el.querySelector('.bubble');
+        const m={
+          side: el.classList.contains('out')?'out':'in',
+          text: (attach||!bubble)?'':bubble.textContent,
+          time: el.querySelector('.time-val') ? el.querySelector('.time-val').textContent.trim() : '',
+          unread: !!el.querySelector('.check.unread'),
+          gap: el.classList.contains('gap')
+        };
+        if(attach) m.attach=attach;
+        return m;
+      });
   }
 
   function currentState(){
@@ -770,7 +891,7 @@
     document.getElementById('typingBtn').classList.remove('active');
     chat.innerHTML='';
     (s.msgs||[]).forEach(m=>{
-      const row=makeRow(m.side,m.text,m.time);
+      const row=makeRow(m.side,m.text,m.time,m.attach);
       if(m.gap) row.classList.add('gap');
       if(m.unread){ const ck=row.querySelector('.check'); if(ck) ck.classList.add('unread'); }
       chat.appendChild(row);
@@ -800,6 +921,10 @@
       messages:collectMsgs().map(m=>{
         const o={ from:m.side==='out'?'me':'them', text:m.text, time:m.time };
         if(m.unread) o.read=false;
+        if(m.attach){
+          // 画像の中身（データURL）はJSONに載せると巨大になるので落とす
+          o.attach=m.attach.kind==='image'?{kind:'image'}:{name:m.attach.name,size:m.attach.size};
+        }
         return o;
       })
     },null,2);
@@ -851,7 +976,17 @@
       // 話し手が変わったところに自動で間隔を入れる（gap 指定があればそれを優先）
       const gap=(m.gap!=null)?!!m.gap:(prevSide!==null&&prevSide!==side);
       first=false; prevSide=side;
-      return { side, text, time, unread:(m.read===false||m.unread===true), gap };
+      const out={ side, text, time, unread:(m.read===false||m.unread===true), gap };
+      const a=m.attach||m.file;
+      if(a){
+        out.attach=(typeof a==='string')
+          ? { kind:'file', name:a, size:'' }
+          : (a.kind==='image'
+              ? { kind:'image', src:a.src||null }
+              : { kind:'file', name:a.name||'ファイル', size:a.size||'' });
+        out.text='';
+      }
+      return out;
     });
 
     if(s.autoTime) retimeState(s);
@@ -884,6 +1019,8 @@
 '- text の改行は \\n で書く。絵文字を使ってよい\n'+
 '- time は省略してよい（省略すると数分ずつ自動で進む）。指定する場合は "22:34" の形式\n'+
 '- 自分のメッセージに既読を付けたくない場合だけ "read": false を足す\n'+
+'- 添付ファイルを送る場面では text の代わりに\n'+
+'  "attach": { "name": "履歴書.pdf", "size": "1.2 MB" } を書く（写真なら "attach": { "kind": "image" }）\n'+
 '- 説明や前置きは書かず、JSONだけを出力する\n';
   function copyPrompt(){
     if(navigator.clipboard&&navigator.clipboard.writeText){
