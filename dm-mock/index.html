@@ -164,6 +164,12 @@
   .upload-btn{ background:#8e8e8e; } .done-btn{ background:var(--out-bubble); }
   .file-name{ font-size:12px; color:var(--sub); }
   .sec-label{ font-size:11px; font-weight:700; color:var(--sub); letter-spacing:.5px; margin-top:4px; }
+  .json-box{
+    width:100%; min-height:120px; resize:vertical;
+    background:transparent; border:1px solid var(--header-border); border-radius:8px;
+    padding:9px 11px; color:var(--text); font-size:12px; line-height:1.5; outline:none;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre;
+  }
   /* レイヤー書き出し（editor 用）：ベースと吹き出しでキャンバスを揃えるため
      要素は display ではなく visibility で消す（レイアウトを動かさない） */
   /* 会話全体を1枚に収めるため、高さの固定を外して内容の高さまで伸ばす */
@@ -329,6 +335,21 @@
         <input type="range" id="setLayerGap" min="0" max="40" value="24">
         <span class="file-name">editor の「結合距離」より広くしないと、隣のバブルと1つの塊にまとめられます</span>
       </div>
+
+      <div class="sec-label">JSON（会話の読み書き）</div>
+      <textarea id="jsonBox" class="json-box" spellcheck="false" placeholder='{"name":"もんめ","messages":[{"from":"them","text":"はじめまして！"}]}'></textarea>
+      <div class="panel-btns">
+        <button class="upload-btn" onclick="jsonDump()">現在の会話を出す</button>
+        <button class="done-btn" onclick="jsonLoad()">読み込む</button>
+      </div>
+      <div class="panel-btns">
+        <button class="upload-btn" onclick="jsonCopy()">📋 コピー</button>
+        <button class="upload-btn" onclick="jsonSave()">💾 ファイル</button>
+        <button class="upload-btn" onclick="document.getElementById('jsonFile').click()">📂 読込</button>
+      </div>
+      <input type="file" id="jsonFile" accept=".json,application/json" hidden>
+      <div class="panel-btns"><button class="upload-btn" onclick="copyPrompt()">🤖 AI用の書式をコピー</button></div>
+      <span class="file-name" id="jsonMsg"></span>
 
       <div class="sec-label">データ</div>
       <div class="panel-btns">
@@ -754,6 +775,111 @@
     chat.scrollTop=chat.scrollHeight;
 
     _restoring=false;
+  }
+
+  /* ===== JSON 読み書き =====
+     AIに書いてもらうことを前提に、必須は from と text だけ。
+     時刻・間隔・既読は省略でき、省略ぶんはこちらで埋める。 */
+  // 自分側と読める呼び方を広めに受ける。それ以外は相手からの受信扱い
+  const SIDE_OUT=['out','me','self','sent','mine','myself','user','自分','送信'];
+  function normSide(v){ return SIDE_OUT.includes(String(v==null?'':v).trim().toLowerCase())?'out':'in'; }
+  const jsonMsg=t=>{ const el=document.getElementById('jsonMsg'); el.textContent=t; setTimeout(()=>{ if(el.textContent===t) el.textContent=''; },4000); };
+
+  function chatToJSON(){
+    return JSON.stringify({
+      name:setName.value,
+      messages:collectMsgs().map(m=>{
+        const o={ from:m.side==='out'?'me':'them', text:m.text, time:m.time };
+        if(m.unread) o.read=false;
+        return o;
+      })
+    },null,2);
+  }
+  function jsonDump(){ document.getElementById('jsonBox').value=chatToJSON(); jsonMsg('現在の会話を書き出しました'); }
+  function jsonCopy(){
+    const box=document.getElementById('jsonBox');
+    if(!box.value.trim()) box.value=chatToJSON();
+    const t=box.value;
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(()=>jsonMsg('コピーしました'),()=>{ box.select(); jsonMsg('選択しました。手動でコピーしてください'); });
+    }else{ box.select(); jsonMsg('選択しました。手動でコピーしてください'); }
+  }
+  function jsonSave(){
+    const box=document.getElementById('jsonBox');
+    if(!box.value.trim()) box.value=chatToJSON();
+    const blob=new Blob([box.value],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.download='chat.json'; a.href=url; a.click();
+    URL.revokeObjectURL(url); jsonMsg('chat.json を保存しました');
+  }
+
+  function jsonLoad(){
+    const text=document.getElementById('jsonBox').value.trim();
+    if(!text){ jsonMsg('JSONを貼り付けてください'); return; }
+    let data;
+    try{ data=JSON.parse(text); }
+    catch(e){ jsonMsg('JSONとして読めません: '+e.message); return; }
+    const arr=Array.isArray(data)?data:(data&&Array.isArray(data.messages)?data.messages:null);
+    if(!arr){ jsonMsg('messages の配列が見つかりません'); return; }
+    if(!arr.length){ jsonMsg('メッセージが空です'); return; }
+
+    const s=currentState();
+    if(data&&typeof data.name==='string'&&data.name.trim()) s.name=data.name.trim();
+
+    let cur=parseTimeInput(s.firstTime), first=true, prevSide=null;
+    s.msgs=arr.map(m=>{
+      if(typeof m==='string') m={from:'them',text:m};
+      const side=normSide(m.from!=null?m.from:(m.side!=null?m.side:m.dir));
+      const text=String(m.text!=null?m.text:(m.body!=null?m.body:(m.message!=null?m.message:'')));
+      const raw=(m.time!=null?m.time:m.at);
+      let time;
+      if(raw==null||String(raw).trim()===''){
+        if(!first) cur+=3+Math.floor(Math.random()*3);   // 省略時は3〜5分ずつ進める
+        time=fmtMin(cur);
+      }else{
+        cur=parseTimeInput(String(raw)); time=String(raw).trim();
+      }
+      // 話し手が変わったところに自動で間隔を入れる（gap 指定があればそれを優先）
+      const gap=(m.gap!=null)?!!m.gap:(prevSide!==null&&prevSide!==side);
+      first=false; prevSide=side;
+      return { side, text, time, unread:(m.read===false||m.unread===true), gap };
+    });
+
+    if(s.autoTime) retimeState(s);
+    applyState(s); save();
+    closePanel();
+    jsonMsg('');
+  }
+
+  document.getElementById('jsonFile').addEventListener('change',function(e){
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{ document.getElementById('jsonBox').value=ev.target.result; jsonLoad(); };
+    r.readAsText(f);
+    this.value='';
+  });
+
+  const AI_PROMPT=
+'次の書式のJSONで、スマホのメッセージアプリのやりとりを書いてください。\n'+
+'\n'+
+'{\n'+
+'  "name": "相手の表示名",\n'+
+'  "messages": [\n'+
+'    { "from": "them", "text": "相手からのメッセージ" },\n'+
+'    { "from": "me",   "text": "自分からのメッセージ" }\n'+
+'  ]\n'+
+'}\n'+
+'\n'+
+'ルール:\n'+
+'- from は "them"（相手）か "me"（自分）のどちらか\n'+
+'- text の改行は \\n で書く。絵文字を使ってよい\n'+
+'- time は省略してよい（省略すると数分ずつ自動で進む）。指定する場合は "22:34" の形式\n'+
+'- 自分のメッセージに既読を付けたくない場合だけ "read": false を足す\n'+
+'- 説明や前置きは書かず、JSONだけを出力する\n';
+  function copyPrompt(){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(AI_PROMPT).then(()=>jsonMsg('AI用の書式をコピーしました'),()=>jsonMsg('コピーできませんでした'));
+    }else jsonMsg('この環境ではコピーできません');
   }
 
   function loadSample(){
