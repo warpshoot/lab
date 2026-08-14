@@ -1170,23 +1170,68 @@
      共有は「直前のユーザー操作」が必要だが、html2canvas の描画に時間がかかると
      その資格が切れて NotAllowedError になる。以前はこれを握り潰していたため、
      ボタンを押しても何も起きないことがあった。 */
+  /* 無圧縮ZIP。PNGは既に圧縮済みなので詰め直す意味がなく、
+     これならライブラリ無しで数十行で書ける。 */
+  const CRC_TABLE=(()=>{
+    const t=new Uint32Array(256);
+    for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c>>>0; }
+    return t;
+  })();
+  function crc32(u8){
+    let c=0xFFFFFFFF;
+    for(let i=0;i<u8.length;i++) c=CRC_TABLE[(c^u8[i])&0xFF]^(c>>>8);
+    return (c^0xFFFFFFFF)>>>0;
+  }
+  async function makeZip(items){
+    const enc=new TextEncoder(), now=new Date();
+    const time=(now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1);
+    const date=((now.getFullYear()-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate();
+    const buf=n=>{ const b=new Uint8Array(n); return [b,new DataView(b.buffer)]; };
+    const local=[], central=[];
+    let offset=0;
+    for(const [name,blob] of items){
+      const data=new Uint8Array(await blob.arrayBuffer());
+      const nm=enc.encode(name), crc=crc32(data);
+      const [lh,lv]=buf(30);
+      lv.setUint32(0,0x04034b50,true); lv.setUint16(4,20,true); lv.setUint16(6,0x800,true);
+      lv.setUint16(8,0,true); lv.setUint16(10,time,true); lv.setUint16(12,date,true);
+      lv.setUint32(14,crc,true); lv.setUint32(18,data.length,true); lv.setUint32(22,data.length,true);
+      lv.setUint16(26,nm.length,true); lv.setUint16(28,0,true);
+      local.push(lh,nm,data);
+      const [ch,cv]=buf(46);
+      cv.setUint32(0,0x02014b50,true); cv.setUint16(4,20,true); cv.setUint16(6,20,true);
+      cv.setUint16(8,0x800,true); cv.setUint16(10,0,true); cv.setUint16(12,time,true); cv.setUint16(14,date,true);
+      cv.setUint32(16,crc,true); cv.setUint32(20,data.length,true); cv.setUint32(24,data.length,true);
+      cv.setUint16(28,nm.length,true); cv.setUint16(30,0,true); cv.setUint16(32,0,true);
+      cv.setUint16(34,0,true); cv.setUint16(36,0,true); cv.setUint32(38,0,true);
+      cv.setUint32(42,offset,true);
+      central.push(ch,nm);
+      offset+=30+nm.length+data.length;
+    }
+    const cdSize=central.reduce((a,x)=>a+x.length,0);
+    const [eh,ev]=buf(22);
+    ev.setUint32(0,0x06054b50,true);
+    ev.setUint16(8,items.length,true); ev.setUint16(10,items.length,true);
+    ev.setUint32(12,cdSize,true); ev.setUint32(16,offset,true);
+    return new Blob([...local,...central,eh],{type:'application/zip'});
+  }
+
   async function saveFiles(items){
-    const files=items.map(([n,b])=>new File([b],n,{type:'image/png'}));
+    // 複数ファイルを続けてダウンロードするとブラウザに止められるので、
+    // 2つ以上あるときはZIP1個にまとめて渡す
+    if(items.length>1) items=[['dm-layers.zip',await makeZip(items),'application/zip']];
+    const files=items.map(([n,b,t])=>new File([b],n,{type:t||'image/png'}));
     if(navigator.canShare && navigator.canShare({files})){
       try{ await navigator.share({files}); return; }
       catch(e){ if(e && e.name==='AbortError') return; }  // ユーザーが自分でやめた場合だけ何もしない
     }
-    for(let i=0;i<items.length;i++){
-      const [n,b]=items[i];
-      const url=URL.createObjectURL(b);
-      // 一部のブラウザは文書に繋がっていないリンクを無視する
-      const a=document.createElement('a'); a.download=n; a.href=url;
-      document.body.appendChild(a); a.click(); a.remove();
-      // すぐ revoke するとダウンロードが始まる前に無効化されることがある
-      setTimeout(()=>URL.revokeObjectURL(url),10000);
-      // 複数同時DLはブラウザに止められることがあるので間隔をあける
-      if(i<items.length-1) await new Promise(r=>setTimeout(r,700));
-    }
+    const [n,b]=items[0];
+    const url=URL.createObjectURL(b);
+    // 一部のブラウザは文書に繋がっていないリンクを無視する
+    const a=document.createElement('a'); a.download=n; a.href=url;
+    document.body.appendChild(a); a.click(); a.remove();
+    // すぐ revoke するとダウンロードが始まる前に無効化されることがある
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
   }
 
   /* target を渡すと、そのメッセージだけを演出対象にする:
