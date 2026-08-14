@@ -321,6 +321,11 @@ body {
         <label>アクションバー</label>
         <span class="switch"><input type="checkbox" id="actionToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
       </div>
+      <div class="sec">データ</div>
+      <div class="panel-btns">
+        <button class="upload-btn" onclick="loadSample()">📄 サンプルを表示</button>
+        <button class="upload-btn" onclick="resetAll()">↺ リセット</button>
+      </div>
       <div class="panel-btns"><button class="done-btn" onclick="closePanel()">完了</button></div>
     </div>
   </div>
@@ -353,6 +358,7 @@ palette.forEach((g, i) => {
     document.getElementById('fileName').textContent = '';
     document.querySelectorAll('.swatch').forEach(x => x.classList.remove('sel'));
     s.classList.add('sel');
+    scheduleSave();
   };
   colorRow.appendChild(s);
 });
@@ -366,6 +372,7 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
     avatar.textContent = '';
     document.getElementById('fileName').textContent = f.name;
     document.querySelectorAll('.swatch').forEach(x => x.classList.remove('sel'));
+    scheduleSave();
   };
   r.readAsDataURL(f);
 });
@@ -375,6 +382,7 @@ function clearImg() {
   avatar.style.background = avatarColor;
   avatar.textContent = fc(document.getElementById('setName').value);
   document.getElementById('fileName').textContent = '';
+  scheduleSave();
 }
 
 function fc(s) { return (s || '').trim()[0] || '?'; }
@@ -436,6 +444,7 @@ function toggleToolbar() { document.getElementById('toolbar').classList.toggle('
 function toggleDark() {
   document.body.classList.toggle('dark');
   document.getElementById('darkBtn').textContent = document.body.classList.contains('dark') ? '☀ ライト' : '🌙 ダーク';
+  scheduleSave();
 }
 
 let uiHidden = false;
@@ -468,6 +477,133 @@ function openPanel() {
   document.getElementById('overlay').classList.add('open');
 }
 function closePanel() { document.getElementById('overlay').classList.remove('open'); }
+
+/* ===== サンプル / ローカル保存 ===== */
+const LS_KEY = 'xpostmock-state-v1';
+const SAMPLE_BODY =
+'✨🔰未経験さん大歓迎💰高額報酬✨\n' +
+'男性のサポートのお仕事です🤝むずかしいことは一切なし！未経験の方にもイチから丁寧に指導します◎\n' +
+'資格・経験・容姿いっさい不問！即金OK・ノルマなし🙆‍♀️選考は 身分証の確認→かんたんな適性検査だけ✌️\n' +
+'ご応募はDMにて顔写真付きの履歴書を添付の上、お気軽に✉️';
+
+function sampleState() {
+  return {
+    name: 'もんめ', handle: 'chionvfraschjajoovhj7',
+    avatarColor: palette[1], avatarImg: null,
+    body: SAMPLE_BODY,
+    postTime: '21:26', postDate: '2026/06/05', sbTime: '11:17',
+    views: '591万', reply: '404', rt: '1764', like: '1', bk: '5444',
+    viewsOn: false, replyOn: false, rtOn: false, likeOn: true, bkOn: false,
+    sbShow: true, actionShow: true, dark: false
+  };
+}
+
+const $ = id => document.getElementById(id);
+let _saveTimer = null, _restoring = false;
+
+function currentState() {
+  return {
+    name: $('setName').value,
+    handle: $('setHandle').value,
+    avatarColor, avatarImg,
+    body: $('postBody').textContent,
+    postTime: $('setPostTime').value,
+    postDate: $('setPostDate').value,
+    sbTime: $('setSbTime').value,
+    views: $('setViews').value,
+    reply: $('setReply').value,
+    rt: $('setRt').value,
+    like: $('setLike').value,
+    bk: $('setBk').value,
+    viewsOn: $('viewsToggle').checked,
+    replyOn: $('replyToggle').checked,
+    rtOn: $('rtToggle').checked,
+    likeOn: $('likeToggle').checked,
+    bkOn: $('bkToggle').checked,
+    sbShow: $('sbToggle').checked,
+    actionShow: $('actionToggle').checked,
+    dark: document.body.classList.contains('dark')
+  };
+}
+
+function save() {
+  if (_restoring) return;
+  try { localStorage.setItem(LS_KEY, JSON.stringify(currentState())); } catch (e) {}
+}
+function scheduleSave() { clearTimeout(_saveTimer); _saveTimer = setTimeout(save, 250); }
+
+function applyState(s) {
+  _restoring = true;
+
+  $('setName').value = s.name;
+  $('displayName').textContent = s.name || '名無し';
+  $('setHandle').value = s.handle;
+  $('displayHandle').textContent = '@' + s.handle;
+
+  avatarColor = s.avatarColor || palette[0];
+  avatarImg = s.avatarImg || null;
+  if (avatarImg) {
+    avatar.style.background = 'url(' + avatarImg + ') center/cover';
+    avatar.textContent = '';
+    document.querySelectorAll('.swatch').forEach(x => x.classList.remove('sel'));
+  } else {
+    avatar.style.background = avatarColor;
+    avatar.textContent = fc(s.name);
+    const ci = palette.indexOf(avatarColor);
+    document.querySelectorAll('.swatch').forEach((x, i) => x.classList.toggle('sel', i === ci));
+  }
+  $('fileName').textContent = '';
+
+  $('postBody').textContent = s.body;
+
+  [['setPostTime', 'postTime', s.postTime],
+   ['setPostDate', 'postDate', s.postDate],
+   ['setViews', 'viewCount', s.views],
+   ['setReply', 'replyCount', s.reply],
+   ['setRt', 'rtCount', s.rt],
+   ['setLike', 'likeCount', s.like],
+   ['setBk', 'bkCount', s.bk]].forEach(([inp, out, v]) => {
+    $(inp).value = v; $(out).textContent = v;
+  });
+  $('setSbTime').value = s.sbTime;
+  $('sbTime').textContent = s.sbTime;
+
+  [['viewsToggle', 'viewsSpan', s.viewsOn],
+   ['replyToggle', 'replyCount', s.replyOn],
+   ['rtToggle', 'rtCount', s.rtOn],
+   ['likeToggle', 'likeCount', s.likeOn],
+   ['bkToggle', 'bkCount', s.bkOn],
+   ['sbToggle', 'statusbarEl', s.sbShow],
+   ['actionToggle', 'actionBarEl', s.actionShow]].forEach(([tg, el, on]) => {
+    $(tg).checked = !!on; $(el).style.display = on ? '' : 'none';
+  });
+
+  const wantDark = !!s.dark;
+  document.body.classList.toggle('dark', wantDark);
+  $('darkBtn').textContent = wantDark ? '☀ ライト' : '🌙 ダーク';
+
+  _restoring = false;
+}
+
+function loadSample() { applyState(sampleState()); save(); closePanel(); }
+function resetAll() {
+  if (!confirm('編集内容を消してサンプルに戻します。よろしいですか？')) return;
+  try { localStorage.removeItem(LS_KEY); } catch (e) {}
+  applyState(sampleState()); save(); closePanel();
+}
+
+// 変更を自動保存
+$('postBody').addEventListener('input', scheduleSave);
+document.querySelector('.panel').addEventListener('input', scheduleSave);
+document.querySelector('.panel').addEventListener('change', scheduleSave);
+
+// 初期表示：保存があれば復元、なければサンプル
+(function init() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
+  applyState(saved && typeof saved.body === 'string' ? saved : sampleState());
+  save();
+})();
 
 function capture() {
   const fab = document.getElementById('fab');
