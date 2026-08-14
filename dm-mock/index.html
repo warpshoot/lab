@@ -175,6 +175,10 @@
   /* 会話全体を1枚に収めるため、高さの固定を外して内容の高さまで伸ばす */
   .export-tall{ height:auto !important; }
   .export-tall .chat{ overflow:visible !important; flex:none !important; }
+  /* 画面に入りきらない会話も1枚に収める。最低でも1画面ぶんの高さは保つので、
+     会話が短いときの見た目（タブバーが下端に来る）は変わらない */
+  .export-full{ height:auto !important; min-height:920px !important; }
+  .export-full .chat{ overflow:visible !important; flex:1 0 auto !important; }
   .export-gap .row{ margin-bottom:var(--layer-gap) !important; }
   .export-gap .row.gap{ margin-top:var(--layer-gap) !important; }
   .export-bubble{ background:transparent !important; }
@@ -324,6 +328,9 @@
           <option value="3" selected>3倍</option>
           <option value="4">4倍</option>
         </select>
+      </div>
+      <div class="toggle-row"><label>画面に入りきらない部分も含める</label>
+        <span class="switch"><input type="checkbox" id="fullToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
       </div>
       <div class="toggle-row"><label>背景を透過（コマ用）</label>
         <span class="switch"><input type="checkbox" id="transToggle"><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
@@ -643,7 +650,7 @@
       sig:4, wifi:3, bat:30, sbShow:true, sbTime:t,
       avatarColor:palette[0], avatarImg:null,
       showTime:true, showCheck:true, dark:false, autoTime:true,
-      exportRange:'phone', exportScale:3, transparent:false, layerGap:24, splitCheck:true,
+      exportRange:'phone', exportScale:3, transparent:false, layerGap:24, splitCheck:true, exportFull:true,
       msgs:[{ side:'in', text:SAMPLE_TEXT, time:t, unread:false, gap:false }]
     };
   }
@@ -688,6 +695,7 @@
       exportRange:document.getElementById('setExportRange').value,
       exportScale:+document.getElementById('setExportScale').value,
       transparent:document.getElementById('transToggle').checked,
+      exportFull:document.getElementById('fullToggle').checked,
       layerGap:+document.getElementById('setLayerGap').value,
       splitCheck:document.getElementById('splitCheckToggle').checked,
       dark:document.body.classList.contains('dark'),
@@ -751,6 +759,7 @@
     document.getElementById('setExportRange').value=s.exportRange||'phone';
     document.getElementById('setExportScale').value=String(s.exportScale||3);
     document.getElementById('transToggle').checked=!!s.transparent;
+    document.getElementById('fullToggle').checked=s.exportFull!==false;
     document.getElementById('splitCheckToggle').checked=s.splitCheck!==false;
     const lg=(s.layerGap===undefined?24:s.layerGap);
     document.getElementById('setLayerGap').value=lg;
@@ -942,7 +951,26 @@
     };
   }
 
-  /* ===== 書き出し ===== */
+  /* ===== 書き出し =====
+     html2canvas が読み込めていないと書き出しが全部失敗する。しかも参照した時点で
+     即例外になるため、後片付けが走らず⚙ボタンが消えたままになっていた。
+     使う直前に存在を確かめ、無ければCDNから取り直す。 */
+  let _h2c=null;
+  function ensureH2C(){
+    if(typeof html2canvas==='function') return Promise.resolve();
+    if(_h2c) return _h2c;
+    _h2c=new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      s.onload=()=>typeof html2canvas==='function'?res():rej(new Error('html2canvas を読み込めませんでした'));
+      s.onerror=()=>rej(new Error('html2canvas が見つかりません。vendor/html2canvas.min.js を読めず、CDNにも接続できませんでした'));
+      document.head.appendChild(s);
+    });
+    _h2c.catch(()=>{ _h2c=null; });   // 次回また試せるようにする
+    return _h2c;
+  }
+  function render(target,opts){ return ensureH2C().then(()=>html2canvas(target,opts)); }
+
   function lastRow(){
     const rows=[...chat.children].filter(el=>el.classList.contains('row')&&el!==typingRow);
     return rows[rows.length-1]||null;
@@ -961,10 +989,14 @@
     const isPhone=(target===document.getElementById('phone'));
 
     const composer=document.getElementById('composer'), fab=document.getElementById('fab'), toolbar=document.getElementById('toolbar');
+    const phone=document.getElementById('phone');
     const cDisp=composer.style.display;
     const rescale=unscale();
     // 出現アニメ中に書き出すと途中の姿で写るので、その場で終わらせる
     chat.querySelectorAll('.new-msg').forEach(e=>e.classList.remove('new-msg'));
+    // スクロールで隠れているぶんも1枚に収める（1メッセージだけの書き出しには不要）
+    const useFull=!el && document.getElementById('fullToggle').checked;
+    if(useFull) phone.classList.add('export-full');
     toolbar.classList.remove('open');
     fab.style.display='none';
     document.querySelectorAll('.del').forEach(d=>d.style.display='none');
@@ -972,28 +1004,23 @@
     if(isPhone) composer.style.display='none';
 
     const restore=()=>{
+      phone.classList.remove('export-full');
       rescale();
       fab.style.display='';
       if(!uiHidden){
         document.querySelectorAll('.del').forEach(d=>d.style.display='');
         if(isPhone) composer.style.display=cDisp||'flex';
       }else if(isPhone){ composer.style.display='none'; }
+      chat.scrollTop=chat.scrollHeight;
     };
 
     const bg=trans?null:(document.body.classList.contains('dark')?'#10141a':'#ffffff');
     const name=el?'koma.png':(isPhone?'message.png':'message-part.png');
-    html2canvas(target,{backgroundColor:bg,scale,logging:false}).then(c=>{
-      c.toBlob(async (blob)=>{
-        const file=new File([blob],name,{type:'image/png'});
-        if(navigator.canShare && navigator.canShare({files:[file]})){
-          try{ await navigator.share({files:[file]}); } catch(e){}
-          restore(); return;
-        }
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement('a'); a.download=name; a.href=url; a.click();
-        URL.revokeObjectURL(url); restore();
-      },'image/png');
-    }).catch(e=>{ restore(); alert('書き出しに失敗しました: '+e); });
+    render(target,{backgroundColor:bg,scale,logging:false})
+      .then(c=>new Promise(r=>c.toBlob(r,'image/png')))
+      .then(blob=>saveFiles([[name,blob]]))
+      .then(restore)
+      .catch(e=>{ restore(); alert('書き出しに失敗しました: '+(e&&e.message||e)); });
   }
 
   /* ===== レイヤー書き出し（editor 用） =====
@@ -1001,18 +1028,28 @@
        base.png   … 吹き出しを消した画面（ベースの絵）
        bubble.png … 吹き出しだけの透過PNG（editor が塊ごとに自動分割する）
      どちらも同じ要素・同じ倍率で撮るのでキャンバスサイズは必ず一致する。 */
-  function deliverFiles(items){
+  /* items = [[ファイル名, Blob], ...] を保存する。
+     共有シートが使えれば使い、駄目ならダウンロードに落とす。
+     共有は「直前のユーザー操作」が必要だが、html2canvas の描画に時間がかかると
+     その資格が切れて NotAllowedError になる。以前はこれを握り潰していたため、
+     ボタンを押しても何も起きないことがあった。 */
+  async function saveFiles(items){
     const files=items.map(([n,b])=>new File([b],n,{type:'image/png'}));
     if(navigator.canShare && navigator.canShare({files})){
-      return navigator.share({files}).catch(()=>{});
+      try{ await navigator.share({files}); return; }
+      catch(e){ if(e && e.name==='AbortError') return; }  // ユーザーが自分でやめた場合だけ何もしない
     }
-    // 複数同時DLはブラウザに止められることがあるので間隔をあける
-    return items.reduce((p,[n,b],i)=>p.then(()=>new Promise(r=>{
+    for(let i=0;i<items.length;i++){
+      const [n,b]=items[i];
       const url=URL.createObjectURL(b);
-      const a=document.createElement('a'); a.download=n; a.href=url; a.click();
-      URL.revokeObjectURL(url);
-      setTimeout(r, i<items.length-1?700:0);
-    })),Promise.resolve());
+      // 一部のブラウザは文書に繋がっていないリンクを無視する
+      const a=document.createElement('a'); a.download=n; a.href=url;
+      document.body.appendChild(a); a.click(); a.remove();
+      // すぐ revoke するとダウンロードが始まる前に無効化されることがある
+      setTimeout(()=>URL.revokeObjectURL(url),10000);
+      // 複数同時DLはブラウザに止められることがあるので間隔をあける
+      if(i<items.length-1) await new Promise(r=>setTimeout(r,700));
+    }
   }
 
   /* target を渡すと、そのメッセージだけを演出対象にする:
@@ -1061,7 +1098,7 @@
       chat.scrollTop=chat.scrollHeight;
     };
 
-    const shot=(bg)=>html2canvas(phone,{backgroundColor:bg,scale,logging:false})
+    const shot=(bg)=>render(phone,{backgroundColor:bg,scale,logging:false})
       .then(c=>new Promise(r=>c.toBlob(r,'image/png')));
 
     // 既読チェックは「送った少しあと」に付けたいので別レイヤーに回す
@@ -1090,9 +1127,9 @@
       return shot(null);
     }).then(check=>{
       if(check) files.push(['mono.png',check]);
-      return deliverFiles(files);
+      return saveFiles(files);
     }).then(restore)
-      .catch(e=>{ restore(); alert('レイヤー書き出しに失敗しました: '+e); });
+      .catch(e=>{ restore(); alert('レイヤー書き出しに失敗しました: '+(e&&e.message||e)); });
   }
 
   /* 選択モード：バブルをタップして対象を決める
