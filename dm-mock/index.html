@@ -18,13 +18,16 @@
     --out-bubble:#4ca771; --out-text:#ffffff;
     --bar:#10141a; --icon:#f2f3f5;
   }
-  html,body{ height:100%; }
+  html,body{ min-height:100%; }
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue","Hiragino Sans","Yu Gothic UI",sans-serif;
-    background:#444; display:flex; justify-content:center; color:var(--text); transition:background .2s;
+    background:#444; display:flex; justify-content:center; align-items:flex-start; color:var(--text); transition:background .2s;
   }
+  /* 素材のサイズは制作環境に依存させない。端末が狭いときは stage で縮小表示するだけで、
+     レイアウト（＝書き出される画像）は常に 420x920 のスマホ画面。 */
+  .stage{ position:relative; }
   .phone{
-    width:100%; max-width:420px; height:100vh; max-height:920px;
+    width:420px; height:920px; transform-origin:top left;
     background:var(--bg); display:flex; flex-direction:column;
     position:relative; overflow:hidden; transition:background .2s;
   }
@@ -161,16 +164,45 @@
   .upload-btn{ background:#8e8e8e; } .done-btn{ background:var(--out-bubble); }
   .file-name{ font-size:12px; color:var(--sub); }
   .sec-label{ font-size:11px; font-weight:700; color:var(--sub); letter-spacing:.5px; margin-top:4px; }
-  .koma-mode .bubble{ cursor:crosshair; outline:2px dashed var(--out-bubble); outline-offset:3px; }
-  .koma-mode .del{ display:none !important; }
+  .json-box{
+    width:100%; min-height:120px; resize:vertical;
+    background:transparent; border:1px solid var(--header-border); border-radius:8px;
+    padding:9px 11px; color:var(--text); font-size:12px; line-height:1.5; outline:none;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre;
+  }
+  /* レイヤー書き出し（editor 用）：ベースと吹き出しでキャンバスを揃えるため
+     要素は display ではなく visibility で消す（レイアウトを動かさない） */
+  /* 会話全体を1枚に収めるため、高さの固定を外して内容の高さまで伸ばす */
+  .export-tall{ height:auto !important; }
+  .export-tall .chat{ overflow:visible !important; flex:none !important; }
+  .export-gap .row{ margin-bottom:var(--layer-gap) !important; }
+  .export-gap .row.gap{ margin-top:var(--layer-gap) !important; }
+  .export-bubble{ background:transparent !important; }
+  /* 既読チェックを別レイヤーに分ける（バブルの少しあとに付けるため） */
+  .export-bubble .check{ visibility:hidden !important; }
+  .export-bubble.keep-check .check{ visibility:visible !important; }
+  .export-bubble.export-check .bubble,
+  .export-bubble.export-check .time-val{ visibility:hidden !important; }
+  .export-bubble.export-check .check{ visibility:visible !important; }
+  .export-bubble .statusbar,
+  .export-bubble .header,
+  .export-bubble .tabbar{ visibility:hidden !important; }
+  .sel-mode .bubble{ cursor:crosshair; outline:2px dashed var(--out-bubble); outline-offset:3px; }
+  .sel-mode .del{ display:none !important; }
   .koma-hint{
     position:absolute; left:50%; transform:translateX(-50%); top:8px; z-index:31;
     background:rgba(20,20,20,.86); color:#fff; font-size:12px; font-weight:600;
-    padding:7px 14px; border-radius:16px; white-space:nowrap; pointer-events:none;
+    padding:7px 12px; border-radius:16px; white-space:nowrap;
+    display:flex; align-items:center; gap:10px;
+  }
+  .koma-hint button{
+    border:none; border-radius:11px; padding:4px 9px; font-size:11px; font-weight:700;
+    background:rgba(255,255,255,.22); color:#fff; cursor:pointer;
   }
 </style>
 </head>
 <body>
+<div class="stage" id="stage">
 <div class="phone" id="phone">
   <button class="fab" id="fab" onclick="toggleToolbar()">⚙</button>
   <div class="toolbar" id="toolbar">
@@ -179,6 +211,7 @@
     <button onclick="loadSample()">📄 サンプル</button>
     <button onclick="capture()">📷 画像保存</button>
     <button onclick="toggleKoma()" id="komaBtn">✂ コマ書き出し</button>
+    <button onclick="startLayerExport()">🗂 レイヤー書き出し</button>
     <button onclick="replayWithHide()">▶ 隠して再生</button>
     <button onclick="hideUI()">🙈 UIを隠す</button>
   </div>
@@ -295,6 +328,28 @@
       <div class="toggle-row"><label>背景を透過（コマ用）</label>
         <span class="switch"><input type="checkbox" id="transToggle"><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
       </div>
+      <div class="toggle-row"><label>既読チェックを別レイヤーに分ける</label>
+        <span class="switch"><input type="checkbox" id="splitCheckToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
+      </div>
+      <div class="field"><label>レイヤー書き出し時のバブル間隔　<span id="setLayerGapVal">24px</span></label>
+        <input type="range" id="setLayerGap" min="0" max="40" value="24">
+        <span class="file-name">editor の「結合距離」より広くしないと、隣のバブルと1つの塊にまとめられます</span>
+      </div>
+
+      <div class="sec-label">JSON（会話の読み書き）</div>
+      <textarea id="jsonBox" class="json-box" spellcheck="false" placeholder='{"name":"もんめ","messages":[{"from":"them","text":"はじめまして！"}]}'></textarea>
+      <div class="panel-btns">
+        <button class="upload-btn" onclick="jsonDump()">現在の会話を出す</button>
+        <button class="done-btn" onclick="jsonLoad()">読み込む</button>
+      </div>
+      <div class="panel-btns">
+        <button class="upload-btn" onclick="jsonCopy()">📋 コピー</button>
+        <button class="upload-btn" onclick="jsonSave()">💾 ファイル</button>
+        <button class="upload-btn" onclick="document.getElementById('jsonFile').click()">📂 読込</button>
+      </div>
+      <input type="file" id="jsonFile" accept=".json,application/json" hidden>
+      <div class="panel-btns"><button class="upload-btn" onclick="copyPrompt()">🤖 AI用の書式をコピー</button></div>
+      <span class="file-name" id="jsonMsg"></span>
 
       <div class="sec-label">データ</div>
       <div class="panel-btns">
@@ -304,6 +359,7 @@
       <div class="panel-btns"><button class="done-btn" onclick="closePanel()">完了</button></div>
     </div>
   </div>
+</div>
 </div>
 
 <script src="../vendor/html2canvas.min.js"></script>
@@ -387,6 +443,13 @@
     input.focus();
   }
   let typingRow=null;
+  /* 出現アニメを再生する。html2canvas は書き出し時に文書を複製し、その複製では
+     CSSアニメーションが頭から再生される。クラスを付けっぱなしにすると書き出した
+     バブルがアニメの途中（＝縮んだ状態）で写るので、終わったら必ず外す。 */
+  function pop(el){
+    el.classList.add('new-msg');
+    el.addEventListener('animationend',()=>el.classList.remove('new-msg'),{once:true});
+  }
   function toggleTyping(){
     const btn=document.getElementById('typingBtn');
     if(typingRow){ typingRow.remove(); typingRow=null; btn.classList.remove('active'); return; }
@@ -394,7 +457,7 @@
     const bubble=document.createElement('div'); bubble.className='bubble';
     bubble.style.cssText='display:flex;align-items:center;gap:5px;padding:10px 16px;';
     for(let i=0;i<3;i++){ const d=document.createElement('span'); d.className='typing-dot'; bubble.appendChild(d); }
-    typingRow.appendChild(bubble); chat.appendChild(typingRow); typingRow.classList.add('new-msg'); chat.scrollTop=chat.scrollHeight;
+    typingRow.appendChild(bubble); chat.appendChild(typingRow); pop(typingRow); chat.scrollTop=chat.scrollHeight;
     btn.classList.add('active');
   }
   function send(){
@@ -404,7 +467,7 @@
     const last=typingRow ? typingRow.previousElementSibling : chat.lastElementChild;
     if(last && !last.classList.contains(dir) && !last.classList.contains('day')) row.classList.add('gap');
     if(typingRow) chat.insertBefore(row,typingRow); else chat.appendChild(row);
-    row.classList.add('new-msg');
+    pop(row);
     chat.scrollTop=chat.scrollHeight;
     input.value=''; autoGrow(); input.focus();
     updateStatusBarTime();
@@ -442,14 +505,14 @@
         bbl.style.cssText='display:flex;align-items:center;gap:5px;padding:10px 16px;';
         for(let i=0;i<3;i++){ const d=document.createElement('span'); d.className='typing-dot'; bbl.appendChild(d); }
         tmpTyping.appendChild(bbl); chat.appendChild(tmpTyping);
-        tmpTyping.classList.add('new-msg');
+        pop(tmpTyping);
         chat.scrollTop=chat.scrollHeight;
       }
       setTimeout(()=>{
         if(tmpTyping){ tmpTyping.remove(); tmpTyping=null; }
         setTimeout(()=>{
           last.style.visibility='';
-          last.classList.add('new-msg');
+          pop(last);
           chat.scrollTop=chat.scrollHeight;
         },150);
       },1400);
@@ -457,7 +520,7 @@
       // 送信: 間をおいてメッセージ出現
       setTimeout(()=>{
         last.style.visibility='';
-        last.classList.add('new-msg');
+        pop(last);
         chat.scrollTop=chat.scrollHeight;
       },400);
     }
@@ -501,6 +564,7 @@
   document.getElementById('setSig').addEventListener('change',function(){ updateSignal(+this.value); });
   document.getElementById('setWifi').addEventListener('change',function(){ updateWifi(+this.value); });
   document.getElementById('setBat').addEventListener('input',function(){ updateBattery(+this.value); });
+  document.getElementById('setLayerGap').addEventListener('input',function(){ document.getElementById('setLayerGapVal').textContent=this.value+'px'; });
   document.getElementById('sbToggle').addEventListener('change',function(){ document.getElementById('phone').classList.toggle('hide-statusbar',!this.checked); });
   const sbTimeEl=document.getElementById('sbTime');
   sbTimeEl.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); sbTimeEl.blur(); } });
@@ -579,7 +643,7 @@
       sig:4, wifi:3, bat:30, sbShow:true, sbTime:t,
       avatarColor:palette[0], avatarImg:null,
       showTime:true, showCheck:true, dark:false, autoTime:true,
-      exportRange:'phone', exportScale:3, transparent:false,
+      exportRange:'phone', exportScale:3, transparent:false, layerGap:24, splitCheck:true,
       msgs:[{ side:'in', text:SAMPLE_TEXT, time:t, unread:false, gap:false }]
     };
   }
@@ -624,6 +688,8 @@
       exportRange:document.getElementById('setExportRange').value,
       exportScale:+document.getElementById('setExportScale').value,
       transparent:document.getElementById('transToggle').checked,
+      layerGap:+document.getElementById('setLayerGap').value,
+      splitCheck:document.getElementById('splitCheckToggle').checked,
       dark:document.body.classList.contains('dark'),
       msgs:collectMsgs()
     };
@@ -685,6 +751,10 @@
     document.getElementById('setExportRange').value=s.exportRange||'phone';
     document.getElementById('setExportScale').value=String(s.exportScale||3);
     document.getElementById('transToggle').checked=!!s.transparent;
+    document.getElementById('splitCheckToggle').checked=s.splitCheck!==false;
+    const lg=(s.layerGap===undefined?24:s.layerGap);
+    document.getElementById('setLayerGap').value=lg;
+    document.getElementById('setLayerGapVal').textContent=lg+'px';
 
     // メッセージ
     if(typingRow){ typingRow.remove(); typingRow=null; }
@@ -705,6 +775,111 @@
     chat.scrollTop=chat.scrollHeight;
 
     _restoring=false;
+  }
+
+  /* ===== JSON 読み書き =====
+     AIに書いてもらうことを前提に、必須は from と text だけ。
+     時刻・間隔・既読は省略でき、省略ぶんはこちらで埋める。 */
+  // 自分側と読める呼び方を広めに受ける。それ以外は相手からの受信扱い
+  const SIDE_OUT=['out','me','self','sent','mine','myself','user','自分','送信'];
+  function normSide(v){ return SIDE_OUT.includes(String(v==null?'':v).trim().toLowerCase())?'out':'in'; }
+  const jsonMsg=t=>{ const el=document.getElementById('jsonMsg'); el.textContent=t; setTimeout(()=>{ if(el.textContent===t) el.textContent=''; },4000); };
+
+  function chatToJSON(){
+    return JSON.stringify({
+      name:setName.value,
+      messages:collectMsgs().map(m=>{
+        const o={ from:m.side==='out'?'me':'them', text:m.text, time:m.time };
+        if(m.unread) o.read=false;
+        return o;
+      })
+    },null,2);
+  }
+  function jsonDump(){ document.getElementById('jsonBox').value=chatToJSON(); jsonMsg('現在の会話を書き出しました'); }
+  function jsonCopy(){
+    const box=document.getElementById('jsonBox');
+    if(!box.value.trim()) box.value=chatToJSON();
+    const t=box.value;
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(()=>jsonMsg('コピーしました'),()=>{ box.select(); jsonMsg('選択しました。手動でコピーしてください'); });
+    }else{ box.select(); jsonMsg('選択しました。手動でコピーしてください'); }
+  }
+  function jsonSave(){
+    const box=document.getElementById('jsonBox');
+    if(!box.value.trim()) box.value=chatToJSON();
+    const blob=new Blob([box.value],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.download='chat.json'; a.href=url; a.click();
+    URL.revokeObjectURL(url); jsonMsg('chat.json を保存しました');
+  }
+
+  function jsonLoad(){
+    const text=document.getElementById('jsonBox').value.trim();
+    if(!text){ jsonMsg('JSONを貼り付けてください'); return; }
+    let data;
+    try{ data=JSON.parse(text); }
+    catch(e){ jsonMsg('JSONとして読めません: '+e.message); return; }
+    const arr=Array.isArray(data)?data:(data&&Array.isArray(data.messages)?data.messages:null);
+    if(!arr){ jsonMsg('messages の配列が見つかりません'); return; }
+    if(!arr.length){ jsonMsg('メッセージが空です'); return; }
+
+    const s=currentState();
+    if(data&&typeof data.name==='string'&&data.name.trim()) s.name=data.name.trim();
+
+    let cur=parseTimeInput(s.firstTime), first=true, prevSide=null;
+    s.msgs=arr.map(m=>{
+      if(typeof m==='string') m={from:'them',text:m};
+      const side=normSide(m.from!=null?m.from:(m.side!=null?m.side:m.dir));
+      const text=String(m.text!=null?m.text:(m.body!=null?m.body:(m.message!=null?m.message:'')));
+      const raw=(m.time!=null?m.time:m.at);
+      let time;
+      if(raw==null||String(raw).trim()===''){
+        if(!first) cur+=3+Math.floor(Math.random()*3);   // 省略時は3〜5分ずつ進める
+        time=fmtMin(cur);
+      }else{
+        cur=parseTimeInput(String(raw)); time=String(raw).trim();
+      }
+      // 話し手が変わったところに自動で間隔を入れる（gap 指定があればそれを優先）
+      const gap=(m.gap!=null)?!!m.gap:(prevSide!==null&&prevSide!==side);
+      first=false; prevSide=side;
+      return { side, text, time, unread:(m.read===false||m.unread===true), gap };
+    });
+
+    if(s.autoTime) retimeState(s);
+    applyState(s); save();
+    closePanel();
+    jsonMsg('');
+  }
+
+  document.getElementById('jsonFile').addEventListener('change',function(e){
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{ document.getElementById('jsonBox').value=ev.target.result; jsonLoad(); };
+    r.readAsText(f);
+    this.value='';
+  });
+
+  const AI_PROMPT=
+'次の書式のJSONで、スマホのメッセージアプリのやりとりを書いてください。\n'+
+'\n'+
+'{\n'+
+'  "name": "相手の表示名",\n'+
+'  "messages": [\n'+
+'    { "from": "them", "text": "相手からのメッセージ" },\n'+
+'    { "from": "me",   "text": "自分からのメッセージ" }\n'+
+'  ]\n'+
+'}\n'+
+'\n'+
+'ルール:\n'+
+'- from は "them"（相手）か "me"（自分）のどちらか\n'+
+'- text の改行は \\n で書く。絵文字を使ってよい\n'+
+'- time は省略してよい（省略すると数分ずつ自動で進む）。指定する場合は "22:34" の形式\n'+
+'- 自分のメッセージに既読を付けたくない場合だけ "read": false を足す\n'+
+'- 説明や前置きは書かず、JSONだけを出力する\n';
+  function copyPrompt(){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(AI_PROMPT).then(()=>jsonMsg('AI用の書式をコピーしました'),()=>jsonMsg('コピーできませんでした'));
+    }else jsonMsg('この環境ではコピーできません');
   }
 
   function loadSample(){
@@ -737,6 +912,36 @@
     save();
   })();
 
+  /* ===== 表示スケール =====
+     画面が 420px より狭いときだけ縮めて表示する。レイアウトは 420x920 のままなので、
+     スマホで作ってもPCで作っても書き出される素材は同じになる。
+     縦は縮めない（読みやすさ優先／はみ出したらページを縦スクロール）。 */
+  const stage=document.getElementById('stage');
+  function fitStage(){
+    const phone=document.getElementById('phone');
+    const s=Math.min(1,(document.documentElement.clientWidth||420)/420);
+    phone.style.transform=s<1?'scale('+s+')':'';
+    stage.style.width=(420*s)+'px';
+    stage.style.height=(920*s)+'px';
+  }
+  window.addEventListener('resize',fitStage);
+  fitStage();
+
+  // 書き出し中だけ等倍に戻す（縮小表示のまま撮ると素材まで縮む）。
+  // 併せて左寄せにする: 画面より広い 420px を中央寄せすると端数座標に載り、
+  // アバターの縁などがサブピクセルでにじんで端末ごとに差が出る。
+  function unscale(){
+    const phone=document.getElementById('phone');
+    const t=phone.style.transform, w=stage.style.width, h=stage.style.height;
+    const j=document.body.style.justifyContent;
+    phone.style.transform=''; stage.style.width='420px'; stage.style.height='auto';
+    document.body.style.justifyContent='flex-start';
+    return ()=>{
+      phone.style.transform=t; stage.style.width=w; stage.style.height=h;
+      document.body.style.justifyContent=j;
+    };
+  }
+
   /* ===== 書き出し ===== */
   function lastRow(){
     const rows=[...chat.children].filter(el=>el.classList.contains('row')&&el!==typingRow);
@@ -757,6 +962,9 @@
 
     const composer=document.getElementById('composer'), fab=document.getElementById('fab'), toolbar=document.getElementById('toolbar');
     const cDisp=composer.style.display;
+    const rescale=unscale();
+    // 出現アニメ中に書き出すと途中の姿で写るので、その場で終わらせる
+    chat.querySelectorAll('.new-msg').forEach(e=>e.classList.remove('new-msg'));
     toolbar.classList.remove('open');
     fab.style.display='none';
     document.querySelectorAll('.del').forEach(d=>d.style.display='none');
@@ -764,6 +972,7 @@
     if(isPhone) composer.style.display='none';
 
     const restore=()=>{
+      rescale();
       fab.style.display='';
       if(!uiHidden){
         document.querySelectorAll('.del').forEach(d=>d.style.display='');
@@ -787,31 +996,143 @@
     }).catch(e=>{ restore(); alert('書き出しに失敗しました: '+e); });
   }
 
-  /* コマ選択モード：バブルをタップしてそのメッセージだけ書き出す */
-  let komaMode=false, komaHint=null;
-  function toggleKoma(force){
-    komaMode=(force===undefined)? !komaMode : force;
-    document.getElementById('toolbar').classList.remove('open');
-    document.body.classList.toggle('koma-mode',komaMode);
-    // 選択中は文字カーソルが入らないようにする
-    chat.querySelectorAll('.bubble,.time-val').forEach(b=>b.contentEditable=komaMode?'false':'true');
-    if(komaMode){
-      if(!komaHint){
-        komaHint=document.createElement('div');
-        komaHint.className='koma-hint';
-        komaHint.textContent='コマにするメッセージをタップ（もう一度✂で解除）';
-        document.getElementById('phone').appendChild(komaHint);
-      }
-    }else if(komaHint){ komaHint.remove(); komaHint=null; }
+  /* ===== レイヤー書き出し（editor 用） =====
+     会話全体を縦長1枚に伸ばし、同じキャンバスで2枚撮る:
+       base.png   … 吹き出しを消した画面（ベースの絵）
+       bubble.png … 吹き出しだけの透過PNG（editor が塊ごとに自動分割する）
+     どちらも同じ要素・同じ倍率で撮るのでキャンバスサイズは必ず一致する。 */
+  function deliverFiles(items){
+    const files=items.map(([n,b])=>new File([b],n,{type:'image/png'}));
+    if(navigator.canShare && navigator.canShare({files})){
+      return navigator.share({files}).catch(()=>{});
+    }
+    // 複数同時DLはブラウザに止められることがあるので間隔をあける
+    return items.reduce((p,[n,b],i)=>p.then(()=>new Promise(r=>{
+      const url=URL.createObjectURL(b);
+      const a=document.createElement('a'); a.download=n; a.href=url; a.click();
+      URL.revokeObjectURL(url);
+      setTimeout(r, i<items.length-1?700:0);
+    })),Promise.resolve());
   }
+
+  /* target を渡すと、そのメッセージだけを演出対象にする:
+       base.png   … target より前のメッセージは焼き込み、target は場所だけ空ける、
+                     それ以降は削除（＝コマとしてそこで終わる）
+       bubble.png … target だけの透過PNG
+     target を省略すると全メッセージが bubble.png に入る。 */
+  function runLayerExport(target){
+    const scale=+document.getElementById('setExportScale').value||3;
+    const gap=+document.getElementById('setLayerGap').value||0;
+    const phone=document.getElementById('phone');
+    const composer=document.getElementById('composer'), fab=document.getElementById('fab');
+    const cDisp=composer.style.display;
+    const rescale=unscale();
+    // 出現アニメ中に書き出すと途中の姿で写るので、その場で終わらせる
+    chat.querySelectorAll('.new-msg').forEach(e=>e.classList.remove('new-msg'));
+
+    document.getElementById('toolbar').classList.remove('open');
+    fab.style.display='none';
+    document.querySelectorAll('.del').forEach(d=>d.style.display='none');
+    // 2枚とも同じ条件で撮るため、入力欄は両方で非表示にしておく
+    composer.style.display='none';
+    phone.style.setProperty('--layer-gap',gap+'px');
+    phone.classList.add('export-tall','export-gap');
+
+    const rows=[...chat.children].filter(el=>el.classList.contains('row')&&el!==typingRow);
+    const idx=target?rows.indexOf(target):-1;
+    const picked=idx>=0?[rows[idx]]:rows;          // 出現させるメッセージ
+    const before=idx>=0?rows.slice(0,idx):[];      // ベースに焼き込むメッセージ
+    const after =idx>=0?rows.slice(idx+1):[];      // コマに含めないメッセージ
+    // 以降のメッセージは2枚とも display:none。両パスで同じレイアウトなのでキャンバスは揃う
+    const undo=after.map(r=>{ const d=r.style.display; r.style.display='none'; return ()=>r.style.display=d; });
+    const setVis=(els,v)=>els.forEach(e=>e.style.visibility=v);
+
+    const restore=()=>{
+      phone.classList.remove('export-tall','export-gap','export-bubble','export-check','keep-check');
+      phone.style.removeProperty('--layer-gap');
+      rescale();
+      undo.forEach(f=>f());
+      setVis(rows,'');
+      fab.style.display='';
+      if(!uiHidden){
+        document.querySelectorAll('.del').forEach(d=>d.style.display='');
+        composer.style.display=cDisp||'flex';
+      }
+      chat.scrollTop=chat.scrollHeight;
+    };
+
+    const shot=(bg)=>html2canvas(phone,{backgroundColor:bg,scale,logging:false})
+      .then(c=>new Promise(r=>c.toBlob(r,'image/png')));
+
+    // 既読チェックは「送った少しあと」に付けたいので別レイヤーに回す
+    const splitCheck=document.getElementById('splitCheckToggle').checked;
+    const hasCheck=picked.some(r=>{
+      const ck=r.querySelector('.check');
+      return ck && getComputedStyle(ck).display!=='none';
+    });
+
+    const bg=document.body.classList.contains('dark')?'#10141a':'#ffffff';
+    const files=[];
+    // 1枚目: ベース（対象は visibility で隠して場所だけ残す）
+    setVis(before,''); setVis(picked,'hidden');
+    shot(bg).then(base=>{
+      files.push(['base.png',base]);
+      // 2枚目: 対象だけ。UIとそれ以前のメッセージを消す
+      setVis(before,'hidden'); setVis(picked,'');
+      phone.classList.add('export-bubble');
+      if(!splitCheck) phone.classList.add('keep-check');
+      return shot(null);
+    }).then(bubble=>{
+      files.push(['bubble.png',bubble]);
+      if(!splitCheck || !hasCheck) return null;
+      // 3枚目: 既読チェックだけ
+      phone.classList.add('export-check');
+      return shot(null);
+    }).then(check=>{
+      if(check) files.push(['mono.png',check]);
+      return deliverFiles(files);
+    }).then(restore)
+      .catch(e=>{ restore(); alert('レイヤー書き出しに失敗しました: '+e); });
+  }
+
+  /* 選択モード：バブルをタップして対象を決める
+       'koma'  … そのメッセージだけを画像で書き出す
+       'layer' … そのメッセージを演出対象にして base / bubble を書き出す */
+  let selMode=null, selHint=null;
+  function setSel(mode){
+    selMode=(selMode===mode)?null:mode;
+    document.getElementById('toolbar').classList.remove('open');
+    document.body.classList.toggle('sel-mode',!!selMode);
+    // 選択中は文字カーソルが入らないようにする
+    chat.querySelectorAll('.bubble,.time-val').forEach(b=>b.contentEditable=selMode?'false':'true');
+    if(selHint){ selHint.remove(); selHint=null; }
+    if(!selMode) return;
+    selHint=document.createElement('div');
+    selHint.className='koma-hint';
+    if(selMode==='koma'){
+      selHint.textContent='コマにするメッセージをタップ';
+    }else{
+      selHint.textContent='出現させるメッセージをタップ';
+      const all=document.createElement('button');
+      all.textContent='全部';
+      all.onclick=e=>{ e.stopPropagation(); setSel(null); afterPaint(()=>runLayerExport()); };
+      selHint.appendChild(all);
+    }
+    document.getElementById('phone').appendChild(selHint);
+  }
+  function toggleKoma(){ setSel('koma'); }
+  function startLayerExport(){ setSel('layer'); }
+  // 破線の選択枠が写り込まないよう、解除を反映してから撮る
+  function afterPaint(fn){ requestAnimationFrame(()=>requestAnimationFrame(fn)); }
+
   chat.addEventListener('click',e=>{
-    if(!komaMode) return;
+    if(!selMode) return;
     const row=e.target.closest('.row');
     if(!row) return;
     e.preventDefault(); e.stopPropagation();
-    toggleKoma(false);
-    // 破線の枠が写り込まないよう、解除を反映してから撮る
-    requestAnimationFrame(()=>requestAnimationFrame(()=>capture(row)));
+    const mode=selMode;
+    setSel(null);
+    afterPaint(()=>{ mode==='koma' ? capture(row) : runLayerExport(row); });
   },true);
 </script>
 </body>
