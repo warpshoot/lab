@@ -136,6 +136,11 @@ body {
   background:transparent; border:1px solid var(--border); border-radius:8px;
   padding:8px 10px; color:var(--text); font-size:15px; outline:none; width:100%; font-family:inherit;
 }
+.set-select {
+  -webkit-appearance:none; appearance:none; background:transparent;
+  border:1px solid var(--border); border-radius:8px;
+  padding:8px 10px; color:var(--text); font-size:15px; outline:none; width:100%; font-family:inherit;
+}
 .colors { display:flex; gap:8px; flex-wrap:wrap; }
 .swatch { width:34px; height:34px; border-radius:50%; cursor:pointer; border:2px solid transparent; }
 .swatch.sel { border-color:var(--blue); }
@@ -159,6 +164,7 @@ body {
   <div class="toolbar" id="toolbar">
     <button onclick="toggleDark()" id="darkBtn">🌙 ダーク</button>
     <button onclick="openPanel()">⚙ 設定</button>
+    <button onclick="loadSample()">📄 サンプル</button>
     <button onclick="capture()">📷 画像保存</button>
     <button onclick="hideUI()">🙈 UIを隠す</button>
   </div>
@@ -263,7 +269,12 @@ body {
 
       <div class="sec">プロフィール</div>
       <div class="field"><label>表示名</label><input type="text" id="setName" value="となり街の園田さん"></div>
-      <div class="field"><label>ユーザー名（@なし）</label><input type="text" id="setHandle" value="motokanoirane"></div>
+      <div class="field"><label>ユーザー名（@なし）</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="setHandle" value="motokanoirane">
+          <button class="upload-btn" style="flex:0 0 auto;padding:8px 12px;border:none;border-radius:8px;font-size:14px;font-weight:600;color:#fff;cursor:pointer" onclick="rerollHandle()">🎲</button>
+        </div>
+      </div>
       <div class="field"><label>アイコンの色</label><div class="colors" id="colorRow"></div></div>
       <div class="field">
         <label>アイコン画像</label>
@@ -279,6 +290,14 @@ body {
       <div class="field"><label>投稿時刻</label><input type="text" id="setPostTime" value="21:26"></div>
       <div class="field"><label>投稿日付</label><input type="text" id="setPostDate" value="2026/06/05"></div>
       <div class="field"><label>ステータスバーの時刻</label><input type="text" id="setSbTime" value="11:17"></div>
+      <div class="toggle-row">
+        <label>起動時に日時を現在時刻へ更新</label>
+        <span class="switch"><input type="checkbox" id="autoTimeToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
+      </div>
+      <div class="toggle-row">
+        <label>起動時にユーザー名をランダム生成</label>
+        <span class="switch"><input type="checkbox" id="randHandleToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
+      </div>
 
       <div class="sec">数値表示</div>
 
@@ -321,12 +340,36 @@ body {
         <label>アクションバー</label>
         <span class="switch"><input type="checkbox" id="actionToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
       </div>
+      <div class="sec">書き出し</div>
+      <div class="field"><label>範囲</label>
+        <select id="setExportRange" class="set-select">
+          <option value="phone">端末全体</option>
+          <option value="post">投稿カード（アイコン〜アクション）</option>
+          <option value="body">本文のみ</option>
+        </select>
+      </div>
+      <div class="field"><label>解像度</label>
+        <select id="setExportScale" class="set-select">
+          <option value="2">2倍</option>
+          <option value="3" selected>3倍</option>
+          <option value="4">4倍</option>
+        </select>
+      </div>
+      <div class="toggle-row"><label>背景を透過（コマ用）</label>
+        <span class="switch"><input type="checkbox" id="transToggle"><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
+      </div>
+
+      <div class="sec">データ</div>
+      <div class="panel-btns">
+        <button class="upload-btn" onclick="loadSample()">📄 サンプルを表示</button>
+        <button class="upload-btn" onclick="resetAll()">↺ リセット</button>
+      </div>
       <div class="panel-btns"><button class="done-btn" onclick="closePanel()">完了</button></div>
     </div>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="../vendor/html2canvas.min.js"></script>
 <script>
 const avatar = document.getElementById('avatar');
 let avatarColor = 'linear-gradient(135deg,#1d9bf0,#0a5a94)';
@@ -353,6 +396,7 @@ palette.forEach((g, i) => {
     document.getElementById('fileName').textContent = '';
     document.querySelectorAll('.swatch').forEach(x => x.classList.remove('sel'));
     s.classList.add('sel');
+    scheduleSave();
   };
   colorRow.appendChild(s);
 });
@@ -366,6 +410,7 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
     avatar.textContent = '';
     document.getElementById('fileName').textContent = f.name;
     document.querySelectorAll('.swatch').forEach(x => x.classList.remove('sel'));
+    scheduleSave();
   };
   r.readAsDataURL(f);
 });
@@ -375,6 +420,7 @@ function clearImg() {
   avatar.style.background = avatarColor;
   avatar.textContent = fc(document.getElementById('setName').value);
   document.getElementById('fileName').textContent = '';
+  scheduleSave();
 }
 
 function fc(s) { return (s || '').trim()[0] || '?'; }
@@ -436,6 +482,7 @@ function toggleToolbar() { document.getElementById('toolbar').classList.toggle('
 function toggleDark() {
   document.body.classList.toggle('dark');
   document.getElementById('darkBtn').textContent = document.body.classList.contains('dark') ? '☀ ライト' : '🌙 ダーク';
+  scheduleSave();
 }
 
 let uiHidden = false;
@@ -469,29 +516,218 @@ function openPanel() {
 }
 function closePanel() { document.getElementById('overlay').classList.remove('open'); }
 
+/* ===== サンプル / ローカル保存 ===== */
+const LS_KEY = 'xpostmock-state-v1';
+const SAMPLE_BODY =
+'✨🔰未経験さん大歓迎💰高額報酬✨\n' +
+'男性のサポートのお仕事です🤝むずかしいことは一切なし！未経験の方にもイチから丁寧に指導します◎\n' +
+'資格・経験・容姿いっさい不問！即金OK・ノルマなし🙆‍♀️選考は 身分証の確認→かんたんな適性検査だけ✌️\n' +
+'ご応募はDMにて顔写真付きの履歴書を添付の上、お気軽に✉️';
+
+// 現在日時ユーティリティ
+const p2 = n => String(n).padStart(2, '0');
+function nowTime() { const d = new Date(); return p2(d.getHours()) + ':' + p2(d.getMinutes()); }
+function nowDate() { const d = new Date(); return d.getFullYear() + '/' + p2(d.getMonth() + 1) + '/' + p2(d.getDate()); }
+
+// 捨てアカ風のランダムなユーザー名（X の自動生成ハンドルに寄せた文字列）
+function randomHandle() {
+  const v = 'aeiou', c = 'bcdfghjklmnprstvwz';
+  const pick = s => s[Math.floor(Math.random() * s.length)];
+  const len = 14 + Math.floor(Math.random() * 7); // 14〜20文字
+  let s = '';
+  while (s.length < len) {
+    if (Math.random() < .35) s += pick(c);
+    s += pick(c) + pick(v);
+    if (Math.random() < .25) s += pick(v);
+  }
+  s = s.slice(0, len);
+  if (Math.random() < .7) s += Math.floor(Math.random() * 10);
+  return s;
+}
+
+function sampleState() {
+  return {
+    name: 'もんめ', handle: randomHandle(),
+    avatarColor: palette[1], avatarImg: null,
+    body: SAMPLE_BODY,
+    postTime: nowTime(), postDate: nowDate(), sbTime: nowTime(),
+    views: '591万', reply: '404', rt: '1764', like: '1', bk: '5444',
+    viewsOn: false, replyOn: false, rtOn: false, likeOn: true, bkOn: false,
+    sbShow: true, actionShow: true, dark: false,
+    autoTime: true, randHandle: true,
+    exportRange: 'phone', exportScale: 3, transparent: false
+  };
+}
+
+function rerollHandle() {
+  const h = randomHandle();
+  $('setHandle').value = h;
+  $('displayHandle').textContent = '@' + h;
+  save();
+}
+
+const $ = id => document.getElementById(id);
+let _saveTimer = null, _restoring = false;
+
+function currentState() {
+  return {
+    name: $('setName').value,
+    handle: $('setHandle').value,
+    avatarColor, avatarImg,
+    body: $('postBody').textContent,
+    postTime: $('setPostTime').value,
+    postDate: $('setPostDate').value,
+    sbTime: $('setSbTime').value,
+    views: $('setViews').value,
+    reply: $('setReply').value,
+    rt: $('setRt').value,
+    like: $('setLike').value,
+    bk: $('setBk').value,
+    viewsOn: $('viewsToggle').checked,
+    replyOn: $('replyToggle').checked,
+    rtOn: $('rtToggle').checked,
+    likeOn: $('likeToggle').checked,
+    bkOn: $('bkToggle').checked,
+    sbShow: $('sbToggle').checked,
+    actionShow: $('actionToggle').checked,
+    autoTime: $('autoTimeToggle').checked,
+    randHandle: $('randHandleToggle').checked,
+    exportRange: $('setExportRange').value,
+    exportScale: +$('setExportScale').value,
+    transparent: $('transToggle').checked,
+    dark: document.body.classList.contains('dark')
+  };
+}
+
+function save() {
+  if (_restoring) return;
+  try { localStorage.setItem(LS_KEY, JSON.stringify(currentState())); } catch (e) {}
+}
+function scheduleSave() { clearTimeout(_saveTimer); _saveTimer = setTimeout(save, 250); }
+
+function applyState(s) {
+  _restoring = true;
+
+  $('setName').value = s.name;
+  $('displayName').textContent = s.name || '名無し';
+  $('setHandle').value = s.handle;
+  $('displayHandle').textContent = '@' + s.handle;
+
+  avatarColor = s.avatarColor || palette[0];
+  avatarImg = s.avatarImg || null;
+  if (avatarImg) {
+    avatar.style.background = 'url(' + avatarImg + ') center/cover';
+    avatar.textContent = '';
+    document.querySelectorAll('.swatch').forEach(x => x.classList.remove('sel'));
+  } else {
+    avatar.style.background = avatarColor;
+    avatar.textContent = fc(s.name);
+    const ci = palette.indexOf(avatarColor);
+    document.querySelectorAll('.swatch').forEach((x, i) => x.classList.toggle('sel', i === ci));
+  }
+  $('fileName').textContent = '';
+
+  $('postBody').textContent = s.body;
+
+  [['setPostTime', 'postTime', s.postTime],
+   ['setPostDate', 'postDate', s.postDate],
+   ['setViews', 'viewCount', s.views],
+   ['setReply', 'replyCount', s.reply],
+   ['setRt', 'rtCount', s.rt],
+   ['setLike', 'likeCount', s.like],
+   ['setBk', 'bkCount', s.bk]].forEach(([inp, out, v]) => {
+    $(inp).value = v; $(out).textContent = v;
+  });
+  $('setSbTime').value = s.sbTime;
+  $('sbTime').textContent = s.sbTime;
+
+  [['viewsToggle', 'viewsSpan', s.viewsOn],
+   ['replyToggle', 'replyCount', s.replyOn],
+   ['rtToggle', 'rtCount', s.rtOn],
+   ['likeToggle', 'likeCount', s.likeOn],
+   ['bkToggle', 'bkCount', s.bkOn],
+   ['sbToggle', 'statusbarEl', s.sbShow],
+   ['actionToggle', 'actionBarEl', s.actionShow]].forEach(([tg, el, on]) => {
+    $(tg).checked = !!on; $(el).style.display = on ? '' : 'none';
+  });
+
+  $('autoTimeToggle').checked = s.autoTime !== false;
+  $('randHandleToggle').checked = s.randHandle !== false;
+  $('setExportRange').value = s.exportRange || 'phone';
+  $('setExportScale').value = String(s.exportScale || 3);
+  $('transToggle').checked = !!s.transparent;
+
+  const wantDark = !!s.dark;
+  document.body.classList.toggle('dark', wantDark);
+  $('darkBtn').textContent = wantDark ? '☀ ライト' : '🌙 ダーク';
+
+  _restoring = false;
+}
+
+function loadSample() {
+  applyState(sampleState()); save(); closePanel();
+  document.getElementById('toolbar').classList.remove('open');
+}
+function resetAll() {
+  if (!confirm('編集内容を消してサンプルに戻します。よろしいですか？')) return;
+  try { localStorage.removeItem(LS_KEY); } catch (e) {}
+  loadSample();
+}
+
+// 変更を自動保存
+$('postBody').addEventListener('input', scheduleSave);
+document.querySelector('.panel').addEventListener('input', scheduleSave);
+document.querySelector('.panel').addEventListener('change', scheduleSave);
+
+// 初期表示：保存があれば復元、なければサンプル
+(function init() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
+  let st = sampleState();
+  if (saved && typeof saved.body === 'string') {
+    st = saved;
+    if (st.autoTime !== false) { st.postTime = nowTime(); st.postDate = nowDate(); st.sbTime = nowTime(); }
+    if (st.randHandle !== false) st.handle = randomHandle();
+  }
+  applyState(st);
+  save();
+})();
+
+/* ===== 書き出し ===== */
 function capture() {
-  const fab = document.getElementById('fab');
-  const toolbar = document.getElementById('toolbar');
-  const replyBar = document.getElementById('replyBarEl');
+  const mode = $('setExportRange').value;
+  const scale = +$('setExportScale').value || 3;
+  const trans = $('transToggle').checked;
+  const target = mode === 'post' ? document.querySelector('.post-wrap')
+               : mode === 'body' ? $('postBody')
+               : $('phone');
+  const isPhone = (target === $('phone'));
+
+  const fab = $('fab'), toolbar = $('toolbar'), replyBar = $('replyBarEl');
   toolbar.classList.remove('open');
   fab.style.display = 'none';
   const replyWas = replyBar.style.display;
-  replyBar.style.display = 'none';
-  const darkBg = document.body.classList.contains('dark') ? '#000000' : '#ffffff';
-  html2canvas(document.getElementById('phone'), { backgroundColor: darkBg, scale: 2 }).then(c => {
+  if (isPhone) replyBar.style.display = 'none';
+
+  const restore = () => {
     fab.style.display = '';
-    if (!uiHidden) replyBar.style.display = replyWas;
+    if (isPhone && !uiHidden) replyBar.style.display = replyWas;
+  };
+
+  const bg = trans ? null : (document.body.classList.contains('dark') ? '#000000' : '#ffffff');
+  const name = isPhone ? 'x-post.png' : (mode === 'body' ? 'x-post-body.png' : 'x-post-koma.png');
+  html2canvas(target, { backgroundColor: bg, scale, logging: false }).then(c => {
     c.toBlob(async blob => {
-      const file = new File([blob], 'x-post.png', { type: 'image/png' });
+      const file = new File([blob], name, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try { await navigator.share({ files: [file] }); } catch(e) {}
-        return;
+        restore(); return;
       }
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.download = 'x-post.png'; a.href = url; a.click();
-      URL.revokeObjectURL(url);
+      const a = document.createElement('a'); a.download = name; a.href = url; a.click();
+      URL.revokeObjectURL(url); restore();
     }, 'image/png');
-  });
+  }).catch(e => { restore(); alert('書き出しに失敗しました: ' + e); });
 }
 </script>
 </body>
