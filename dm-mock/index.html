@@ -170,6 +170,12 @@
   .export-gap .row{ margin-bottom:var(--layer-gap) !important; }
   .export-gap .row.gap{ margin-top:var(--layer-gap) !important; }
   .export-bubble{ background:transparent !important; }
+  /* 既読チェックを別レイヤーに分ける（バブルの少しあとに付けるため） */
+  .export-bubble .check{ visibility:hidden !important; }
+  .export-bubble.keep-check .check{ visibility:visible !important; }
+  .export-bubble.export-check .bubble,
+  .export-bubble.export-check .time-val{ visibility:hidden !important; }
+  .export-bubble.export-check .check{ visibility:visible !important; }
   .export-bubble .statusbar,
   .export-bubble .header,
   .export-bubble .tabbar{ visibility:hidden !important; }
@@ -312,6 +318,9 @@
       </div>
       <div class="toggle-row"><label>背景を透過（コマ用）</label>
         <span class="switch"><input type="checkbox" id="transToggle"><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
+      </div>
+      <div class="toggle-row"><label>既読チェックを別レイヤーに分ける</label>
+        <span class="switch"><input type="checkbox" id="splitCheckToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
       </div>
       <div class="field"><label>レイヤー書き出し時のバブル間隔　<span id="setLayerGapVal">24px</span></label>
         <input type="range" id="setLayerGap" min="0" max="40" value="24">
@@ -602,7 +611,7 @@
       sig:4, wifi:3, bat:30, sbShow:true, sbTime:t,
       avatarColor:palette[0], avatarImg:null,
       showTime:true, showCheck:true, dark:false, autoTime:true,
-      exportRange:'phone', exportScale:3, transparent:false, layerGap:24,
+      exportRange:'phone', exportScale:3, transparent:false, layerGap:24, splitCheck:true,
       msgs:[{ side:'in', text:SAMPLE_TEXT, time:t, unread:false, gap:false }]
     };
   }
@@ -648,6 +657,7 @@
       exportScale:+document.getElementById('setExportScale').value,
       transparent:document.getElementById('transToggle').checked,
       layerGap:+document.getElementById('setLayerGap').value,
+      splitCheck:document.getElementById('splitCheckToggle').checked,
       dark:document.body.classList.contains('dark'),
       msgs:collectMsgs()
     };
@@ -709,6 +719,7 @@
     document.getElementById('setExportRange').value=s.exportRange||'phone';
     document.getElementById('setExportScale').value=String(s.exportScale||3);
     document.getElementById('transToggle').checked=!!s.transparent;
+    document.getElementById('splitCheckToggle').checked=s.splitCheck!==false;
     const lg=(s.layerGap===undefined?24:s.layerGap);
     document.getElementById('setLayerGap').value=lg;
     document.getElementById('setLayerGapVal').textContent=lg+'px';
@@ -863,7 +874,7 @@
     const setVis=(els,v)=>els.forEach(e=>e.style.visibility=v);
 
     const restore=()=>{
-      phone.classList.remove('export-tall','export-gap','export-bubble');
+      phone.classList.remove('export-tall','export-gap','export-bubble','export-check','keep-check');
       phone.style.removeProperty('--layer-gap');
       undo.forEach(f=>f());
       setVis(rows,'');
@@ -878,14 +889,33 @@
     const shot=(bg)=>html2canvas(phone,{backgroundColor:bg,scale,logging:false})
       .then(c=>new Promise(r=>c.toBlob(r,'image/png')));
 
+    // 既読チェックは「送った少しあと」に付けたいので別レイヤーに回す
+    const splitCheck=document.getElementById('splitCheckToggle').checked;
+    const hasCheck=picked.some(r=>{
+      const ck=r.querySelector('.check');
+      return ck && getComputedStyle(ck).display!=='none';
+    });
+
     const bg=document.body.classList.contains('dark')?'#10141a':'#ffffff';
+    const files=[];
     // 1枚目: ベース（対象は visibility で隠して場所だけ残す）
     setVis(before,''); setVis(picked,'hidden');
     shot(bg).then(base=>{
+      files.push(['base.png',base]);
       // 2枚目: 対象だけ。UIとそれ以前のメッセージを消す
       setVis(before,'hidden'); setVis(picked,'');
       phone.classList.add('export-bubble');
-      return shot(null).then(bubble=>deliverFiles([['base.png',base],['bubble.png',bubble]]));
+      if(!splitCheck) phone.classList.add('keep-check');
+      return shot(null);
+    }).then(bubble=>{
+      files.push(['bubble.png',bubble]);
+      if(!splitCheck || !hasCheck) return null;
+      // 3枚目: 既読チェックだけ
+      phone.classList.add('export-check');
+      return shot(null);
+    }).then(check=>{
+      if(check) files.push(['mono.png',check]);
+      return deliverFiles(files);
     }).then(restore)
       .catch(e=>{ restore(); alert('レイヤー書き出しに失敗しました: '+e); });
   }
