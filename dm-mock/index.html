@@ -169,17 +169,21 @@
   .export-tall .chat{ overflow:visible !important; flex:none !important; }
   .export-gap .row{ margin-bottom:var(--layer-gap) !important; }
   .export-gap .row.gap{ margin-top:var(--layer-gap) !important; }
-  .export-base .row{ visibility:hidden !important; }
   .export-bubble{ background:transparent !important; }
   .export-bubble .statusbar,
   .export-bubble .header,
   .export-bubble .tabbar{ visibility:hidden !important; }
-  .koma-mode .bubble{ cursor:crosshair; outline:2px dashed var(--out-bubble); outline-offset:3px; }
-  .koma-mode .del{ display:none !important; }
+  .sel-mode .bubble{ cursor:crosshair; outline:2px dashed var(--out-bubble); outline-offset:3px; }
+  .sel-mode .del{ display:none !important; }
   .koma-hint{
     position:absolute; left:50%; transform:translateX(-50%); top:8px; z-index:31;
     background:rgba(20,20,20,.86); color:#fff; font-size:12px; font-weight:600;
-    padding:7px 14px; border-radius:16px; white-space:nowrap; pointer-events:none;
+    padding:7px 12px; border-radius:16px; white-space:nowrap;
+    display:flex; align-items:center; gap:10px;
+  }
+  .koma-hint button{
+    border:none; border-radius:11px; padding:4px 9px; font-size:11px; font-weight:700;
+    background:rgba(255,255,255,.22); color:#fff; cursor:pointer;
   }
 </style>
 </head>
@@ -192,7 +196,7 @@
     <button onclick="loadSample()">📄 サンプル</button>
     <button onclick="capture()">📷 画像保存</button>
     <button onclick="toggleKoma()" id="komaBtn">✂ コマ書き出し</button>
-    <button onclick="exportLayers()">🗂 レイヤー書き出し</button>
+    <button onclick="startLayerExport()">🗂 レイヤー書き出し</button>
     <button onclick="replayWithHide()">▶ 隠して再生</button>
     <button onclick="hideUI()">🙈 UIを隠す</button>
   </div>
@@ -829,7 +833,12 @@
     })),Promise.resolve());
   }
 
-  function exportLayers(){
+  /* target を渡すと、そのメッセージだけを演出対象にする:
+       base.png   … target より前のメッセージは焼き込み、target は場所だけ空ける、
+                     それ以降は削除（＝コマとしてそこで終わる）
+       bubble.png … target だけの透過PNG
+     target を省略すると全メッセージが bubble.png に入る。 */
+  function runLayerExport(target){
     const scale=+document.getElementById('setExportScale').value||3;
     const gap=+document.getElementById('setLayerGap').value||0;
     const phone=document.getElementById('phone');
@@ -844,9 +853,20 @@
     phone.style.setProperty('--layer-gap',gap+'px');
     phone.classList.add('export-tall','export-gap');
 
+    const rows=[...chat.children].filter(el=>el.classList.contains('row')&&el!==typingRow);
+    const idx=target?rows.indexOf(target):-1;
+    const picked=idx>=0?[rows[idx]]:rows;          // 出現させるメッセージ
+    const before=idx>=0?rows.slice(0,idx):[];      // ベースに焼き込むメッセージ
+    const after =idx>=0?rows.slice(idx+1):[];      // コマに含めないメッセージ
+    // 以降のメッセージは2枚とも display:none。両パスで同じレイアウトなのでキャンバスは揃う
+    const undo=after.map(r=>{ const d=r.style.display; r.style.display='none'; return ()=>r.style.display=d; });
+    const setVis=(els,v)=>els.forEach(e=>e.style.visibility=v);
+
     const restore=()=>{
-      phone.classList.remove('export-tall','export-gap','export-base','export-bubble');
+      phone.classList.remove('export-tall','export-gap','export-bubble');
       phone.style.removeProperty('--layer-gap');
+      undo.forEach(f=>f());
+      setVis(rows,'');
       fab.style.display='';
       if(!uiHidden){
         document.querySelectorAll('.del').forEach(d=>d.style.display='');
@@ -855,44 +875,59 @@
       chat.scrollTop=chat.scrollHeight;
     };
 
-    const shot=(cls,bg)=>{
-      phone.classList.add(cls);
-      return html2canvas(phone,{backgroundColor:bg,scale,logging:false})
-        .then(c=>{ phone.classList.remove(cls); return new Promise(r=>c.toBlob(r,'image/png')); });
-    };
+    const shot=(bg)=>html2canvas(phone,{backgroundColor:bg,scale,logging:false})
+      .then(c=>new Promise(r=>c.toBlob(r,'image/png')));
 
     const bg=document.body.classList.contains('dark')?'#10141a':'#ffffff';
-    shot('export-base',bg)
-      .then(base=>shot('export-bubble',null).then(bubble=>deliverFiles([['base.png',base],['bubble.png',bubble]])))
-      .then(restore)
+    // 1枚目: ベース（対象は visibility で隠して場所だけ残す）
+    setVis(before,''); setVis(picked,'hidden');
+    shot(bg).then(base=>{
+      // 2枚目: 対象だけ。UIとそれ以前のメッセージを消す
+      setVis(before,'hidden'); setVis(picked,'');
+      phone.classList.add('export-bubble');
+      return shot(null).then(bubble=>deliverFiles([['base.png',base],['bubble.png',bubble]]));
+    }).then(restore)
       .catch(e=>{ restore(); alert('レイヤー書き出しに失敗しました: '+e); });
   }
 
-  /* コマ選択モード：バブルをタップしてそのメッセージだけ書き出す */
-  let komaMode=false, komaHint=null;
-  function toggleKoma(force){
-    komaMode=(force===undefined)? !komaMode : force;
+  /* 選択モード：バブルをタップして対象を決める
+       'koma'  … そのメッセージだけを画像で書き出す
+       'layer' … そのメッセージを演出対象にして base / bubble を書き出す */
+  let selMode=null, selHint=null;
+  function setSel(mode){
+    selMode=(selMode===mode)?null:mode;
     document.getElementById('toolbar').classList.remove('open');
-    document.body.classList.toggle('koma-mode',komaMode);
+    document.body.classList.toggle('sel-mode',!!selMode);
     // 選択中は文字カーソルが入らないようにする
-    chat.querySelectorAll('.bubble,.time-val').forEach(b=>b.contentEditable=komaMode?'false':'true');
-    if(komaMode){
-      if(!komaHint){
-        komaHint=document.createElement('div');
-        komaHint.className='koma-hint';
-        komaHint.textContent='コマにするメッセージをタップ（もう一度✂で解除）';
-        document.getElementById('phone').appendChild(komaHint);
-      }
-    }else if(komaHint){ komaHint.remove(); komaHint=null; }
+    chat.querySelectorAll('.bubble,.time-val').forEach(b=>b.contentEditable=selMode?'false':'true');
+    if(selHint){ selHint.remove(); selHint=null; }
+    if(!selMode) return;
+    selHint=document.createElement('div');
+    selHint.className='koma-hint';
+    if(selMode==='koma'){
+      selHint.textContent='コマにするメッセージをタップ';
+    }else{
+      selHint.textContent='出現させるメッセージをタップ';
+      const all=document.createElement('button');
+      all.textContent='全部';
+      all.onclick=e=>{ e.stopPropagation(); setSel(null); afterPaint(()=>runLayerExport()); };
+      selHint.appendChild(all);
+    }
+    document.getElementById('phone').appendChild(selHint);
   }
+  function toggleKoma(){ setSel('koma'); }
+  function startLayerExport(){ setSel('layer'); }
+  // 破線の選択枠が写り込まないよう、解除を反映してから撮る
+  function afterPaint(fn){ requestAnimationFrame(()=>requestAnimationFrame(fn)); }
+
   chat.addEventListener('click',e=>{
-    if(!komaMode) return;
+    if(!selMode) return;
     const row=e.target.closest('.row');
     if(!row) return;
     e.preventDefault(); e.stopPropagation();
-    toggleKoma(false);
-    // 破線の枠が写り込まないよう、解除を反映してから撮る
-    requestAnimationFrame(()=>requestAnimationFrame(()=>capture(row)));
+    const mode=selMode;
+    setSel(null);
+    afterPaint(()=>{ mode==='koma' ? capture(row) : runLayerExport(row); });
   },true);
 </script>
 </body>
