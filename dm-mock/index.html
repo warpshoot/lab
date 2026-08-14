@@ -169,6 +169,7 @@
   <div class="toolbar" id="toolbar">
     <button onclick="toggleDark()" id="darkBtn">🌙 ダーク</button>
     <button onclick="openPanel()">⚙ 設定</button>
+    <button onclick="loadSample()">📄 サンプル</button>
     <button onclick="capture()">📷 画像保存</button>
     <button onclick="replayWithHide()">▶ 隠して再生</button>
     <button onclick="hideUI()">🙈 UIを隠す</button>
@@ -226,6 +227,9 @@
       <div class="field"><label>相手の名前</label><input type="text" id="setName" value="USER"></div>
       <div class="field"><label>テーマカラー（送信バブル）</label><div class="colors" id="themeRow"></div></div>
       <div class="field"><label>最初のメッセージの時刻</label><input type="time" id="setFirstTime" value="22:30"></div>
+      <div class="toggle-row"><label>起動時に日時を現在時刻へ更新</label>
+        <span class="switch"><input type="checkbox" id="autoTimeToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
+      </div>
       <div class="field"><label>セルラー電波</label>
         <select id="setSig" class="set-select">
           <option value="0">圏外</option>
@@ -533,14 +537,31 @@
 '弊社担者が○○駅までお迎えにあがりますので、よろしくお願いいたします！🚶‍♂️🚶‍♀️\n'+
 'お忙しいところ恐れ入りますが、ご確認のほどよろしくお願いいたします🙇';
 
+  // 現在時刻ユーティリティ
+  function nowMinutes(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
+  function fmtMin(m){ return formatMockTime(((m%1440)+1440)%1440); }
+  function nowHM(){ return fmtMin(nowMinutes()); }
+
   function sampleState(){
+    const t=nowHM();
     return {
-      name:'もんめ', theme:themeColors[0], firstTime:'22:34',
-      sig:4, wifi:3, bat:30, sbShow:true, sbTime:'22:34',
+      name:'もんめ', theme:themeColors[0], firstTime:t,
+      sig:4, wifi:3, bat:30, sbShow:true, sbTime:t,
       avatarColor:palette[0], avatarImg:null,
-      showTime:true, showCheck:true, dark:false,
-      msgs:[{ side:'in', text:SAMPLE_TEXT, time:'22:34', unread:false, gap:false }]
+      showTime:true, showCheck:true, dark:false, autoTime:true,
+      msgs:[{ side:'in', text:SAMPLE_TEXT, time:t, unread:false, gap:false }]
     };
+  }
+
+  // 保存済みの会話を現在時刻へ寄せる（最後のメッセージ＝今、前後の間隔は維持）
+  function retimeState(s){
+    const msgs=s.msgs||[];
+    if(!msgs.length){ s.firstTime=nowHM(); s.sbTime=nowHM(); return s; }
+    const delta=nowMinutes()-parseTimeInput(msgs[msgs.length-1].time||'');
+    msgs.forEach(m=>{ m.time=fmtMin(parseTimeInput(m.time||'')+delta); });
+    s.firstTime=msgs[0].time;
+    s.sbTime=nowHM();
+    return s;
   }
 
   function collectMsgs(){
@@ -568,6 +589,7 @@
       avatarColor, avatarImg,
       showTime:document.getElementById('timeToggle').checked,
       showCheck:document.getElementById('checkToggle').checked,
+      autoTime:document.getElementById('autoTimeToggle').checked,
       dark:document.body.classList.contains('dark'),
       msgs:collectMsgs()
     };
@@ -625,6 +647,7 @@
     document.getElementById('timeToggle').checked=!!s.showTime;
     chat.classList.toggle('hide-time',!s.showTime);
     document.getElementById('checkToggle').checked=!!s.showCheck;
+    document.getElementById('autoTimeToggle').checked=s.autoTime!==false;
 
     // メッセージ
     if(typingRow){ typingRow.remove(); typingRow=null; }
@@ -651,13 +674,12 @@
     applyState(sampleState());
     save();
     closePanel();
+    document.getElementById('toolbar').classList.remove('open');
   }
   function resetAll(){
     if(!confirm('編集内容を消してサンプルに戻します。よろしいですか？')) return;
     try{ localStorage.removeItem(LS_KEY); }catch(e){}
-    applyState(sampleState());
-    save();
-    closePanel();
+    loadSample();
   }
 
   // 変更を自動保存
@@ -672,7 +694,9 @@
   (function init(){
     let saved=null;
     try{ saved=JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
-    applyState(saved && Array.isArray(saved.msgs) ? saved : sampleState());
+    let st=sampleState();
+    if(saved && Array.isArray(saved.msgs)) st=(saved.autoTime!==false)?retimeState(saved):saved;
+    applyState(st);
     save();
   })();
 

@@ -159,6 +159,7 @@ body {
   <div class="toolbar" id="toolbar">
     <button onclick="toggleDark()" id="darkBtn">🌙 ダーク</button>
     <button onclick="openPanel()">⚙ 設定</button>
+    <button onclick="loadSample()">📄 サンプル</button>
     <button onclick="capture()">📷 画像保存</button>
     <button onclick="hideUI()">🙈 UIを隠す</button>
   </div>
@@ -263,7 +264,12 @@ body {
 
       <div class="sec">プロフィール</div>
       <div class="field"><label>表示名</label><input type="text" id="setName" value="となり街の園田さん"></div>
-      <div class="field"><label>ユーザー名（@なし）</label><input type="text" id="setHandle" value="motokanoirane"></div>
+      <div class="field"><label>ユーザー名（@なし）</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="setHandle" value="motokanoirane">
+          <button class="upload-btn" style="flex:0 0 auto;padding:8px 12px;border:none;border-radius:8px;font-size:14px;font-weight:600;color:#fff;cursor:pointer" onclick="rerollHandle()">🎲</button>
+        </div>
+      </div>
       <div class="field"><label>アイコンの色</label><div class="colors" id="colorRow"></div></div>
       <div class="field">
         <label>アイコン画像</label>
@@ -279,6 +285,14 @@ body {
       <div class="field"><label>投稿時刻</label><input type="text" id="setPostTime" value="21:26"></div>
       <div class="field"><label>投稿日付</label><input type="text" id="setPostDate" value="2026/06/05"></div>
       <div class="field"><label>ステータスバーの時刻</label><input type="text" id="setSbTime" value="11:17"></div>
+      <div class="toggle-row">
+        <label>起動時に日時を現在時刻へ更新</label>
+        <span class="switch"><input type="checkbox" id="autoTimeToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
+      </div>
+      <div class="toggle-row">
+        <label>起動時にユーザー名をランダム生成</label>
+        <span class="switch"><input type="checkbox" id="randHandleToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
+      </div>
 
       <div class="sec">数値表示</div>
 
@@ -486,16 +500,45 @@ const SAMPLE_BODY =
 '資格・経験・容姿いっさい不問！即金OK・ノルマなし🙆‍♀️選考は 身分証の確認→かんたんな適性検査だけ✌️\n' +
 'ご応募はDMにて顔写真付きの履歴書を添付の上、お気軽に✉️';
 
+// 現在日時ユーティリティ
+const p2 = n => String(n).padStart(2, '0');
+function nowTime() { const d = new Date(); return p2(d.getHours()) + ':' + p2(d.getMinutes()); }
+function nowDate() { const d = new Date(); return d.getFullYear() + '/' + p2(d.getMonth() + 1) + '/' + p2(d.getDate()); }
+
+// 捨てアカ風のランダムなユーザー名（X の自動生成ハンドルに寄せた文字列）
+function randomHandle() {
+  const v = 'aeiou', c = 'bcdfghjklmnprstvwz';
+  const pick = s => s[Math.floor(Math.random() * s.length)];
+  const len = 14 + Math.floor(Math.random() * 7); // 14〜20文字
+  let s = '';
+  while (s.length < len) {
+    if (Math.random() < .35) s += pick(c);
+    s += pick(c) + pick(v);
+    if (Math.random() < .25) s += pick(v);
+  }
+  s = s.slice(0, len);
+  if (Math.random() < .7) s += Math.floor(Math.random() * 10);
+  return s;
+}
+
 function sampleState() {
   return {
-    name: 'もんめ', handle: 'chionvfraschjajoovhj7',
+    name: 'もんめ', handle: randomHandle(),
     avatarColor: palette[1], avatarImg: null,
     body: SAMPLE_BODY,
-    postTime: '21:26', postDate: '2026/06/05', sbTime: '11:17',
+    postTime: nowTime(), postDate: nowDate(), sbTime: nowTime(),
     views: '591万', reply: '404', rt: '1764', like: '1', bk: '5444',
     viewsOn: false, replyOn: false, rtOn: false, likeOn: true, bkOn: false,
-    sbShow: true, actionShow: true, dark: false
+    sbShow: true, actionShow: true, dark: false,
+    autoTime: true, randHandle: true
   };
+}
+
+function rerollHandle() {
+  const h = randomHandle();
+  $('setHandle').value = h;
+  $('displayHandle').textContent = '@' + h;
+  save();
 }
 
 const $ = id => document.getElementById(id);
@@ -522,6 +565,8 @@ function currentState() {
     bkOn: $('bkToggle').checked,
     sbShow: $('sbToggle').checked,
     actionShow: $('actionToggle').checked,
+    autoTime: $('autoTimeToggle').checked,
+    randHandle: $('randHandleToggle').checked,
     dark: document.body.classList.contains('dark')
   };
 }
@@ -578,6 +623,9 @@ function applyState(s) {
     $(tg).checked = !!on; $(el).style.display = on ? '' : 'none';
   });
 
+  $('autoTimeToggle').checked = s.autoTime !== false;
+  $('randHandleToggle').checked = s.randHandle !== false;
+
   const wantDark = !!s.dark;
   document.body.classList.toggle('dark', wantDark);
   $('darkBtn').textContent = wantDark ? '☀ ライト' : '🌙 ダーク';
@@ -585,11 +633,14 @@ function applyState(s) {
   _restoring = false;
 }
 
-function loadSample() { applyState(sampleState()); save(); closePanel(); }
+function loadSample() {
+  applyState(sampleState()); save(); closePanel();
+  document.getElementById('toolbar').classList.remove('open');
+}
 function resetAll() {
   if (!confirm('編集内容を消してサンプルに戻します。よろしいですか？')) return;
   try { localStorage.removeItem(LS_KEY); } catch (e) {}
-  applyState(sampleState()); save(); closePanel();
+  loadSample();
 }
 
 // 変更を自動保存
@@ -601,7 +652,13 @@ document.querySelector('.panel').addEventListener('change', scheduleSave);
 (function init() {
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
-  applyState(saved && typeof saved.body === 'string' ? saved : sampleState());
+  let st = sampleState();
+  if (saved && typeof saved.body === 'string') {
+    st = saved;
+    if (st.autoTime !== false) { st.postTime = nowTime(); st.postDate = nowDate(); st.sbTime = nowTime(); }
+    if (st.randHandle !== false) st.handle = randomHandle();
+  }
+  applyState(st);
   save();
 })();
 
