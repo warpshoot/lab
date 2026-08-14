@@ -136,6 +136,11 @@ body {
   background:transparent; border:1px solid var(--border); border-radius:8px;
   padding:8px 10px; color:var(--text); font-size:15px; outline:none; width:100%; font-family:inherit;
 }
+.set-select {
+  -webkit-appearance:none; appearance:none; background:transparent;
+  border:1px solid var(--border); border-radius:8px;
+  padding:8px 10px; color:var(--text); font-size:15px; outline:none; width:100%; font-family:inherit;
+}
 .colors { display:flex; gap:8px; flex-wrap:wrap; }
 .swatch { width:34px; height:34px; border-radius:50%; cursor:pointer; border:2px solid transparent; }
 .swatch.sel { border-color:var(--blue); }
@@ -335,6 +340,25 @@ body {
         <label>アクションバー</label>
         <span class="switch"><input type="checkbox" id="actionToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
       </div>
+      <div class="sec">書き出し</div>
+      <div class="field"><label>範囲</label>
+        <select id="setExportRange" class="set-select">
+          <option value="phone">端末全体</option>
+          <option value="post">投稿カード（アイコン〜アクション）</option>
+          <option value="body">本文のみ</option>
+        </select>
+      </div>
+      <div class="field"><label>解像度</label>
+        <select id="setExportScale" class="set-select">
+          <option value="2">2倍</option>
+          <option value="3" selected>3倍</option>
+          <option value="4">4倍</option>
+        </select>
+      </div>
+      <div class="toggle-row"><label>背景を透過（コマ用）</label>
+        <span class="switch"><input type="checkbox" id="transToggle"><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
+      </div>
+
       <div class="sec">データ</div>
       <div class="panel-btns">
         <button class="upload-btn" onclick="loadSample()">📄 サンプルを表示</button>
@@ -345,7 +369,7 @@ body {
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="../vendor/html2canvas.min.js"></script>
 <script>
 const avatar = document.getElementById('avatar');
 let avatarColor = 'linear-gradient(135deg,#1d9bf0,#0a5a94)';
@@ -530,7 +554,8 @@ function sampleState() {
     views: '591万', reply: '404', rt: '1764', like: '1', bk: '5444',
     viewsOn: false, replyOn: false, rtOn: false, likeOn: true, bkOn: false,
     sbShow: true, actionShow: true, dark: false,
-    autoTime: true, randHandle: true
+    autoTime: true, randHandle: true,
+    exportRange: 'phone', exportScale: 3, transparent: false
   };
 }
 
@@ -567,6 +592,9 @@ function currentState() {
     actionShow: $('actionToggle').checked,
     autoTime: $('autoTimeToggle').checked,
     randHandle: $('randHandleToggle').checked,
+    exportRange: $('setExportRange').value,
+    exportScale: +$('setExportScale').value,
+    transparent: $('transToggle').checked,
     dark: document.body.classList.contains('dark')
   };
 }
@@ -625,6 +653,9 @@ function applyState(s) {
 
   $('autoTimeToggle').checked = s.autoTime !== false;
   $('randHandleToggle').checked = s.randHandle !== false;
+  $('setExportRange').value = s.exportRange || 'phone';
+  $('setExportScale').value = String(s.exportScale || 3);
+  $('transToggle').checked = !!s.transparent;
 
   const wantDark = !!s.dark;
   document.body.classList.toggle('dark', wantDark);
@@ -662,29 +693,41 @@ document.querySelector('.panel').addEventListener('change', scheduleSave);
   save();
 })();
 
+/* ===== 書き出し ===== */
 function capture() {
-  const fab = document.getElementById('fab');
-  const toolbar = document.getElementById('toolbar');
-  const replyBar = document.getElementById('replyBarEl');
+  const mode = $('setExportRange').value;
+  const scale = +$('setExportScale').value || 3;
+  const trans = $('transToggle').checked;
+  const target = mode === 'post' ? document.querySelector('.post-wrap')
+               : mode === 'body' ? $('postBody')
+               : $('phone');
+  const isPhone = (target === $('phone'));
+
+  const fab = $('fab'), toolbar = $('toolbar'), replyBar = $('replyBarEl');
   toolbar.classList.remove('open');
   fab.style.display = 'none';
   const replyWas = replyBar.style.display;
-  replyBar.style.display = 'none';
-  const darkBg = document.body.classList.contains('dark') ? '#000000' : '#ffffff';
-  html2canvas(document.getElementById('phone'), { backgroundColor: darkBg, scale: 2 }).then(c => {
+  if (isPhone) replyBar.style.display = 'none';
+
+  const restore = () => {
     fab.style.display = '';
-    if (!uiHidden) replyBar.style.display = replyWas;
+    if (isPhone && !uiHidden) replyBar.style.display = replyWas;
+  };
+
+  const bg = trans ? null : (document.body.classList.contains('dark') ? '#000000' : '#ffffff');
+  const name = isPhone ? 'x-post.png' : (mode === 'body' ? 'x-post-body.png' : 'x-post-koma.png');
+  html2canvas(target, { backgroundColor: bg, scale, logging: false }).then(c => {
     c.toBlob(async blob => {
-      const file = new File([blob], 'x-post.png', { type: 'image/png' });
+      const file = new File([blob], name, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try { await navigator.share({ files: [file] }); } catch(e) {}
-        return;
+        restore(); return;
       }
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.download = 'x-post.png'; a.href = url; a.click();
-      URL.revokeObjectURL(url);
+      const a = document.createElement('a'); a.download = name; a.href = url; a.click();
+      URL.revokeObjectURL(url); restore();
     }, 'image/png');
-  });
+  }).catch(e => { restore(); alert('書き出しに失敗しました: ' + e); });
 }
 </script>
 </body>

@@ -161,6 +161,13 @@
   .upload-btn{ background:#8e8e8e; } .done-btn{ background:var(--out-bubble); }
   .file-name{ font-size:12px; color:var(--sub); }
   .sec-label{ font-size:11px; font-weight:700; color:var(--sub); letter-spacing:.5px; margin-top:4px; }
+  .koma-mode .bubble{ cursor:crosshair; outline:2px dashed var(--out-bubble); outline-offset:3px; }
+  .koma-mode .del{ display:none !important; }
+  .koma-hint{
+    position:absolute; left:50%; transform:translateX(-50%); top:8px; z-index:31;
+    background:rgba(20,20,20,.86); color:#fff; font-size:12px; font-weight:600;
+    padding:7px 14px; border-radius:16px; white-space:nowrap; pointer-events:none;
+  }
 </style>
 </head>
 <body>
@@ -171,6 +178,7 @@
     <button onclick="openPanel()">⚙ 設定</button>
     <button onclick="loadSample()">📄 サンプル</button>
     <button onclick="capture()">📷 画像保存</button>
+    <button onclick="toggleKoma()" id="komaBtn">✂ コマ書き出し</button>
     <button onclick="replayWithHide()">▶ 隠して再生</button>
     <button onclick="hideUI()">🙈 UIを隠す</button>
   </div>
@@ -269,6 +277,25 @@
       <div class="toggle-row"><label>既読チェック（送信側）</label>
         <span class="switch"><input type="checkbox" id="checkToggle" checked><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
       </div>
+      <div class="sec-label">書き出し</div>
+      <div class="field"><label>範囲</label>
+        <select id="setExportRange" class="set-select">
+          <option value="phone">端末全体</option>
+          <option value="chat">会話エリアのみ</option>
+          <option value="last">最後のメッセージのみ</option>
+        </select>
+      </div>
+      <div class="field"><label>解像度</label>
+        <select id="setExportScale" class="set-select">
+          <option value="2">2倍</option>
+          <option value="3" selected>3倍</option>
+          <option value="4">4倍</option>
+        </select>
+      </div>
+      <div class="toggle-row"><label>背景を透過（コマ用）</label>
+        <span class="switch"><input type="checkbox" id="transToggle"><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
+      </div>
+
       <div class="sec-label">データ</div>
       <div class="panel-btns">
         <button class="upload-btn" onclick="loadSample()">📄 サンプルを表示</button>
@@ -279,7 +306,7 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="../vendor/html2canvas.min.js"></script>
 <script>
   const chat=document.getElementById('chat');
   const avatar=document.getElementById('avatar');
@@ -458,7 +485,10 @@
     document.querySelectorAll('.del').forEach(d=>d.style.display='');
   }
 
-  function openPanel(){ document.getElementById('overlay').classList.add('open'); }
+  function openPanel(){
+    document.getElementById('toolbar').classList.remove('open');
+    document.getElementById('overlay').classList.add('open');
+  }
   function closePanel(){ document.getElementById('overlay').classList.remove('open'); }
 
   const setName=document.getElementById('setName');
@@ -549,6 +579,7 @@
       sig:4, wifi:3, bat:30, sbShow:true, sbTime:t,
       avatarColor:palette[0], avatarImg:null,
       showTime:true, showCheck:true, dark:false, autoTime:true,
+      exportRange:'phone', exportScale:3, transparent:false,
       msgs:[{ side:'in', text:SAMPLE_TEXT, time:t, unread:false, gap:false }]
     };
   }
@@ -590,6 +621,9 @@
       showTime:document.getElementById('timeToggle').checked,
       showCheck:document.getElementById('checkToggle').checked,
       autoTime:document.getElementById('autoTimeToggle').checked,
+      exportRange:document.getElementById('setExportRange').value,
+      exportScale:+document.getElementById('setExportScale').value,
+      transparent:document.getElementById('transToggle').checked,
       dark:document.body.classList.contains('dark'),
       msgs:collectMsgs()
     };
@@ -648,6 +682,9 @@
     chat.classList.toggle('hide-time',!s.showTime);
     document.getElementById('checkToggle').checked=!!s.showCheck;
     document.getElementById('autoTimeToggle').checked=s.autoTime!==false;
+    document.getElementById('setExportRange').value=s.exportRange||'phone';
+    document.getElementById('setExportScale').value=String(s.exportScale||3);
+    document.getElementById('transToggle').checked=!!s.transparent;
 
     // メッセージ
     if(typingRow){ typingRow.remove(); typingRow=null; }
@@ -700,29 +737,82 @@
     save();
   })();
 
-  function capture(){
-    document.querySelectorAll('.del').forEach(d=>d.style.display='none');
-    const composer=document.getElementById('composer'); const fab=document.getElementById('fab'); const toolbar=document.getElementById('toolbar');
+  /* ===== 書き出し ===== */
+  function lastRow(){
+    const rows=[...chat.children].filter(el=>el.classList.contains('row')&&el!==typingRow);
+    return rows[rows.length-1]||null;
+  }
+  function exportTarget(mode){
+    if(mode==='chat') return chat;
+    if(mode==='last') return lastRow()||chat;
+    return document.getElementById('phone');
+  }
+
+  // el を渡すとその要素だけをコマとして書き出す（渡さなければ設定の範囲）
+  function capture(el){
+    const scale=+document.getElementById('setExportScale').value||3;
+    const trans=document.getElementById('transToggle').checked;
+    const target=el||exportTarget(document.getElementById('setExportRange').value);
+    const isPhone=(target===document.getElementById('phone'));
+
+    const composer=document.getElementById('composer'), fab=document.getElementById('fab'), toolbar=document.getElementById('toolbar');
     const cDisp=composer.style.display;
-    composer.style.display='none'; fab.style.display='none'; toolbar.classList.remove('open');
-    const darkBg=document.body.classList.contains('dark')?'#10141a':'#fff';
-    html2canvas(document.getElementById('phone'),{backgroundColor:darkBg,scale:2}).then(c=>{
-      const restore=()=>{
-        if(!uiHidden){ document.querySelectorAll('.del').forEach(d=>d.style.display=''); composer.style.display=cDisp||'flex'; }
-        fab.style.display='';
-      };
+    toolbar.classList.remove('open');
+    fab.style.display='none';
+    document.querySelectorAll('.del').forEach(d=>d.style.display='none');
+    // 端末全体のときだけ入力欄を隠す（部分書き出しでレイアウトを動かさないため）
+    if(isPhone) composer.style.display='none';
+
+    const restore=()=>{
+      fab.style.display='';
+      if(!uiHidden){
+        document.querySelectorAll('.del').forEach(d=>d.style.display='');
+        if(isPhone) composer.style.display=cDisp||'flex';
+      }else if(isPhone){ composer.style.display='none'; }
+    };
+
+    const bg=trans?null:(document.body.classList.contains('dark')?'#10141a':'#ffffff');
+    const name=el?'koma.png':(isPhone?'message.png':'message-part.png');
+    html2canvas(target,{backgroundColor:bg,scale,logging:false}).then(c=>{
       c.toBlob(async (blob)=>{
-        const file=new File([blob],'message.png',{type:'image/png'});
+        const file=new File([blob],name,{type:'image/png'});
         if(navigator.canShare && navigator.canShare({files:[file]})){
           try{ await navigator.share({files:[file]}); } catch(e){}
           restore(); return;
         }
         const url=URL.createObjectURL(blob);
-        const a=document.createElement('a'); a.download='message.png'; a.href=url; a.click();
+        const a=document.createElement('a'); a.download=name; a.href=url; a.click();
         URL.revokeObjectURL(url); restore();
       },'image/png');
-    });
+    }).catch(e=>{ restore(); alert('書き出しに失敗しました: '+e); });
   }
+
+  /* コマ選択モード：バブルをタップしてそのメッセージだけ書き出す */
+  let komaMode=false, komaHint=null;
+  function toggleKoma(force){
+    komaMode=(force===undefined)? !komaMode : force;
+    document.getElementById('toolbar').classList.remove('open');
+    document.body.classList.toggle('koma-mode',komaMode);
+    // 選択中は文字カーソルが入らないようにする
+    chat.querySelectorAll('.bubble,.time-val').forEach(b=>b.contentEditable=komaMode?'false':'true');
+    if(komaMode){
+      if(!komaHint){
+        komaHint=document.createElement('div');
+        komaHint.className='koma-hint';
+        komaHint.textContent='コマにするメッセージをタップ（もう一度✂で解除）';
+        document.getElementById('phone').appendChild(komaHint);
+      }
+    }else if(komaHint){ komaHint.remove(); komaHint=null; }
+  }
+  chat.addEventListener('click',e=>{
+    if(!komaMode) return;
+    const row=e.target.closest('.row');
+    if(!row) return;
+    e.preventDefault(); e.stopPropagation();
+    toggleKoma(false);
+    // 破線の枠が写り込まないよう、解除を反映してから撮る
+    requestAnimationFrame(()=>requestAnimationFrame(()=>capture(row)));
+  },true);
 </script>
 </body>
 </html>
