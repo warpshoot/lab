@@ -161,6 +161,19 @@
   .upload-btn{ background:#8e8e8e; } .done-btn{ background:var(--out-bubble); }
   .file-name{ font-size:12px; color:var(--sub); }
   .sec-label{ font-size:11px; font-weight:700; color:var(--sub); letter-spacing:.5px; margin-top:4px; }
+  /* レイヤー書き出し（editor 用）：ベースと吹き出しでキャンバスを揃えるため
+     要素は display ではなく visibility で消す（レイアウトを動かさない） */
+  /* body が flex なので align-self を戻さないと画面高さに引き伸ばされ、
+     会話が短いと下に余白、長いと切れる */
+  .export-tall{ height:auto !important; max-height:none !important; align-self:flex-start !important; }
+  .export-tall .chat{ overflow:visible !important; flex:none !important; }
+  .export-gap .row{ margin-bottom:var(--layer-gap) !important; }
+  .export-gap .row.gap{ margin-top:var(--layer-gap) !important; }
+  .export-base .row{ visibility:hidden !important; }
+  .export-bubble{ background:transparent !important; }
+  .export-bubble .statusbar,
+  .export-bubble .header,
+  .export-bubble .tabbar{ visibility:hidden !important; }
   .koma-mode .bubble{ cursor:crosshair; outline:2px dashed var(--out-bubble); outline-offset:3px; }
   .koma-mode .del{ display:none !important; }
   .koma-hint{
@@ -179,6 +192,7 @@
     <button onclick="loadSample()">📄 サンプル</button>
     <button onclick="capture()">📷 画像保存</button>
     <button onclick="toggleKoma()" id="komaBtn">✂ コマ書き出し</button>
+    <button onclick="exportLayers()">🗂 レイヤー書き出し</button>
     <button onclick="replayWithHide()">▶ 隠して再生</button>
     <button onclick="hideUI()">🙈 UIを隠す</button>
   </div>
@@ -294,6 +308,10 @@
       </div>
       <div class="toggle-row"><label>背景を透過（コマ用）</label>
         <span class="switch"><input type="checkbox" id="transToggle"><span class="slider" onclick="this.previousElementSibling.click()"></span></span>
+      </div>
+      <div class="field"><label>レイヤー書き出し時のバブル間隔　<span id="setLayerGapVal">24px</span></label>
+        <input type="range" id="setLayerGap" min="0" max="40" value="24">
+        <span class="file-name">editor の「結合距離」より広くしないと、隣のバブルと1つの塊にまとめられます</span>
       </div>
 
       <div class="sec-label">データ</div>
@@ -501,6 +519,7 @@
   document.getElementById('setSig').addEventListener('change',function(){ updateSignal(+this.value); });
   document.getElementById('setWifi').addEventListener('change',function(){ updateWifi(+this.value); });
   document.getElementById('setBat').addEventListener('input',function(){ updateBattery(+this.value); });
+  document.getElementById('setLayerGap').addEventListener('input',function(){ document.getElementById('setLayerGapVal').textContent=this.value+'px'; });
   document.getElementById('sbToggle').addEventListener('change',function(){ document.getElementById('phone').classList.toggle('hide-statusbar',!this.checked); });
   const sbTimeEl=document.getElementById('sbTime');
   sbTimeEl.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); sbTimeEl.blur(); } });
@@ -579,7 +598,7 @@
       sig:4, wifi:3, bat:30, sbShow:true, sbTime:t,
       avatarColor:palette[0], avatarImg:null,
       showTime:true, showCheck:true, dark:false, autoTime:true,
-      exportRange:'phone', exportScale:3, transparent:false,
+      exportRange:'phone', exportScale:3, transparent:false, layerGap:24,
       msgs:[{ side:'in', text:SAMPLE_TEXT, time:t, unread:false, gap:false }]
     };
   }
@@ -624,6 +643,7 @@
       exportRange:document.getElementById('setExportRange').value,
       exportScale:+document.getElementById('setExportScale').value,
       transparent:document.getElementById('transToggle').checked,
+      layerGap:+document.getElementById('setLayerGap').value,
       dark:document.body.classList.contains('dark'),
       msgs:collectMsgs()
     };
@@ -685,6 +705,9 @@
     document.getElementById('setExportRange').value=s.exportRange||'phone';
     document.getElementById('setExportScale').value=String(s.exportScale||3);
     document.getElementById('transToggle').checked=!!s.transparent;
+    const lg=(s.layerGap===undefined?24:s.layerGap);
+    document.getElementById('setLayerGap').value=lg;
+    document.getElementById('setLayerGapVal').textContent=lg+'px';
 
     // メッセージ
     if(typingRow){ typingRow.remove(); typingRow=null; }
@@ -785,6 +808,64 @@
         URL.revokeObjectURL(url); restore();
       },'image/png');
     }).catch(e=>{ restore(); alert('書き出しに失敗しました: '+e); });
+  }
+
+  /* ===== レイヤー書き出し（editor 用） =====
+     会話全体を縦長1枚に伸ばし、同じキャンバスで2枚撮る:
+       base.png   … 吹き出しを消した画面（ベースの絵）
+       bubble.png … 吹き出しだけの透過PNG（editor が塊ごとに自動分割する）
+     どちらも同じ要素・同じ倍率で撮るのでキャンバスサイズは必ず一致する。 */
+  function deliverFiles(items){
+    const files=items.map(([n,b])=>new File([b],n,{type:'image/png'}));
+    if(navigator.canShare && navigator.canShare({files})){
+      return navigator.share({files}).catch(()=>{});
+    }
+    // 複数同時DLはブラウザに止められることがあるので間隔をあける
+    return items.reduce((p,[n,b],i)=>p.then(()=>new Promise(r=>{
+      const url=URL.createObjectURL(b);
+      const a=document.createElement('a'); a.download=n; a.href=url; a.click();
+      URL.revokeObjectURL(url);
+      setTimeout(r, i<items.length-1?700:0);
+    })),Promise.resolve());
+  }
+
+  function exportLayers(){
+    const scale=+document.getElementById('setExportScale').value||3;
+    const gap=+document.getElementById('setLayerGap').value||0;
+    const phone=document.getElementById('phone');
+    const composer=document.getElementById('composer'), fab=document.getElementById('fab');
+    const cDisp=composer.style.display;
+
+    document.getElementById('toolbar').classList.remove('open');
+    fab.style.display='none';
+    document.querySelectorAll('.del').forEach(d=>d.style.display='none');
+    // 2枚とも同じ条件で撮るため、入力欄は両方で非表示にしておく
+    composer.style.display='none';
+    phone.style.setProperty('--layer-gap',gap+'px');
+    phone.classList.add('export-tall','export-gap');
+
+    const restore=()=>{
+      phone.classList.remove('export-tall','export-gap','export-base','export-bubble');
+      phone.style.removeProperty('--layer-gap');
+      fab.style.display='';
+      if(!uiHidden){
+        document.querySelectorAll('.del').forEach(d=>d.style.display='');
+        composer.style.display=cDisp||'flex';
+      }
+      chat.scrollTop=chat.scrollHeight;
+    };
+
+    const shot=(cls,bg)=>{
+      phone.classList.add(cls);
+      return html2canvas(phone,{backgroundColor:bg,scale,logging:false})
+        .then(c=>{ phone.classList.remove(cls); return new Promise(r=>c.toBlob(r,'image/png')); });
+    };
+
+    const bg=document.body.classList.contains('dark')?'#10141a':'#ffffff';
+    shot('export-base',bg)
+      .then(base=>shot('export-bubble',null).then(bubble=>deliverFiles([['base.png',base],['bubble.png',bubble]])))
+      .then(restore)
+      .catch(e=>{ restore(); alert('レイヤー書き出しに失敗しました: '+e); });
   }
 
   /* コマ選択モード：バブルをタップしてそのメッセージだけ書き出す */
