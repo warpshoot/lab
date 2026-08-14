@@ -751,18 +751,29 @@ function capture() {
 
   const bg = trans ? null : (document.body.classList.contains('dark') ? '#000000' : '#ffffff');
   const name = isPhone ? 'x-post.png' : (mode === 'body' ? 'x-post-body.png' : 'x-post-koma.png');
-  html2canvas(target, { backgroundColor: bg, scale, logging: false }).then(c => {
-    c.toBlob(async blob => {
-      const file = new File([blob], name, { type: 'image/png' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file] }); } catch(e) {}
-        restore(); return;
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.download = name; a.href = url; a.click();
-      URL.revokeObjectURL(url); restore();
-    }, 'image/png');
-  }).catch(e => { restore(); alert('書き出しに失敗しました: ' + e); });
+  html2canvas(target, { backgroundColor: bg, scale, logging: false })
+    .then(c => new Promise(r => c.toBlob(r, 'image/png')))
+    .then(blob => saveFile(name, blob))
+    .then(restore)
+    .catch(e => { restore(); alert('書き出しに失敗しました: ' + e); });
+}
+
+/* 共有シートが使えれば使い、駄目ならダウンロードに落とす。
+   共有は「直前のユーザー操作」が必要だが、html2canvas の描画に時間がかかると
+   その資格が切れて NotAllowedError になる。以前はこれを握り潰していたため、
+   ボタンを押しても何も起きないことがあった。 */
+async function saveFile(name, blob) {
+  const file = new File([blob], name, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file] }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }  // ユーザーが自分でやめた場合だけ何もしない
+  }
+  const url = URL.createObjectURL(blob);
+  // 一部のブラウザは文書に繋がっていないリンクを無視する
+  const a = document.createElement('a'); a.download = name; a.href = url;
+  document.body.appendChild(a); a.click(); a.remove();
+  // すぐ revoke するとダウンロードが始まる前に無効化されることがある
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 </script>
 </body>

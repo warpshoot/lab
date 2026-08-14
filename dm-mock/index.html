@@ -982,18 +982,11 @@
 
     const bg=trans?null:(document.body.classList.contains('dark')?'#10141a':'#ffffff');
     const name=el?'koma.png':(isPhone?'message.png':'message-part.png');
-    html2canvas(target,{backgroundColor:bg,scale,logging:false}).then(c=>{
-      c.toBlob(async (blob)=>{
-        const file=new File([blob],name,{type:'image/png'});
-        if(navigator.canShare && navigator.canShare({files:[file]})){
-          try{ await navigator.share({files:[file]}); } catch(e){}
-          restore(); return;
-        }
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement('a'); a.download=name; a.href=url; a.click();
-        URL.revokeObjectURL(url); restore();
-      },'image/png');
-    }).catch(e=>{ restore(); alert('書き出しに失敗しました: '+e); });
+    html2canvas(target,{backgroundColor:bg,scale,logging:false})
+      .then(c=>new Promise(r=>c.toBlob(r,'image/png')))
+      .then(blob=>saveFiles([[name,blob]]))
+      .then(restore)
+      .catch(e=>{ restore(); alert('書き出しに失敗しました: '+e); });
   }
 
   /* ===== レイヤー書き出し（editor 用） =====
@@ -1001,18 +994,28 @@
        base.png   … 吹き出しを消した画面（ベースの絵）
        bubble.png … 吹き出しだけの透過PNG（editor が塊ごとに自動分割する）
      どちらも同じ要素・同じ倍率で撮るのでキャンバスサイズは必ず一致する。 */
-  function deliverFiles(items){
+  /* items = [[ファイル名, Blob], ...] を保存する。
+     共有シートが使えれば使い、駄目ならダウンロードに落とす。
+     共有は「直前のユーザー操作」が必要だが、html2canvas の描画に時間がかかると
+     その資格が切れて NotAllowedError になる。以前はこれを握り潰していたため、
+     ボタンを押しても何も起きないことがあった。 */
+  async function saveFiles(items){
     const files=items.map(([n,b])=>new File([b],n,{type:'image/png'}));
     if(navigator.canShare && navigator.canShare({files})){
-      return navigator.share({files}).catch(()=>{});
+      try{ await navigator.share({files}); return; }
+      catch(e){ if(e && e.name==='AbortError') return; }  // ユーザーが自分でやめた場合だけ何もしない
     }
-    // 複数同時DLはブラウザに止められることがあるので間隔をあける
-    return items.reduce((p,[n,b],i)=>p.then(()=>new Promise(r=>{
+    for(let i=0;i<items.length;i++){
+      const [n,b]=items[i];
       const url=URL.createObjectURL(b);
-      const a=document.createElement('a'); a.download=n; a.href=url; a.click();
-      URL.revokeObjectURL(url);
-      setTimeout(r, i<items.length-1?700:0);
-    })),Promise.resolve());
+      // 一部のブラウザは文書に繋がっていないリンクを無視する
+      const a=document.createElement('a'); a.download=n; a.href=url;
+      document.body.appendChild(a); a.click(); a.remove();
+      // すぐ revoke するとダウンロードが始まる前に無効化されることがある
+      setTimeout(()=>URL.revokeObjectURL(url),10000);
+      // 複数同時DLはブラウザに止められることがあるので間隔をあける
+      if(i<items.length-1) await new Promise(r=>setTimeout(r,700));
+    }
   }
 
   /* target を渡すと、そのメッセージだけを演出対象にする:
@@ -1090,7 +1093,7 @@
       return shot(null);
     }).then(check=>{
       if(check) files.push(['mono.png',check]);
-      return deliverFiles(files);
+      return saveFiles(files);
     }).then(restore)
       .catch(e=>{ restore(); alert('レイヤー書き出しに失敗しました: '+e); });
   }
