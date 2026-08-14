@@ -14,13 +14,16 @@ body.dark {
   --bg:#000000; --text:#e7e9ea; --sub:#71767b; --border:#2f3336;
   --icon:#71767b; --blue:#1d9bf0;
 }
-html,body { height:100%; }
+html,body { min-height:100%; }
 body {
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue","Hiragino Sans","Yu Gothic UI",sans-serif;
-  background:#444; display:flex; justify-content:center; color:var(--text);
+  background:#444; display:flex; justify-content:center; align-items:flex-start; color:var(--text);
 }
+/* 素材のサイズは制作環境に依存させない。端末が狭いときは stage で縮小表示するだけで、
+   レイアウト（＝書き出される画像）は常に 420x920 のスマホ画面。 */
+.stage { position:relative; }
 .phone {
-  width:100%; max-width:420px; height:100vh; max-height:920px;
+  width:420px; height:920px; transform-origin:top left;
   background:var(--bg); display:flex; flex-direction:column;
   position:relative; overflow:hidden; transition:background .2s;
 }
@@ -159,6 +162,7 @@ body {
 </style>
 </head>
 <body>
+<div class="stage" id="stage">
 <div class="phone" id="phone">
   <button class="fab" id="fab" onclick="toggleToolbar()">⚙</button>
   <div class="toolbar" id="toolbar">
@@ -367,6 +371,7 @@ body {
       <div class="panel-btns"><button class="done-btn" onclick="closePanel()">完了</button></div>
     </div>
   </div>
+</div>
 </div>
 
 <script src="../vendor/html2canvas.min.js"></script>
@@ -693,6 +698,34 @@ document.querySelector('.panel').addEventListener('change', scheduleSave);
   save();
 })();
 
+/* ===== 表示スケール =====
+   画面が 420px より狭いときだけ縮めて表示する。レイアウトは 420x920 のままなので、
+   スマホで作ってもPCで作っても書き出される素材は同じになる。 */
+const stage = document.getElementById('stage');
+function fitStage() {
+  const s = Math.min(1, (document.documentElement.clientWidth || 420) / 420);
+  $('phone').style.transform = s < 1 ? 'scale(' + s + ')' : '';
+  stage.style.width = (420 * s) + 'px';
+  stage.style.height = (920 * s) + 'px';
+}
+window.addEventListener('resize', fitStage);
+fitStage();
+
+// 書き出し中だけ等倍に戻す（縮小表示のまま撮ると素材まで縮む）。
+// 併せて左寄せにする: 画面より広い 420px を中央寄せすると端数座標に載り、
+// アイコンの縁などがサブピクセルでにじんで端末ごとに差が出る。
+function unscale() {
+  const p = $('phone');
+  const t = p.style.transform, w = stage.style.width, h = stage.style.height;
+  const j = document.body.style.justifyContent;
+  p.style.transform = ''; stage.style.width = '420px'; stage.style.height = 'auto';
+  document.body.style.justifyContent = 'flex-start';
+  return () => {
+    p.style.transform = t; stage.style.width = w; stage.style.height = h;
+    document.body.style.justifyContent = j;
+  };
+}
+
 /* ===== 書き出し ===== */
 function capture() {
   const mode = $('setExportRange').value;
@@ -704,12 +737,14 @@ function capture() {
   const isPhone = (target === $('phone'));
 
   const fab = $('fab'), toolbar = $('toolbar'), replyBar = $('replyBarEl');
+  const rescale = unscale();
   toolbar.classList.remove('open');
   fab.style.display = 'none';
   const replyWas = replyBar.style.display;
   if (isPhone) replyBar.style.display = 'none';
 
   const restore = () => {
+    rescale();
     fab.style.display = '';
     if (isPhone && !uiHidden) replyBar.style.display = replyWas;
   };

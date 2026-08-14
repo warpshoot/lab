@@ -18,13 +18,16 @@
     --out-bubble:#4ca771; --out-text:#ffffff;
     --bar:#10141a; --icon:#f2f3f5;
   }
-  html,body{ height:100%; }
+  html,body{ min-height:100%; }
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue","Hiragino Sans","Yu Gothic UI",sans-serif;
-    background:#444; display:flex; justify-content:center; color:var(--text); transition:background .2s;
+    background:#444; display:flex; justify-content:center; align-items:flex-start; color:var(--text); transition:background .2s;
   }
+  /* 素材のサイズは制作環境に依存させない。端末が狭いときは stage で縮小表示するだけで、
+     レイアウト（＝書き出される画像）は常に 420x920 のスマホ画面。 */
+  .stage{ position:relative; }
   .phone{
-    width:100%; max-width:420px; height:100vh; max-height:920px;
+    width:420px; height:920px; transform-origin:top left;
     background:var(--bg); display:flex; flex-direction:column;
     position:relative; overflow:hidden; transition:background .2s;
   }
@@ -163,9 +166,8 @@
   .sec-label{ font-size:11px; font-weight:700; color:var(--sub); letter-spacing:.5px; margin-top:4px; }
   /* レイヤー書き出し（editor 用）：ベースと吹き出しでキャンバスを揃えるため
      要素は display ではなく visibility で消す（レイアウトを動かさない） */
-  /* body が flex なので align-self を戻さないと画面高さに引き伸ばされ、
-     会話が短いと下に余白、長いと切れる */
-  .export-tall{ height:auto !important; max-height:none !important; align-self:flex-start !important; }
+  /* 会話全体を1枚に収めるため、高さの固定を外して内容の高さまで伸ばす */
+  .export-tall{ height:auto !important; }
   .export-tall .chat{ overflow:visible !important; flex:none !important; }
   .export-gap .row{ margin-bottom:var(--layer-gap) !important; }
   .export-gap .row.gap{ margin-top:var(--layer-gap) !important; }
@@ -194,6 +196,7 @@
 </style>
 </head>
 <body>
+<div class="stage" id="stage">
 <div class="phone" id="phone">
   <button class="fab" id="fab" onclick="toggleToolbar()">⚙</button>
   <div class="toolbar" id="toolbar">
@@ -336,6 +339,7 @@
     </div>
   </div>
 </div>
+</div>
 
 <script src="../vendor/html2canvas.min.js"></script>
 <script>
@@ -418,6 +422,13 @@
     input.focus();
   }
   let typingRow=null;
+  /* 出現アニメを再生する。html2canvas は書き出し時に文書を複製し、その複製では
+     CSSアニメーションが頭から再生される。クラスを付けっぱなしにすると書き出した
+     バブルがアニメの途中（＝縮んだ状態）で写るので、終わったら必ず外す。 */
+  function pop(el){
+    el.classList.add('new-msg');
+    el.addEventListener('animationend',()=>el.classList.remove('new-msg'),{once:true});
+  }
   function toggleTyping(){
     const btn=document.getElementById('typingBtn');
     if(typingRow){ typingRow.remove(); typingRow=null; btn.classList.remove('active'); return; }
@@ -425,7 +436,7 @@
     const bubble=document.createElement('div'); bubble.className='bubble';
     bubble.style.cssText='display:flex;align-items:center;gap:5px;padding:10px 16px;';
     for(let i=0;i<3;i++){ const d=document.createElement('span'); d.className='typing-dot'; bubble.appendChild(d); }
-    typingRow.appendChild(bubble); chat.appendChild(typingRow); typingRow.classList.add('new-msg'); chat.scrollTop=chat.scrollHeight;
+    typingRow.appendChild(bubble); chat.appendChild(typingRow); pop(typingRow); chat.scrollTop=chat.scrollHeight;
     btn.classList.add('active');
   }
   function send(){
@@ -435,7 +446,7 @@
     const last=typingRow ? typingRow.previousElementSibling : chat.lastElementChild;
     if(last && !last.classList.contains(dir) && !last.classList.contains('day')) row.classList.add('gap');
     if(typingRow) chat.insertBefore(row,typingRow); else chat.appendChild(row);
-    row.classList.add('new-msg');
+    pop(row);
     chat.scrollTop=chat.scrollHeight;
     input.value=''; autoGrow(); input.focus();
     updateStatusBarTime();
@@ -473,14 +484,14 @@
         bbl.style.cssText='display:flex;align-items:center;gap:5px;padding:10px 16px;';
         for(let i=0;i<3;i++){ const d=document.createElement('span'); d.className='typing-dot'; bbl.appendChild(d); }
         tmpTyping.appendChild(bbl); chat.appendChild(tmpTyping);
-        tmpTyping.classList.add('new-msg');
+        pop(tmpTyping);
         chat.scrollTop=chat.scrollHeight;
       }
       setTimeout(()=>{
         if(tmpTyping){ tmpTyping.remove(); tmpTyping=null; }
         setTimeout(()=>{
           last.style.visibility='';
-          last.classList.add('new-msg');
+          pop(last);
           chat.scrollTop=chat.scrollHeight;
         },150);
       },1400);
@@ -488,7 +499,7 @@
       // 送信: 間をおいてメッセージ出現
       setTimeout(()=>{
         last.style.visibility='';
-        last.classList.add('new-msg');
+        pop(last);
         chat.scrollTop=chat.scrollHeight;
       },400);
     }
@@ -775,6 +786,36 @@
     save();
   })();
 
+  /* ===== 表示スケール =====
+     画面が 420px より狭いときだけ縮めて表示する。レイアウトは 420x920 のままなので、
+     スマホで作ってもPCで作っても書き出される素材は同じになる。
+     縦は縮めない（読みやすさ優先／はみ出したらページを縦スクロール）。 */
+  const stage=document.getElementById('stage');
+  function fitStage(){
+    const phone=document.getElementById('phone');
+    const s=Math.min(1,(document.documentElement.clientWidth||420)/420);
+    phone.style.transform=s<1?'scale('+s+')':'';
+    stage.style.width=(420*s)+'px';
+    stage.style.height=(920*s)+'px';
+  }
+  window.addEventListener('resize',fitStage);
+  fitStage();
+
+  // 書き出し中だけ等倍に戻す（縮小表示のまま撮ると素材まで縮む）。
+  // 併せて左寄せにする: 画面より広い 420px を中央寄せすると端数座標に載り、
+  // アバターの縁などがサブピクセルでにじんで端末ごとに差が出る。
+  function unscale(){
+    const phone=document.getElementById('phone');
+    const t=phone.style.transform, w=stage.style.width, h=stage.style.height;
+    const j=document.body.style.justifyContent;
+    phone.style.transform=''; stage.style.width='420px'; stage.style.height='auto';
+    document.body.style.justifyContent='flex-start';
+    return ()=>{
+      phone.style.transform=t; stage.style.width=w; stage.style.height=h;
+      document.body.style.justifyContent=j;
+    };
+  }
+
   /* ===== 書き出し ===== */
   function lastRow(){
     const rows=[...chat.children].filter(el=>el.classList.contains('row')&&el!==typingRow);
@@ -795,6 +836,9 @@
 
     const composer=document.getElementById('composer'), fab=document.getElementById('fab'), toolbar=document.getElementById('toolbar');
     const cDisp=composer.style.display;
+    const rescale=unscale();
+    // 出現アニメ中に書き出すと途中の姿で写るので、その場で終わらせる
+    chat.querySelectorAll('.new-msg').forEach(e=>e.classList.remove('new-msg'));
     toolbar.classList.remove('open');
     fab.style.display='none';
     document.querySelectorAll('.del').forEach(d=>d.style.display='none');
@@ -802,6 +846,7 @@
     if(isPhone) composer.style.display='none';
 
     const restore=()=>{
+      rescale();
       fab.style.display='';
       if(!uiHidden){
         document.querySelectorAll('.del').forEach(d=>d.style.display='');
@@ -855,6 +900,9 @@
     const phone=document.getElementById('phone');
     const composer=document.getElementById('composer'), fab=document.getElementById('fab');
     const cDisp=composer.style.display;
+    const rescale=unscale();
+    // 出現アニメ中に書き出すと途中の姿で写るので、その場で終わらせる
+    chat.querySelectorAll('.new-msg').forEach(e=>e.classList.remove('new-msg'));
 
     document.getElementById('toolbar').classList.remove('open');
     fab.style.display='none';
@@ -876,6 +924,7 @@
     const restore=()=>{
       phone.classList.remove('export-tall','export-gap','export-bubble','export-check','keep-check');
       phone.style.removeProperty('--layer-gap');
+      rescale();
       undo.forEach(f=>f());
       setVis(rows,'');
       fab.style.display='';
