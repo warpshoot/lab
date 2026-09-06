@@ -260,10 +260,14 @@
         // ===== モデル =====================================================
         // セル間隔を 1 とする単位系で全部計算する。書き出し時だけ 100 倍する。
         //
-        // 外周は一本の糸。ON の円は距離に関係なく必ずその内側に入るので、
-        // 素の形は ON の円ぜんぶの凸包になる。そこから OFF の円が外側から
-        // 押し込んで形を彫る。NEUTRAL の円は糸が素通りする。
-        // 円はすべて同じ半径。ON は内から押し広げ、OFF は外から押し込む。
+        // プレートに杭を打ち、その外側に糸を張ったもの、と考える。
+        // ON の杭は距離に関係なく必ず糸の内側に入るので、素の形は ON の杭
+        // ぜんぶの凸包になる。OFF の杭は糸の外側から押し込んで形を彫る。
+        // NEUTRAL は杭が打たれていないので糸が素通りする。
+        //
+        // 杭どうしは絶対に重ならない（半径は杭間隔の半分まで）。これが効いていて、
+        // 重ならない円は隙間を囲めないので、押し込みの合間に取り残された島は
+        // 発生しない。糸の内側に完全に入った杭は、そのまま真円の穴になる。
         const S = 1;
         const THRESHOLD = 1.0;
         const RES = 12;          // セル間隔あたりのサンプル数
@@ -272,8 +276,8 @@
         const BLOB_MIN = 0.30, BLOB_MAX = 0.54;
         const FADE_IN = 1.5;     // ここから寄与を落とし始める（セル単位）
         const FADE_OUT = 2.1;    // ここで寄与ゼロ
-        // EDGE（糸）用
-        const EDGE_MIN = 0.16, EDGE_MAX = 0.80;
+        // EDGE（糸）用。杭間隔の半分に対する割合
+        const EDGE_MIN = 0.30, EDGE_MAX = 1.0;
         const GAP_MIN = 0.62, GAP_MAX = 1.45;   // 行間（列間を1としたときの比）
 
         const ON = 1, OFF = -1, NEUTRAL = 0;
@@ -547,11 +551,60 @@
             return a / 2;
         }
 
+        function pointInPoly(p, poly) {
+            let inside = false;
+            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+                const a = poly[j], b = poly[i];
+                if ((a[1] > p[1]) !== (b[1] > p[1])
+                    && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+            }
+            return inside;
+        }
+
+        function distToPoly(p, poly) {
+            const e = [0, 0, 0, 0];
+            let d = Infinity;
+            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+                e[0] = poly[j][0]; e[1] = poly[j][1]; e[2] = poly[i][0]; e[3] = poly[i][1];
+                const dd = segDist(p[0], p[1], e);
+                if (dd < d) d = dd;
+            }
+            return d;
+        }
+
+        function circlePoly(c, r) {
+            const out = [];
+            for (let n = 0; n < 64; n++) {
+                const a = n / 64 * Math.PI * 2;
+                out.push([c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r]);
+            }
+            return out;
+        }
+
         function rebuild() {
-            // EDGE は張り直しで直線が出るので平滑化しない。BLOB は等値線をならす
-            loops = contour()
-                .map(l => mode === 'edge' ? tighten(l) : chaikin(l, 2))
-                .filter(l => Math.abs(signedArea(l)) > 2e-3); // サンプリングのゴミを落とす
+            if (mode === 'blob') {
+                loops = contour().map(l => chaikin(l, 2))
+                    .filter(l => Math.abs(signedArea(l)) > 2e-3);
+                return;
+            }
+            const raw = contour();
+            if (!raw.length) { loops = []; return; }
+            // 外周は一本の糸。面積が最大のループがそれ
+            let outer = raw[0], best = -1;
+            for (const l of raw) {
+                const a = Math.abs(signedArea(l));
+                if (a > best) { best = a; outer = l; }
+            }
+            outer = tighten(outer);   // 張り直すので平滑化はしない
+            loops = [outer];
+            // 糸の内側に完全に入った杭は、そのまま真円の穴になる。
+            // 等値線が出す他のループ（接する杭どうしの隙間に取り残された島など）は
+            // 捨てる。糸が届かない場所に図形はできない
+            for (const c of PUSH) {
+                if (!pointInPoly(c, outer)) continue;
+                if (distToPoly(c, outer) < radius - 1e-6) continue;
+                loops.push(circlePoly(c, radius));
+            }
         }
 
         // ===== 描画 =========================================================
@@ -708,14 +761,16 @@
         const gapValEl = document.getElementById('gapVal');
 
         function readSliders() {
-            const t = weight.value / 1000;
-            const lo = mode === 'blob' ? BLOB_MIN : EDGE_MIN;
-            const hi = mode === 'blob' ? BLOB_MAX : EDGE_MAX;
-            radius = lo + (hi - lo) * t;
-            weightVal.textContent = Math.round(t * 100);
             const g = gapEl.value / 1000;
             gapY = GAP_MIN + (GAP_MAX - GAP_MIN) * g;
             gapValEl.textContent = Math.round(g * 100);
+            const t = weight.value / 1000;
+            // 杭は重ならない。半径の上限は最小の杭間隔の半分で、
+            // そこに達すると隣の杭とちょうど接する
+            radius = mode === 'blob'
+                ? BLOB_MIN + (BLOB_MAX - BLOB_MIN) * t
+                : Math.min(S, S * gapY) * 0.5 * (EDGE_MIN + (EDGE_MAX - EDGE_MIN) * t);
+            weightVal.textContent = Math.round(t * 100);
         }
         for (const el of [weight, gapEl])
             el.addEventListener('input', () => { readSliders(); update(); });
@@ -857,10 +912,12 @@
         };
 
         // ===== 初期状態 =====================================================
-        // 起動時は穴のある形（O）を置いておく。内側は OFF にして丸く抜く
-        ['0,0', '1,0', '2,0', '3,0', '0,1', '3,1', '0,2', '3,2', '0,3', '3,3', '0,4', '1,4', '2,4', '3,4']
-            .forEach(k => setCell(k, ON));
-        ['1,1', '2,1', '1,2', '2,2', '1,3', '2,3'].forEach(k => setCell(k, OFF));
+        // 起動時は穴のある形。糸の内側に入った杭がそのまま真円の穴になる
+        for (let j = 0; j < 5; j++)
+            for (let i = 0; i < 4; i++) setCell(key(i, j), ON);
+        setCell('1,1', OFF);
+        setCell('2,3', OFF);
+
         refreshSegs();
         refreshStyle();
         refreshView();
