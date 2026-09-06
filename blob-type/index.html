@@ -152,6 +152,11 @@
             border-color: rgba(255, 255, 255, 0.4);
         }
 
+        .seg button.wide {
+            width: 64px;
+            letter-spacing: 0.08em;
+        }
+
         .seg button.on {
             background: #fff;
             border-color: #fff;
@@ -220,9 +225,18 @@
 
     <div class="panel">
         <div class="row">
+            <label>STYLE</label>
+            <div class="seg" id="styleSeg"></div>
+        </div>
+        <div class="row">
             <label>WEIGHT</label>
             <input type="range" id="weight" min="0" max="1000" value="500">
             <span class="value" id="weightVal">50</span>
+        </div>
+        <div class="row" id="smoothRow">
+            <label>SMOOTH</label>
+            <input type="range" id="smooth" min="0" max="1000" value="300">
+            <span class="value" id="smoothVal">30</span>
         </div>
         <div class="row">
             <label>COLS</label>
@@ -247,48 +261,120 @@
         const THRESHOLD = 1.0;
         const RES = 12;          // セル間隔あたりのサンプル数
         const MARGIN = 1;        // サンプリング領域の余白（セル）
-        const R_MIN = 0.30;      // 円がばらける側
-        const R_MAX = 0.54;      // ベタ寄り
+        // BLOB（メタボール）用
+        const BLOB_MIN = 0.30, BLOB_MAX = 0.54;
         const FADE_IN = 1.5;     // ここから寄与を落とし始める（セル単位）
         const FADE_OUT = 2.1;    // ここで寄与ゼロ
+        // EDGE（距離場）用
+        const EDGE_MIN = 0.14, EDGE_MAX = 0.56;
+        const K_MAX = 0.30;      // 凹コーナーのフィレット半径の上限
 
         let cols = 4, rows = 5;
         let cells = new Set();   // "i,j"
-        let radius = 0.46;
+        let mode = 'edge';       // 'edge' | 'blob'
+        let radius = 0.40;
+        let smoothK = 0.12;
         let loops = [];          // 平滑化後のポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
 
-        // ===== スカラー場 =================================================
-        function field(x, y, src) {
-            let sum = 0;
-            for (let n = 0; n < src.length; n += 2) {
-                const dx = x - src[n], dy = y - src[n + 1];
-                const d2 = dx * dx + dy * dy;
-                if (d2 < 1e-9) return 1e9;
-                const d = Math.sqrt(d2);
-                if (d >= FADE_OUT) continue;
-                let w = 1;
-                if (d > FADE_IN) {
-                    // 裾を滑らかに殺す。ハードクリップだと等値線にカクが出る
-                    const t = (d - FADE_IN) / (FADE_OUT - FADE_IN);
-                    w = 1 - t * t * (3 - 2 * t);
+        // ===== プリミティブ ===============================================
+        // EDGE：ON セルの中心を点、隣接（斜めを含む）ペアを線分として持ち、
+        //       その距離場を radius だけ太らせたものが図形になる。
+        //       メタボールと違って辺が直線になり、角だけが円弧になる。
+        // BLOB：中心座標だけ使う。
+        let P = [];   // [ax, ay, bx, by, halfLen, midX, midY] × n（点は a==b）
+        const DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];   // 重複しない8近傍
+
+        function buildPrims() {
+            P = [];
+            const push = (ax, ay, bx, by) => {
+                const hl = Math.hypot(bx - ax, by - ay) / 2;
+                P.push([ax * S, ay * S, bx * S, by * S, hl * S, (ax + bx) / 2 * S, (ay + by) / 2 * S]);
+            };
+            const linked = new Set();
+            // 一直線に並んだ分は1本の長い線分にまとめる。
+            // 短い線分を重ねると smin が至るところで効いて、直線が波打つ
+            for (const [di, dj] of DIRS) {
+                for (const c of cells) {
+                    const [i, j] = c.split(',').map(Number);
+                    if (cells.has(key(i - di, j - dj))) continue;   // 列の先頭だけ処理する
+                    let n = 0;
+                    while (cells.has(key(i + (n + 1) * di, j + (n + 1) * dj))) n++;
+                    if (!n) continue;
+                    push(i, j, i + n * di, j + n * dj);
+                    for (let m = 0; m <= n; m++) linked.add(key(i + m * di, j + m * dj));
                 }
-                sum += (radius / d) * (radius / d) * w;
             }
-            return sum;
+            // 孤立セルだけ点を足す。線分を持つセルにも足すと smin で全体が膨らむ
+            for (const c of cells) {
+                if (linked.has(c)) continue;
+                const [i, j] = c.split(',').map(Number);
+                push(i, j, i, j);
+            }
+        }
+
+        // 多項式スムーズ min。凹んだ接合部に半径 k のフィレットが入る
+        function smin(a, b, k) {
+            if (k <= 0) return a < b ? a : b;
+            const h = Math.max(k - Math.abs(a - b), 0) / k;
+            return (a < b ? a : b) - h * h * k * 0.25;
+        }
+
+        function segDist(x, y, p) {
+            const vx = p[2] - p[0], vy = p[3] - p[1];
+            const wx = x - p[0], wy = y - p[1];
+            const vv = vx * vx + vy * vy;
+            let t = vv > 0 ? (wx * vx + wy * vy) / vv : 0;
+            t = t < 0 ? 0 : t > 1 ? 1 : t;
+            const dx = wx - t * vx, dy = wy - t * vy;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // ===== スカラー場 =================================================
+        // 内側は f >= THRESHOLD。両モードとも同じ閾値に揃えてある
+        function field(x, y) {
+            if (mode === 'blob') {
+                let sum = 0;
+                for (let n = 0; n < P.length; n++) {
+                    const dx = x - P[n][0], dy = y - P[n][1];
+                    const d2 = dx * dx + dy * dy;
+                    if (d2 < 1e-9) return 1e9;
+                    const d = Math.sqrt(d2);
+                    if (d >= FADE_OUT) continue;
+                    let w = 1;
+                    if (d > FADE_IN) {
+                        // 裾を滑らかに殺す。ハードクリップだと等値線にカクが出る
+                        const t = (d - FADE_IN) / (FADE_OUT - FADE_IN);
+                        w = 1 - t * t * (3 - 2 * t);
+                    }
+                    sum += (radius / d) * (radius / d) * w;
+                }
+                return sum;
+            }
+            // 近い2本だけを混ぜる。全部に smin を重ねがけすると膨らみが累積して
+            // 本来まっすぐな辺が波打つ
+            let d1 = Infinity, d2 = Infinity;
+            for (let n = 0; n < P.length; n++) {
+                const p = P[n];
+                const reach = d2 + smoothK + p[4];   // 遠いプリミティブは触らない
+                const ex = x - p[5], ey = y - p[6];
+                if (ex * ex + ey * ey > reach * reach) continue;
+                const dd = segDist(x, y, p);
+                if (dd < d1) { d2 = d1; d1 = dd; }
+                else if (dd < d2) { d2 = dd; }
+            }
+            const d = smin(d1, d2, smoothK);
+            // 距離場は線形なので、マーチングスクエアの補間がそのまま効く
+            return THRESHOLD + (radius - d);
         }
 
         // ===== マーチングスクエア =========================================
         // 交点は格子辺そのものに乗るので、辺ID で頂点を同一視する。
         // 浮動小数の座標をキーにすると繋ぎ損ねるため。
         function contour() {
-            const src = [];
-            for (const c of cells) {
-                const [i, j] = c.split(',').map(Number);
-                src.push(i * S, j * S);
-            }
-            if (!src.length) return [];
+            buildPrims();
+            if (!P.length) return [];
 
             const x0 = -MARGIN, y0 = -MARGIN;
             const nx = (cols - 1 + MARGIN * 2) * RES;
@@ -300,7 +386,7 @@
             const v = new Float32Array((nx + 1) * (ny + 1));
             for (let j = 0; j <= ny; j++)
                 for (let i = 0; i <= nx; i++)
-                    v[j * (nx + 1) + i] = field(px(i), py(j), src);
+                    v[j * (nx + 1) + i] = field(px(i), py(j));
             const val = (i, j) => v[j * (nx + 1) + i];
 
             const pos = new Map();   // 辺ID -> [x, y]
@@ -341,7 +427,7 @@
                         case 7: case 8: link(L(), T()); break;
                         case 5: case 10: {
                             // 曖昧ケース。セル中心の場の値で接続を決める
-                            const center = field(px(i) + step / 2, py(j) + step / 2, src) >= THRESHOLD;
+                            const center = field(px(i) + step / 2, py(j) + step / 2) >= THRESHOLD;
                             // TL/BR 側を切り落とすか、TR/BL 側を切り落とすか
                             const cutTLBR = (c === 5) ? center : !center;
                             if (cutTLBR) { link(L(), T()); link(B(), R()); }
@@ -443,7 +529,7 @@
             for (let j = 0; j < rows; j++) {
                 for (let i = 0; i < cols; i++) {
                     ctx.beginPath();
-                    ctx.arc(ox + i * S * scale, oy + j * S * scale, radius * scale * 0.82, 0, Math.PI * 2);
+                    ctx.arc(ox + i * S * scale, oy + j * S * scale, 0.4 * S * scale, 0, Math.PI * 2);
                     ctx.stroke();
                 }
             }
@@ -505,12 +591,35 @@
         // ===== コントロール =================================================
         const weight = document.getElementById('weight');
         const weightVal = document.getElementById('weightVal');
-        weight.addEventListener('input', () => {
+        const smooth = document.getElementById('smooth');
+        const smoothVal = document.getElementById('smoothVal');
+        const smoothRow = document.getElementById('smoothRow');
+
+        function readSliders() {
             const t = weight.value / 1000;
-            radius = R_MIN + (R_MAX - R_MIN) * t;
+            const lo = mode === 'blob' ? BLOB_MIN : EDGE_MIN;
+            const hi = mode === 'blob' ? BLOB_MAX : EDGE_MAX;
+            radius = lo + (hi - lo) * t;
             weightVal.textContent = Math.round(t * 100);
-            update();
-        });
+            const k = smooth.value / 1000;
+            smoothK = K_MAX * k;
+            smoothVal.textContent = Math.round(k * 100);
+        }
+        weight.addEventListener('input', () => { readSliders(); update(); });
+        smooth.addEventListener('input', () => { readSliders(); update(); });
+
+        const styleSeg = document.getElementById('styleSeg');
+        function refreshStyle() {
+            styleSeg.innerHTML = '';
+            for (const m of ['edge', 'blob']) {
+                const b = document.createElement('button');
+                b.textContent = m.toUpperCase();
+                b.className = 'wide' + (m === mode ? ' on' : '');
+                b.onclick = () => { mode = m; refreshStyle(); readSliders(); update(); };
+                styleSeg.appendChild(b);
+            }
+            smoothRow.style.display = mode === 'edge' ? '' : 'none';
+        }
 
         function buildSeg(el, min, max, get, set) {
             el.innerHTML = '';
@@ -619,7 +728,9 @@
         ['0,0', '1,0', '2,0', '3,0', '0,1', '3,1', '0,2', '3,2', '0,3', '3,3', '0,4', '1,4', '2,4', '3,4']
             .forEach(k => cells.add(k));
         refreshSegs();
-        weight.dispatchEvent(new Event('input'));
+        refreshStyle();
+        readSliders();
+        update();
         window.addEventListener('resize', draw);
     </script>
 </body>

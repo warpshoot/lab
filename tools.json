@@ -13,7 +13,7 @@
     {
       "path": "./blob-type/",
       "title": "Blob Type",
-      "description": "メタボールでグリッドの円を溶かして文字を作り、SVG で書き出す"
+      "description": "グリッドの円を溶かして／太い線で結んで文字を作り、SVG で書き出す"
     },
     {
       "path": "./board-game-timer/",
