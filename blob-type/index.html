@@ -244,6 +244,11 @@
             <span class="value" id="carveVal">50</span>
         </div>
         <div class="row">
+            <label>GAP</label>
+            <input type="range" id="gap" min="0" max="1000" value="460">
+            <span class="value" id="gapVal">46</span>
+        </div>
+        <div class="row">
             <label>COLS</label>
             <div class="seg" id="colsSeg"></div>
             <label style="width:auto;margin-left:12px">ROWS</label>
@@ -275,17 +280,19 @@
         const K_MAX = 0.30;      // 凹コーナーのフィレット半径の上限
         const CARVE_MAX = 0.62;  // OFF セルの円で削る半径の上限
         const SIZE_MIN = 0.25, SIZE_MAX = 2.2;
+        const GAP_MIN = 0.62, GAP_MAX = 1.45;   // 行間（列間を1としたときの比）
 
         const ON = 1, OFF = -1, NEUTRAL = 0;
         const NEXT = { 0: ON, 1: OFF, '-1': NEUTRAL };
 
         let cols = 4, rows = 5;
         let grid = new Map();    // "i,j" -> { v: ON|OFF, s: サイズ倍率 }。無ければ NEUTRAL
-        let links = new Map();   // "i,j|i,j" -> 太さ倍率。既定（1）から変えたものだけ持つ
+        let links = new Map();   // "i,j|i,j" -> false。切った接続だけ持つ
         let mode = 'edge';       // 'edge' | 'blob'
         let radius = 0.40;
         let smoothK = 0.09;
         let carve = 0.35;
+        let gapY = 1;            // 行間。円の間隔を変えると張り方が変わる
         let loops = [];          // 平滑化後のポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
@@ -297,19 +304,20 @@
             else grid.set(k, { v, s: s === undefined ? sizeAt(k) : s });
         }
         const linkKey = (a, b) => a < b ? a + '|' + b : b + '|' + a;
-        const LINK_W = [1, 0.55, 0.28, 0];   // 隙間タップで一巡する太さ
-        // 隣接した ON どうしは既定で太さ1の棒で繋がる。細くしたい／切りたいところだけ上書き
-        function linkW(i, j, i2, j2) {
-            if (!isOn(i, j) || !isOn(i2, j2)) return 0;
-            const lk = linkKey(key(i, j), key(i2, j2));
-            return links.has(lk) ? links.get(lk) : 1;
+        // 隣接した ON どうしは既定で繋がる。切りたいところだけ上書きする
+        function linked(i, j, i2, j2) {
+            if (!isOn(i, j) || !isOn(i2, j2)) return false;
+            return links.get(linkKey(key(i, j), key(i2, j2))) !== false;
         }
+        // 格子の座標。行間だけ可変
+        const CX = i => i * S;
+        const CY = j => j * S * gapY;
 
         // ===== プリミティブ ===============================================
-        // EDGE：ON セルを円、繋がったペアを線分として持ち、その距離場が図形になる。
-        //       メタボールと違って辺が直線になり、角だけが円弧になる。
-        //       セルごとに半径が違うので、線分は両端で太さの変わる円錐台。
-        //       OFF セルの円はそこから引く。NEUTRAL は何もしない。
+        // 円のまわりに糸を張ったものが図形、という捉え方をする。
+        // ON セルの円が外へ、OFF セルの円が内へ糸を押す。2円をまたぐ直線は
+        // 共通接線（＝2円の凸包）で、棒の太さのようなパラメータは存在しない。
+        // 太さは円の大きさと間隔だけで決まる。
         // BLOB：ON セルの中心と半径だけ使う。
         let P = [];   // [ax, ay, bx, by, ra, rb, halfLen, midX, midY, maxR]
         let Q = [];   // OFF セルの円 [x, y, r, ...]
@@ -318,34 +326,44 @@
 
         function buildPrims() {
             P = []; Q = []; C = [];
-            const push = (ax, ay, bx, by, ra, rb) => {
+            const push = (i1, j1, i2, j2, ra, rb) => {
+                const ax = CX(i1), ay = CY(j1), bx = CX(i2), by = CY(j2);
                 const hl = Math.hypot(bx - ax, by - ay) / 2;
-                P.push([ax * S, ay * S, bx * S, by * S, ra, rb,
-                        hl * S, (ax + bx) / 2 * S, (ay + by) / 2 * S, Math.max(ra, rb)]);
+                P.push([ax, ay, bx, by, ra, rb,
+                        hl, (ax + bx) / 2, (ay + by) / 2, Math.max(ra, rb)]);
             };
             const on = [];
             for (const [k, c] of grid) {
                 const [i, j] = k.split(',').map(Number);
-                if (c.v === ON) { on.push([i, j]); C.push(i * S, j * S, radius * c.s); }
-                else Q.push(i * S, j * S, carve * c.s);
+                if (c.v === ON) { on.push([i, j, k]); C.push(CX(i), CY(j), radius * c.s); }
+                else Q.push(CX(i), CY(j), carve * c.s);
             }
-            // セルの円。塊（ロブ）はこれが作る
-            for (const [i, j] of on) {
-                const r = radius * sizeAt(key(i, j));
-                push(i, j, i, j, r, r);
-            }
-            // リンクの棒。太さはセルの大きさとは独立
+            const hull = new Set();
             for (const [di, dj] of DIRS) {
                 for (const [i, j] of on) {
-                    const w = linkW(i, j, i + di, j + dj);
-                    if (!w) continue;
-                    // 同じ太さで一直線に並んだ分は1本にまとめる。
-                    // 短い線分を重ねると smin が至るところで効いて、直線が波打つ
-                    if (linkW(i - di, j - dj, i, j) === w) continue;
+                    if (!linked(i, j, i + di, j + dj)) continue;
+                    const k0 = key(i, j), s0 = sizeAt(k0);
+                    const kn = key(i + di, j + dj);
+                    if (sizeAt(kn) !== s0) {   // 大きさが違う2円は1本ずつ張る
+                        push(i, j, i + di, j + dj, radius * s0, radius * sizeAt(kn));
+                        hull.add(k0); hull.add(kn);
+                        continue;
+                    }
+                    // 同じ大きさで一直線に並んだ分はまとめて1本にする。
+                    // 短い凸包を重ねると smin が至るところで効いて、直線が波打つ
+                    if (linked(i - di, j - dj, i, j) && sizeAt(key(i - di, j - dj)) === s0) continue;
                     let n = 1;
-                    while (linkW(i + n * di, j + n * dj, i + (n + 1) * di, j + (n + 1) * dj) === w) n++;
-                    push(i, j, i + n * di, j + n * dj, radius * w, radius * w);
+                    while (linked(i + n * di, j + n * dj, i + (n + 1) * di, j + (n + 1) * dj)
+                        && sizeAt(key(i + (n + 1) * di, j + (n + 1) * dj)) === s0) n++;
+                    push(i, j, i + n * di, j + n * dj, radius * s0, radius * s0);
+                    for (let m = 0; m <= n; m++) hull.add(key(i + m * di, j + m * dj));
                 }
+            }
+            // どこにも張られていない円だけ単独で置く。張られている円にも足すと smin で膨らむ
+            for (const [i, j, k] of on) {
+                if (hull.has(k)) continue;
+                const r = radius * sizeAt(k);
+                push(i, j, i, j, r, r);
             }
         }
 
@@ -441,9 +459,9 @@
             if (!P.length) return [];
 
             const x0 = -MARGIN, y0 = -MARGIN;
-            const nx = (cols - 1 + MARGIN * 2) * RES;
-            const ny = (rows - 1 + MARGIN * 2) * RES;
             const step = S / RES;
+            const nx = Math.ceil(((cols - 1) * S + MARGIN * 2) / step);
+            const ny = Math.ceil((CY(rows - 1) + MARGIN * 2) / step);
             const px = i => x0 + i * step;
             const py = j => y0 + j * step;
 
@@ -560,7 +578,7 @@
             // グリッド外形＋余白 0.8 セル。プレビューと SVG で同じ枠を使う
             const pad = 0.8;
             const w = (cols - 1) * S + pad * 2;
-            const h = (rows - 1) * S + pad * 2;
+            const h = CY(rows - 1) + pad * 2;
             const side = Math.max(w, h);
             return { x: -pad - (side - w) / 2, y: -pad - (side - h) / 2, size: side };
         }
@@ -596,7 +614,7 @@
                 const [i, j] = k.split(',').map(Number);
                 const gr = (mode === 'edge' && carve ? carve : 0.4 * S) * c.s * scale;
                 ctx.beginPath();
-                ctx.arc(ox + i * S * scale, oy + j * S * scale, gr, 0, Math.PI * 2);
+                ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, gr, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
             }
@@ -604,23 +622,20 @@
             ctx.fillStyle = '#000';
             ctx.fill(pathFromLoops(scale, ox, oy), 'evenodd');
 
-            // 既定から変えた接続に印。ここをタップすれば太さが一巡する
+            // 切ってある接続に印。ここをタップすれば繋ぎ直せる
+            ctx.strokeStyle = 'rgba(220,60,60,0.85)';
             ctx.lineWidth = 1.5 * dpr;
-            for (const [lk, w] of links) {
+            for (const [lk, v] of links) {
+                if (v !== false) continue;
                 const [ka, kb] = lk.split('|');
                 const [ia, ja] = ka.split(',').map(Number);
                 const [ib, jb] = kb.split(',').map(Number);
                 if (!isOn(ia, ja) || !isOn(ib, jb)) continue;
-                const mx = ox + (ia + ib) / 2 * S * scale, my = oy + (ja + jb) / 2 * S * scale;
-                ctx.strokeStyle = 'rgba(220,60,60,0.85)';
+                const mx = ox + (CX(ia) + CX(ib)) / 2 * scale, my = oy + (CY(ja) + CY(jb)) / 2 * scale;
+                const g = 4 * dpr;
                 ctx.beginPath();
-                if (w > 0) {
-                    ctx.arc(mx, my, (2 + 4 * w) * dpr, 0, Math.PI * 2);
-                } else {
-                    const g = 4 * dpr;
-                    ctx.moveTo(mx - g, my - g); ctx.lineTo(mx + g, my + g);
-                    ctx.moveTo(mx + g, my - g); ctx.lineTo(mx - g, my + g);
-                }
+                ctx.moveTo(mx - g, my - g); ctx.lineTo(mx + g, my + g);
+                ctx.moveTo(mx + g, my - g); ctx.lineTo(mx - g, my + g);
                 ctx.stroke();
             }
 
@@ -628,7 +643,7 @@
             for (let j = 0; j < rows; j++) {
                 for (let i = 0; i < cols; i++) {
                     const k = key(i, j), v = stateAt(k);
-                    const cx = ox + i * S * scale, cy = oy + j * S * scale;
+                    const cx = ox + CX(i) * scale, cy = oy + CY(j) * scale;
                     ctx.beginPath();
                     if (v === OFF) {
                         // 抜きのセルだけリング。ひと目で他と区別がつく
@@ -653,7 +668,7 @@
                 ctx.strokeStyle = 'rgba(220,60,60,0.9)';
                 ctx.lineWidth = 1.5 * dpr;
                 ctx.beginPath();
-                ctx.arc(ox + i * S * scale, oy + j * S * scale, base * sizeAt(pressK) * scale, 0, Math.PI * 2);
+                ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, base * sizeAt(pressK) * scale, 0, Math.PI * 2);
                 ctx.stroke();
             }
         }
@@ -677,9 +692,9 @@
         }
 
         function pickCell(x, y) {
-            const i = Math.round(x / S), j = Math.round(y / S);
+            const i = Math.round(x / S), j = Math.round(y / (S * gapY));
             if (i < 0 || j < 0 || i >= cols || j >= rows) return null;
-            if (Math.hypot(x - i * S, y - j * S) > HOLD * S) return null;
+            if (Math.hypot(x - CX(i), y - CY(j)) > HOLD * S) return null;
             return key(i, j);
         }
 
@@ -691,7 +706,7 @@
                 const [i, j] = k.split(',').map(Number);
                 for (const [di, dj] of DIRS) {
                     if (!isOn(i + di, j + dj)) continue;   // 太さ0（切断）も掴めるようにする
-                    const mx = (i + di / 2) * S, my = (j + dj / 2) * S;
+                    const mx = (CX(i) + CX(i + di)) / 2, my = (CY(j) + CY(j + dj)) / 2;
                     const d = Math.hypot(x - mx, y - my);
                     if (d < bd) { bd = d; best = linkKey(k, key(i + di, j + dj)); }
                 }
@@ -724,10 +739,7 @@
                 const [ka, kb] = lk.split('|');
                 const [ia, ja] = ka.split(',').map(Number);
                 const [ib, jb] = kb.split(',').map(Number);
-                const cur = linkW(ia, ja, ib, jb);
-                let n = LINK_W.indexOf(cur);
-                n = (n < 0 ? 0 : n + 1) % LINK_W.length;
-                if (n === 0) links.delete(lk); else links.set(lk, LINK_W[n]);
+                if (linked(ia, ja, ib, jb)) links.set(lk, false); else links.delete(lk);
                 update();
             }
         });
@@ -771,6 +783,8 @@
         const carveEl = document.getElementById('carve');
         const carveVal = document.getElementById('carveVal');
         const carveRow = document.getElementById('carveRow');
+        const gapEl = document.getElementById('gap');
+        const gapValEl = document.getElementById('gapVal');
 
         function readSliders() {
             const t = weight.value / 1000;
@@ -784,8 +798,11 @@
             const q = carveEl.value / 1000;
             carve = CARVE_MAX * q;
             carveVal.textContent = Math.round(q * 100);
+            const g = gapEl.value / 1000;
+            gapY = GAP_MIN + (GAP_MAX - GAP_MIN) * g;
+            gapValEl.textContent = Math.round(g * 100);
         }
-        for (const el of [weight, smooth, carveEl])
+        for (const el of [weight, smooth, carveEl, gapEl])
             el.addEventListener('input', () => { readSliders(); update(); });
 
         const styleSeg = document.getElementById('styleSeg');
