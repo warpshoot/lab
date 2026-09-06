@@ -281,7 +281,7 @@
 
         let cols = 4, rows = 5;
         let grid = new Map();    // "i,j" -> { v: ON|OFF, s: サイズ倍率 }。無ければ NEUTRAL
-        let links = new Map();   // "i,j|i,j" -> true/false。自動判定の上書きだけ持つ
+        let links = new Map();   // "i,j|i,j" -> 太さ倍率。既定（1）から変えたものだけ持つ
         let mode = 'edge';       // 'edge' | 'blob'
         let radius = 0.40;
         let smoothK = 0.09;
@@ -297,11 +297,12 @@
             else grid.set(k, { v, s: s === undefined ? sizeAt(k) : s });
         }
         const linkKey = (a, b) => a < b ? a + '|' + b : b + '|' + a;
-        // 隣接した ON どうしは既定で繋がる。切りたい／繋ぎたいところだけ上書きする
-        function linked(i, j, i2, j2) {
-            if (!isOn(i, j) || !isOn(i2, j2)) return false;
+        const LINK_W = [1, 0.55, 0.28, 0];   // 隙間タップで一巡する太さ
+        // 隣接した ON どうしは既定で太さ1の棒で繋がる。細くしたい／切りたいところだけ上書き
+        function linkW(i, j, i2, j2) {
+            if (!isOn(i, j) || !isOn(i2, j2)) return 0;
             const lk = linkKey(key(i, j), key(i2, j2));
-            return links.has(lk) ? links.get(lk) : true;
+            return links.has(lk) ? links.get(lk) : 1;
         }
 
         // ===== プリミティブ ===============================================
@@ -325,33 +326,27 @@
             const on = [];
             for (const [k, c] of grid) {
                 const [i, j] = k.split(',').map(Number);
-                if (c.v === ON) { on.push([i, j, k]); C.push(i * S, j * S, radius * c.s); }
+                if (c.v === ON) { on.push([i, j]); C.push(i * S, j * S, radius * c.s); }
                 else Q.push(i * S, j * S, carve * c.s);
             }
-            const hasSeg = new Set();
+            // セルの円。塊（ロブ）はこれが作る
+            for (const [i, j] of on) {
+                const r = radius * sizeAt(key(i, j));
+                push(i, j, i, j, r, r);
+            }
+            // リンクの棒。太さはセルの大きさとは独立
             for (const [di, dj] of DIRS) {
                 for (const [i, j] of on) {
-                    if (!linked(i, j, i + di, j + dj)) continue;
-                    const k0 = key(i, j), s0 = sizeAt(k0);
-                    const kn = key(i + di, j + dj);
-                    if (sizeAt(kn) !== s0) {           // 太さが変わるところは1本だけ引く
-                        push(i, j, i + di, j + dj, radius * s0, radius * sizeAt(kn));
-                        hasSeg.add(k0); hasSeg.add(kn);
-                        continue;
-                    }
-                    // 同じ太さで一直線に並んだ分は1本の長い線分にまとめる。
+                    const w = linkW(i, j, i + di, j + dj);
+                    if (!w) continue;
+                    // 同じ太さで一直線に並んだ分は1本にまとめる。
                     // 短い線分を重ねると smin が至るところで効いて、直線が波打つ
-                    if (linked(i - di, j - dj, i, j) && sizeAt(key(i - di, j - dj)) === s0) continue;
+                    if (linkW(i - di, j - dj, i, j) === w) continue;
                     let n = 1;
-                    while (linked(i + n * di, j + n * dj, i + (n + 1) * di, j + (n + 1) * dj)
-                        && sizeAt(key(i + (n + 1) * di, j + (n + 1) * dj)) === s0) n++;
-                    push(i, j, i + n * di, j + n * dj, radius * s0, radius * s0);
-                    for (let m = 0; m <= n; m++) hasSeg.add(key(i + m * di, j + m * dj));
+                    while (linkW(i + n * di, j + n * dj, i + (n + 1) * di, j + (n + 1) * dj) === w) n++;
+                    push(i, j, i + n * di, j + n * dj, radius * w, radius * w);
                 }
             }
-            // 線分を持たないセルだけ円を足す。持っているセルにも足すと smin で膨らむ
-            for (const [i, j, k] of on)
-                if (!hasSeg.has(k)) push(i, j, i, j, radius * sizeAt(k), radius * sizeAt(k));
         }
 
         // 多項式スムーズ min。凹んだ接合部に半径 k のフィレットが入る
@@ -609,20 +604,23 @@
             ctx.fillStyle = '#000';
             ctx.fill(pathFromLoops(scale, ox, oy), 'evenodd');
 
-            // 切ってある接続に印。ここをタップすれば繋ぎ直せる
-            ctx.strokeStyle = 'rgba(220,60,60,0.85)';
+            // 既定から変えた接続に印。ここをタップすれば太さが一巡する
             ctx.lineWidth = 1.5 * dpr;
-            for (const [lk, v] of links) {
-                if (v) continue;
+            for (const [lk, w] of links) {
                 const [ka, kb] = lk.split('|');
                 const [ia, ja] = ka.split(',').map(Number);
                 const [ib, jb] = kb.split(',').map(Number);
                 if (!isOn(ia, ja) || !isOn(ib, jb)) continue;
                 const mx = ox + (ia + ib) / 2 * S * scale, my = oy + (ja + jb) / 2 * S * scale;
-                const g = 4 * dpr;
+                ctx.strokeStyle = 'rgba(220,60,60,0.85)';
                 ctx.beginPath();
-                ctx.moveTo(mx - g, my - g); ctx.lineTo(mx + g, my + g);
-                ctx.moveTo(mx + g, my - g); ctx.lineTo(mx - g, my + g);
+                if (w > 0) {
+                    ctx.arc(mx, my, (2 + 4 * w) * dpr, 0, Math.PI * 2);
+                } else {
+                    const g = 4 * dpr;
+                    ctx.moveTo(mx - g, my - g); ctx.lineTo(mx + g, my + g);
+                    ctx.moveTo(mx + g, my - g); ctx.lineTo(mx - g, my + g);
+                }
                 ctx.stroke();
             }
 
@@ -692,7 +690,7 @@
                 if (c.v !== ON) continue;
                 const [i, j] = k.split(',').map(Number);
                 for (const [di, dj] of DIRS) {
-                    if (!isOn(i + di, j + dj)) continue;
+                    if (!isOn(i + di, j + dj)) continue;   // 太さ0（切断）も掴めるようにする
                     const mx = (i + di / 2) * S, my = (j + dj / 2) * S;
                     const d = Math.hypot(x - mx, y - my);
                     if (d < bd) { bd = d; best = linkKey(k, key(i + di, j + dj)); }
@@ -726,7 +724,10 @@
                 const [ka, kb] = lk.split('|');
                 const [ia, ja] = ka.split(',').map(Number);
                 const [ib, jb] = kb.split(',').map(Number);
-                links.set(lk, !linked(ia, ja, ib, jb));
+                const cur = linkW(ia, ja, ib, jb);
+                let n = LINK_W.indexOf(cur);
+                n = (n < 0 ? 0 : n + 1) % LINK_W.length;
+                if (n === 0) links.delete(lk); else links.set(lk, LINK_W[n]);
                 update();
             }
         });
