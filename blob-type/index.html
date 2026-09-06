@@ -558,6 +558,145 @@
             return a / 2;
         }
 
+        // ===== 接線で組み直す =============================================
+        // 張り直しは頂点を捨てることしかできないので、接点を円周上でずらせない。
+        // その結果、直線が杭に角で当たったままになる。
+        // どの杭にどの順で触れているかだけを張り直しから受け取り、
+        // 共通接線と弧で作り直す
+        function contactRuns(loop, cs) {
+            const own = loop.map(pt => {
+                for (let i = 0; i < cs.length; i++)
+                    if (Math.abs(Math.hypot(pt[0] - cs[i][0], pt[1] - cs[i][1]) - radius) < 0.03) return i;
+                return -1;
+            });
+            const n = loop.length;
+            let s = own.indexOf(-1);
+            if (s < 0) return null;   // 全部どれかの円の上（単独の円など）
+            const runs = [];
+            let cur = null;
+            for (let k = 0; k < n; k++) {
+                const i = (s + k) % n;
+                if (own[i] < 0) { cur = null; continue; }
+                if (cur && cur.peg === own[i]) { cur.pts.push(loop[i]); continue; }
+                cur = { peg: own[i], pts: [loop[i]] };
+                runs.push(cur);
+            }
+            return runs;
+        }
+
+        // 半径の等しい2円の共通接線。糸が実際に通っている側を、
+        // 張り直しが出した接点に近いほうで選ぶ
+        function tangentPair(A, B, sameSide, Pa, Pb) {
+            const dx = B[0] - A[0], dy = B[1] - A[1];
+            const d = Math.hypot(dx, dy);
+            if (d < 1e-9) return null;
+            const ux = dx / d, uy = dy / d;
+            let best = null, bestErr = Infinity;
+            for (const sg of [1, -1]) {
+                let ta, tb;
+                if (sameSide) {
+                    const nx = -uy * sg, ny = ux * sg;
+                    ta = [A[0] + nx * radius, A[1] + ny * radius];
+                    tb = [B[0] + nx * radius, B[1] + ny * radius];
+                } else {
+                    const cosA = 2 * radius / d;
+                    if (cosA > 1) continue;      // 杭が重なっていなければ必ず引ける
+                    const sinA = Math.sqrt(1 - cosA * cosA) * sg;
+                    const nx = -ux * cosA + uy * sinA;
+                    const ny = -uy * cosA - ux * sinA;
+                    ta = [A[0] - nx * radius, A[1] - ny * radius];
+                    tb = [B[0] + nx * radius, B[1] + ny * radius];
+                }
+                const err = Math.hypot(ta[0] - Pa[0], ta[1] - Pa[1])
+                          + Math.hypot(tb[0] - Pb[0], tb[1] - Pb[1]);
+                if (err < bestErr) { bestErr = err; best = [ta, tb]; }
+            }
+            return best;
+        }
+
+        function arcPts(c, from, to, via) {
+            const a0 = Math.atan2(from[1] - c[1], from[0] - c[0]);
+            const a1 = Math.atan2(to[1] - c[1], to[0] - c[0]);
+            const mid = Math.atan2(via[1] - c[1], via[0] - c[0]);
+            // 通っている側を含むほうの回り方を採る
+            let best = null, bestErr = Infinity;
+            for (const dir of [1, -1]) {
+                let sweep = (a1 - a0) * dir;
+                while (sweep < 0) sweep += Math.PI * 2;
+                const m = a0 + dir * sweep / 2;
+                let e = Math.abs(((m - mid + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI);
+                if (e < bestErr) { bestErr = e; best = [dir, sweep]; }
+            }
+            const [dir, sweep] = best;
+            const steps = Math.max(2, Math.ceil(sweep / (Math.PI / 45)));
+            const out = [];
+            for (let n = 0; n <= steps; n++) {
+                const a = a0 + dir * sweep * n / steps;
+                out.push([c[0] + Math.cos(a) * radius, c[1] + Math.sin(a) * radius]);
+            }
+            return out;
+        }
+
+        function nearestOnCircle(c, ref) {
+            let best = ref[0], bd = Infinity;
+            for (const q of ref) {
+                const d = Math.hypot(q[0] - c[0], q[1] - c[1]);
+                if (d < bd) { bd = d; best = q; }
+            }
+            const a = Math.atan2(best[1] - c[1], best[0] - c[0]);
+            return [c[0] + Math.cos(a) * radius, c[1] + Math.sin(a) * radius];
+        }
+
+        function taut(loop) {
+            const cs = ONC.concat(PUSH);
+            let runs = contactRuns(loop, cs);
+            if (!runs || runs.length < 2) return loop;
+            const inside = new Map();
+            for (let i = 0; i < cs.length; i++) inside.set(i, pointInPoly(cs[i], loop));
+            const seg = [0, 0, 0, 0];
+
+            for (let iter = 0; iter < 12; iter++) {
+                const m = runs.length;
+                const link = [];
+                for (let i = 0; i < m; i++) {
+                    const j = (i + 1) % m;
+                    const t = tangentPair(cs[runs[i].peg], cs[runs[j].peg],
+                        inside.get(runs[i].peg) === inside.get(runs[j].peg),
+                        runs[i].pts[runs[i].pts.length - 1], runs[j].pts[0]);
+                    if (!t) return loop;
+                    link.push(t);
+                }
+                // 組み直した接線が、接触列に無い杭を突っ切っていないか
+                let bad = null;
+                for (let i = 0; i < m && !bad; i++) {
+                    const j = (i + 1) % m;
+                    seg[0] = link[i][0][0]; seg[1] = link[i][0][1];
+                    seg[2] = link[i][1][0]; seg[3] = link[i][1][1];
+                    let worst = radius - 1e-4, hit = -1;
+                    for (let k = 0; k < cs.length; k++) {
+                        if (k === runs[i].peg || k === runs[j].peg) continue;
+                        const d = segDist(cs[k][0], cs[k][1], seg);
+                        if (d < worst) { worst = d; hit = k; }
+                    }
+                    if (hit >= 0) bad = { at: i, peg: hit };
+                }
+                if (!bad) {
+                    const out = [];
+                    for (let i = 0; i < m; i++) {
+                        const prev = link[(i - 1 + m) % m][1];
+                        const next = link[i][0];
+                        const via = runs[i].pts[runs[i].pts.length >> 1];
+                        out.push(...arcPts(cs[runs[i].peg], prev, next, via));
+                    }
+                    return out;
+                }
+                // 突っ切っていた杭を接触列に挿し込んでやり直す
+                runs.splice(bad.at + 1, 0,
+                    { peg: bad.peg, pts: [nearestOnCircle(cs[bad.peg], loop)] });
+            }
+            return loop;   // 収束しなければ張り直したままにする
+        }
+
         function pointInPoly(p, poly) {
             let inside = false;
             for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -602,7 +741,7 @@
                 const a = Math.abs(signedArea(l));
                 if (a > best) { best = a; outer = l; }
             }
-            outer = tighten(outer);   // 張り直すので平滑化はしない
+            outer = taut(tighten(outer));   // 位相を決めてから接線で組み直す
             loops = [outer];
             // 糸の内側に完全に入った杭は、そのまま真円の穴になる。
             // 等値線が出す他のループ（接する杭どうしの隙間に取り残された島など）は
