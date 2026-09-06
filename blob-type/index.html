@@ -277,7 +277,7 @@
         const FADE_IN = 1.5;     // ここから寄与を落とし始める（セル単位）
         const FADE_OUT = 2.1;    // ここで寄与ゼロ
         // EDGE（糸）用。杭間隔の半分に対する割合
-        const EDGE_MIN = 0.30, EDGE_MAX = 1.0;
+        const EDGE_MIN = 0.30, EDGE_MAX = 0.97;   // 1.0 ちょうどは杭が接して糸の通り道が消える
         const GAP_MIN = 0.62, GAP_MAX = 1.45;   // 行間（列間を1としたときの比）
 
         const ON = 1, OFF = -1, NEUTRAL = 0;
@@ -502,7 +502,7 @@
         // 離れた2円のあいだで糸がくびれて千切れる
         function tighten(loop) {
             const EPS = 1e-4;
-            const cs = ONC.concat(PUSH);
+            const cs = ONC.concat(PUSH);   // 糸はどの杭も跨げない
             if (!cs.length) return loop;
             const chord = [0, 0, 0, 0];
             const clear = (a, b) => {
@@ -512,14 +512,19 @@
                 return true;
             };
             const side = (p, a, b) => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
-            const swallows = (a, b, c) => {
-                for (let n = 0; n < cs.length; n++) {
-                    const p = cs[n];
+            const hits = (list, a, b, c) => {
+                for (let n = 0; n < list.length; n++) {
+                    const p = list[n];
                     const s1 = side(p, a, b), s2 = side(p, b, c), s3 = side(p, c, a);
                     if ((s1 > 0 && s2 > 0 && s3 > 0) || (s1 < 0 && s2 < 0 && s3 < 0)) return true;
                 }
                 return false;
             };
+            // 凸の頂点を落とすと三角形のぶん縮み、凹の頂点なら膨らむ。
+            // 縮む手は ON の杭を外に出してはいけない。膨らむ手は OFF の杭を
+            // 飲み込んではいけない。両方を一律に守ると、糸が押し込む杭の
+            // 裏側まで回り込んだまま外れなくなる
+            const orient = signedArea(loop) > 0 ? 1 : -1;
             let pts = loop;
             for (let pass = 0; pass < 40; pass++) {
                 const n = pts.length;
@@ -529,7 +534,9 @@
                 for (let i = 0; i < n; i++) {
                     if (skip) { skip = false; out.push(pts[i]); continue; }
                     const a = pts[(i - 1 + n) % n], b = pts[i], c = pts[(i + 1) % n];
-                    if (clear(a, c) && !swallows(a, b, c)) {
+                    const turn = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+                    const guard = turn * orient > 0 ? ONC : PUSH;
+                    if (clear(a, c) && !hits(guard, a, b, c)) {
                         // 隣どうしを同じ回で落とすと三角形の判定が成り立たなくなる
                         skip = true; removed = true;
                         continue;
