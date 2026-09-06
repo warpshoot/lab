@@ -216,7 +216,7 @@
 <body>
     <header>
         <h1>BLOB TYPE</h1>
-        <span class="hint">tap cell / gap · hold to resize</span>
+        <span class="hint">tap to cycle · hold to resize</span>
     </header>
 
     <div class="stage">
@@ -289,7 +289,6 @@
 
         let cols = 4, rows = 5;
         let grid = new Map();    // "i,j" -> { v: ON|OFF, s: サイズ倍率 }。無ければ NEUTRAL
-        let links = new Map();   // "i,j|i,j" -> false。切った接続だけ持つ
         let mode = 'edge';       // 'edge' | 'blob'
         let radius = 0.40;
         let smoothK = 0.09;
@@ -306,12 +305,8 @@
             if (v === NEUTRAL) grid.delete(k);
             else grid.set(k, { v, s: s === undefined ? sizeAt(k) : s });
         }
-        const linkKey = (a, b) => a < b ? a + '|' + b : b + '|' + a;
-        // 隣接した ON どうしは既定で繋がる。切りたいところだけ上書きする
-        function linked(i, j, i2, j2) {
-            if (!isOn(i, j) || !isOn(i2, j2)) return false;
-            return links.get(linkKey(key(i, j), key(i2, j2))) !== false;
-        }
+        // 隣接した ON どうしは必ず繋がる。凹ませたいところは OFF セルの円で押し込む
+        const linked = (i, j, i2, j2) => isOn(i, j) && isOn(i2, j2);
         // 格子の座標。行間だけ可変
         const CX = i => i * S;
         const CY = j => j * S * gapY;
@@ -668,23 +663,6 @@
                 ctx.fill(pathFromLoops(scale, ox, oy), 'evenodd');
             }
 
-            // 切ってある接続に印。ここをタップすれば繋ぎ直せる
-            ctx.strokeStyle = 'rgba(220,60,60,0.85)';
-            ctx.lineWidth = 1.5 * dpr;
-            for (const [lk, v] of links) {
-                if (v !== false) continue;
-                const [ka, kb] = lk.split('|');
-                const [ia, ja] = ka.split(',').map(Number);
-                const [ib, jb] = kb.split(',').map(Number);
-                if (!isOn(ia, ja) || !isOn(ib, jb)) continue;
-                const mx = ox + (CX(ia) + CX(ib)) / 2 * scale, my = oy + (CY(ja) + CY(jb)) / 2 * scale;
-                const g = 4 * dpr;
-                ctx.beginPath();
-                ctx.moveTo(mx - g, my - g); ctx.lineTo(mx + g, my + g);
-                ctx.moveTo(mx + g, my - g); ctx.lineTo(mx - g, my + g);
-                ctx.stroke();
-            }
-
             // 格子が見えないと編集しづらいので、シルエットの上に印を置く
             for (let j = 0; j < rows; j++) {
                 for (let i = 0; i < cols; i++) {
@@ -725,9 +703,8 @@
         // ===== 入力 =========================================================
         // タップ：セルを NEUTRAL → ON → OFF と一巡
         // ドラッグ：最初のタップで決まった状態を塗り続ける
-        // セルの隙間をタップ：その接続を切る／繋ぎ直す
         // 長押ししてドラッグ：そのセルの大きさを変える
-        const LONG_PRESS = 320, DRAG_SLOP = 0.22, HOLD = 0.34, GAP_HIT = 0.30;
+        const LONG_PRESS = 320, DRAG_SLOP = 0.22, HOLD = 0.34;
         let painting = false, paintTo = ON, sizing = false;
         let pressK = null, pressPt = null, startSize = 1, lpTimer = null;
 
@@ -743,22 +720,6 @@
             if (i < 0 || j < 0 || i >= cols || j >= rows) return null;
             if (Math.hypot(x - CX(i), y - CY(j)) > HOLD * S) return null;
             return key(i, j);
-        }
-
-        // 隣接した ON ペアの中点。斜めは2本が同じ点で交差するので近いほうを採る
-        function pickLink(x, y) {
-            let best = null, bd = GAP_HIT * S;
-            for (const [k, c] of grid) {
-                if (c.v !== ON) continue;
-                const [i, j] = k.split(',').map(Number);
-                for (const [di, dj] of DIRS) {
-                    if (!isOn(i + di, j + dj)) continue;   // 太さ0（切断）も掴めるようにする
-                    const mx = (CX(i) + CX(i + di)) / 2, my = (CY(j) + CY(j + dj)) / 2;
-                    const d = Math.hypot(x - mx, y - my);
-                    if (d < bd) { bd = d; best = linkKey(k, key(i + di, j + dj)); }
-                }
-            }
-            return best;
         }
 
         function clearPress() {
@@ -780,14 +741,6 @@
                     update();
                 }, LONG_PRESS);
                 return;
-            }
-            const lk = pickLink(w.x, w.y);
-            if (lk) {
-                const [ka, kb] = lk.split('|');
-                const [ia, ja] = ka.split(',').map(Number);
-                const [ib, jb] = kb.split(',').map(Number);
-                if (linked(ia, ja, ib, jb)) links.set(lk, false); else links.delete(lk);
-                update();
             }
         });
 
@@ -899,13 +852,11 @@
                 const [i, j] = k.split(',').map(Number);
                 if (i >= cols || j >= rows) grid.delete(k);
             }
-            for (const lk of [...links.keys()])
-                if (lk.split('|').some(k => !grid.has(k))) links.delete(lk);
             refreshSegs();
             update();
         }
 
-        document.getElementById('btnClear').onclick = () => { grid.clear(); links.clear(); update(); };
+        document.getElementById('btnClear').onclick = () => { grid.clear(); update(); };
 
         // ===== 書き出し =====================================================
         // プレビューと同じ loops から作る。別計算しない
