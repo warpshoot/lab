@@ -216,7 +216,7 @@
 <body>
     <header>
         <h1>BLOB TYPE</h1>
-        <span class="hint">tap: · → peg → push</span>
+        <span class="hint">tap: peg · drag the band</span>
     </header>
 
     <div class="stage">
@@ -281,7 +281,6 @@
         const GAP_MIN = 0.62, GAP_MAX = 1.45;   // 行間（列間を1としたときの比）
 
         const ON = 1, OFF = -1, NEUTRAL = 0;
-        const NEXT = { 0: ON, 1: OFF, '-1': NEUTRAL };
 
         let cols = 4, rows = 5;
         let grid = new Map();    // "i,j" -> ON | OFF。持っていないセルは NEUTRAL
@@ -771,10 +770,12 @@
         function update() { rebuild(); draw(); }
 
         // ===== 入力 =========================================================
-        // タップ：セルを NEUTRAL → ON → OFF と一巡
-        // ドラッグ：最初に触れたセルで決まった状態を塗り続ける
-        const HOLD = 0.34;
+        // タップ：杭を打つ／抜く。ドラッグで連続して打てる
+        // 輪ゴムを掴んでドラッグ：跨いだ杭の内外が入れ替わる
+        //   （＝輪ゴムをその杭の向こう側へ引っ掛ける／外す）
+        const HOLD = 0.34, GRAB = 0.30;
         let painting = false, paintTo = ON;
+        let dragging = false, lastPos = null, startPos = null, flipped = null;
 
         function toWorld(ev) {
             const rect = cv.getBoundingClientRect();
@@ -790,27 +791,82 @@
             return key(i, j);
         }
 
+        // 輪ゴムを掴める距離にいるか
+        function onBand(x, y) {
+            if (mode !== 'edge' || !loops.length) return false;
+            const e = [0, 0, 0, 0];
+            for (const loop of loops)
+                for (let i = 0, j = loop.length - 1; i < loop.length; j = i++) {
+                    e[0] = loop[j][0]; e[1] = loop[j][1]; e[2] = loop[i][0]; e[3] = loop[i][1];
+                    if (segDist(x, y, e) < GRAB * S) return true;
+                }
+            return false;
+        }
+
+        // 掴んだ輪ゴムを動かした軌跡が跨いだ杭を、反対側へ移す
+        function sweep(from, to) {
+            const e = [from.x, from.y, to.x, to.y];
+            let moved = false;
+            for (const [k, v] of [...grid]) {
+                if (flipped.has(k)) continue;
+                const [i, j] = k.split(',').map(Number);
+                if (segDist(CX(i), CY(j), e) > radius) continue;
+                flipped.add(k);
+                setCell(k, v === ON ? OFF : ON);
+                moved = true;
+            }
+            if (!moved) return false;
+            // 抱える杭がひとつも無くなると輪ゴムが張れない
+            let any = false;
+            for (const v of grid.values()) if (v === ON) any = true;
+            if (!any) { for (const k of flipped) setCell(k, ON); return false; }
+            return true;
+        }
+
         cv.addEventListener('pointerdown', e => {
             const w = toWorld(e);
             const k = pickCell(w.x, w.y);
+            // 杭より輪ゴムを優先。杭の上でも、輪ゴムが掛かっていれば掴める
+            if (onBand(w.x, w.y) && (!k || stateAt(k) !== NEUTRAL)) {
+                cv.setPointerCapture(e.pointerId);
+                dragging = true; lastPos = startPos = w; flipped = new Set();
+                return;
+            }
             if (!k) return;
             cv.setPointerCapture(e.pointerId);
             painting = true;
-            paintTo = NEXT[stateAt(k)];
+            paintTo = stateAt(k) === NEUTRAL ? ON : NEUTRAL;
             setCell(k, paintTo);
             update();
         });
 
         cv.addEventListener('pointermove', e => {
-            if (!painting) return;
             const w = toWorld(e);
+            if (dragging) {
+                if (sweep(lastPos, w)) update();
+                lastPos = w;
+                return;
+            }
+            if (!painting) return;
             const k = pickCell(w.x, w.y);
             if (k && stateAt(k) !== paintTo) { setCell(k, paintTo); update(); }
         });
 
-        const stopPaint = () => { painting = false; };
-        cv.addEventListener('pointerup', stopPaint);
-        cv.addEventListener('pointercancel', stopPaint);
+        cv.addEventListener('pointerup', e => {
+            // 輪ゴムを掴んだまま動かさなかったら、その場のタップとして扱う。
+            // 輪ゴムが掛かっている杭も抜けるようにするため
+            if (dragging && !flipped.size) {
+                const w = toWorld(e);
+                if (Math.hypot(w.x - startPos.x, w.y - startPos.y) < 0.1 * S) {
+                    const k = pickCell(w.x, w.y);
+                    if (k) { setCell(k, stateAt(k) === NEUTRAL ? ON : NEUTRAL); update(); }
+                }
+            }
+            painting = false; dragging = false; flipped = null;
+        });
+        cv.addEventListener('pointercancel', () => {
+            painting = false; dragging = false; flipped = null;
+        });
 
         // ===== コントロール =================================================
         const weight = document.getElementById('weight');
