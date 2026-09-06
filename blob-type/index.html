@@ -216,7 +216,7 @@
 <body>
     <header>
         <h1>BLOB TYPE</h1>
-        <span class="hint">tap to cycle · hold to resize</span>
+        <span class="hint">tap: · → fill → hole</span>
     </header>
 
     <div class="stage">
@@ -281,14 +281,13 @@
         const EDGE_MIN = 0.14, EDGE_MAX = 0.72;
         const K_MAX = 0.30;      // 凹コーナーのフィレット半径の上限
         const CARVE_MAX = 0.62;  // OFF セルの円で削る半径の上限
-        const SIZE_MIN = 0.25, SIZE_MAX = 2.2;
         const GAP_MIN = 0.62, GAP_MAX = 1.45;   // 行間（列間を1としたときの比）
 
         const ON = 1, OFF = -1, NEUTRAL = 0;
         const NEXT = { 0: ON, 1: OFF, '-1': NEUTRAL };
 
         let cols = 4, rows = 5;
-        let grid = new Map();    // "i,j" -> { v: ON|OFF, s: サイズ倍率 }。無ければ NEUTRAL
+        let grid = new Map();    // "i,j" -> ON | OFF。持っていないセルは NEUTRAL
         let mode = 'edge';       // 'edge' | 'blob'
         let radius = 0.40;
         let smoothK = 0.09;
@@ -298,13 +297,9 @@
         let loops = [];          // 平滑化後のポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
-        const stateAt = k => { const c = grid.get(k); return c ? c.v : NEUTRAL; };
-        const sizeAt = k => { const c = grid.get(k); return c ? c.s : 1; };
-        const isOn = (i, j) => stateAt(key(i, j)) === ON;
-        function setCell(k, v, s) {
-            if (v === NEUTRAL) grid.delete(k);
-            else grid.set(k, { v, s: s === undefined ? sizeAt(k) : s });
-        }
+        const stateAt = k => grid.get(k) || NEUTRAL;
+        const isOn = (i, j) => grid.get(key(i, j)) === ON;
+        function setCell(k, v) { if (v === NEUTRAL) grid.delete(k); else grid.set(k, v); }
         // 隣接した ON どうしは必ず繋がる。凹ませたいところは OFF セルの円で押し込む
         const linked = (i, j, i2, j2) => isOn(i, j) && isOn(i2, j2);
         // 格子の座標。行間だけ可変
@@ -314,70 +309,41 @@
         // ===== プリミティブ ===============================================
         // 円のまわりに糸を張ったものが図形、という捉え方をする。
         // ON セルの円が外へ、OFF セルの円が内へ糸を押す。2円をまたぐ直線は
-        // 共通接線（＝2円の凸包）で、棒の太さのようなパラメータは存在しない。
-        // 太さは円の大きさと間隔だけで決まる。
-        // BLOB：ON セルの中心と半径だけ使う。
-        let P = [];   // [ax, ay, bx, by, ra, rb, halfLen, midX, midY, maxR]
-        let Q = [];   // OFF セルの円 [x, y, r, ...]
-        let C = [];   // ON セルの中心 [x, y, r, ...]（BLOB 用）
+        // 共通接線で、太さに相当するパラメータは存在しない。
+        // 円はすべて同じ大きさなので、一直線に並んだ分は両端だけが糸に触れる。
+        // 間の円は帯に完全に飲み込まれて無視される。
+        // BLOB：ON セルの中心だけ使う。
+        let P = [];   // [ax, ay, bx, by, halfLen, midX, midY]（円は a==b）
+        let Q = [];   // OFF セルの中心 [x, y, ...]
+        let C = [];   // ON セルの中心 [x, y, ...]（BLOB 用）
         const DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];   // 重複しない8近傍
 
         function buildPrims() {
             P = []; Q = []; C = [];
-            const pushHull = (a, c) => {
-                const hl = Math.hypot(c[0] - a[0], c[1] - a[1]) / 2;
-                P.push([a[0], a[1], c[0], c[1], a[2], c[2],
-                        hl, (a[0] + c[0]) / 2, (a[1] + c[1]) / 2, Math.max(a[2], c[2])]);
-            };
-            const push = (i1, j1, i2, j2, ra, rb) => {
+            const push = (i1, j1, i2, j2) => {
                 const ax = CX(i1), ay = CY(j1), bx = CX(i2), by = CY(j2);
-                const hl = Math.hypot(bx - ax, by - ay) / 2;
-                P.push([ax, ay, bx, by, ra, rb,
-                        hl, (ax + bx) / 2, (ay + by) / 2, Math.max(ra, rb)]);
+                P.push([ax, ay, bx, by, Math.hypot(bx - ax, by - ay) / 2,
+                        (ax + bx) / 2, (ay + by) / 2]);
             };
             const on = [];
-            for (const [k, c] of grid) {
+            for (const [k, v] of grid) {
                 const [i, j] = k.split(',').map(Number);
-                if (c.v === ON) { on.push([i, j, k]); C.push(CX(i), CY(j), radius * c.s); }
-                else Q.push(CX(i), CY(j), carve * c.s);
+                if (v === ON) { on.push([i, j, k]); C.push(CX(i), CY(j)); }
+                else Q.push(CX(i), CY(j));
             }
-            // 一直線に並んだ円は、その並び全体の凸包の輪郭だけを張る。
-            // 隣り合うペアの凸包を足していくと、大きい円に挟まれた小さい円にも
-            // 糸が引っかかってしまう。ピンと張った糸はそこに触れない
             const strung = new Set();
             for (const [di, dj] of DIRS) {
                 for (const [i, j] of on) {
                     if (linked(i - di, j - dj, i, j)) continue;   // 並びの先頭だけ処理する
-                    if (!linked(i, j, i + di, j + dj)) continue;
-                    const run = [];
-                    for (let n = 0; ; n++) {
-                        run.push([i + n * di, j + n * dj]);
-                        if (!linked(i + n * di, j + n * dj, i + (n + 1) * di, j + (n + 1) * dj)) break;
-                    }
-                    for (const [ri, rj] of run) strung.add(key(ri, rj));
-                    // 凸包（単調鎖）。ひとつ前の円が前後2円の凸包に飲まれるなら捨てる
-                    const h = [];
-                    for (const [ri, rj] of run) {
-                        const c = [CX(ri), CY(rj), radius * sizeAt(key(ri, rj))];
-                        while (h.length >= 2 && swallowed(h[h.length - 1], h[h.length - 2], c)) h.pop();
-                        h.push(c);
-                    }
-                    for (let n = 0; n + 1 < h.length; n++)
-                        pushHull(h[n], h[n + 1]);
+                    let n = 0;
+                    while (linked(i + n * di, j + n * dj, i + (n + 1) * di, j + (n + 1) * dj)) n++;
+                    if (!n) continue;
+                    push(i, j, i + n * di, j + n * dj);
+                    for (let m = 0; m <= n; m++) strung.add(key(i + m * di, j + m * dj));
                 }
             }
             // どこにも張られていない円だけ単独で置く。張られている円にも足すと smin で膨らむ
-            for (const [i, j, k] of on) {
-                if (strung.has(k)) continue;
-                const r = radius * sizeAt(k);
-                push(i, j, i, j, r, r);
-            }
-        }
-
-        // 円 b が円 a と円 c の凸包に飲み込まれているか
-        function swallowed(b, a, c) {
-            const hull = [a[0], a[1], c[0], c[1], a[2], c[2], 0, 0, 0, 0];
-            return coneSD(b[0], b[1], hull) <= -b[2];
+            for (const [i, j, k] of on) if (!strung.has(k)) push(i, j, i, j);
         }
 
         // 多項式スムーズ min。凹んだ接合部に半径 k のフィレットが入る
@@ -387,30 +353,14 @@
             return (a < b ? a : b) - h * h * k * 0.25;
         }
 
-        // 両端の半径が違うカプセル（円錐台）の符号付き距離
-        function coneSD(px, py, p) {
-            const ax = p[0], ay = p[1], r1 = p[4], r2 = p[5];
-            const bax = p[2] - ax, bay = p[3] - ay;
-            const l2 = bax * bax + bay * bay;
-            const pax = px - ax, pay = py - ay;
-            if (l2 < 1e-12) return Math.sqrt(pax * pax + pay * pay) - r1;
-            const rr = r1 - r2;
-            const a2 = l2 - rr * rr;
-            if (a2 <= 0) {   // 片方の円がもう片方を飲み込んでいる
-                const bx = px - p[2], by = py - p[3];
-                return Math.min(Math.sqrt(pax * pax + pay * pay) - r1,
-                                Math.sqrt(bx * bx + by * by) - r2);
-            }
-            const il2 = 1 / l2;
-            const y = pax * bax + pay * bay;
-            const z = y - l2;
-            const qx = pax * l2 - bax * y, qy = pay * l2 - bay * y;
-            const x2 = qx * qx + qy * qy;
-            const y2 = y * y * l2, z2 = z * z * l2;
-            const k = Math.sign(rr) * rr * rr * x2;
-            if (Math.sign(z) * a2 * z2 > k) return Math.sqrt(x2 + z2) * il2 - r2;
-            if (Math.sign(y) * a2 * y2 < k) return Math.sqrt(x2 + y2) * il2 - r1;
-            return (Math.sqrt(x2 * a2 * il2) + y * rr) * il2 - r1;
+        function segDist(x, y, p) {
+            const vx = p[2] - p[0], vy = p[3] - p[1];
+            const wx = x - p[0], wy = y - p[1];
+            const vv = vx * vx + vy * vy;
+            let t = vv > 0 ? (wx * vx + wy * vy) / vv : 0;
+            t = t < 0 ? 0 : t > 1 ? 1 : t;
+            const dx = wx - t * vx, dy = wy - t * vy;
+            return Math.sqrt(dx * dx + dy * dy);
         }
 
         // ===== スカラー場 =================================================
@@ -418,7 +368,7 @@
         function field(x, y) {
             if (mode === 'blob') {
                 let sum = 0;
-                for (let n = 0; n < C.length; n += 3) {
+                for (let n = 0; n < C.length; n += 2) {
                     const dx = x - C[n], dy = y - C[n + 1];
                     const d2 = dx * dx + dy * dy;
                     if (d2 < 1e-9) return 1e9;
@@ -430,35 +380,34 @@
                         const t = (d - FADE_IN) / (FADE_OUT - FADE_IN);
                         w = 1 - t * t * (3 - 2 * t);
                     }
-                    const r = C[n + 2];
-                    sum += (r / d) * (r / d) * w;
+                    sum += (radius / d) * (radius / d) * w;
                 }
                 return sum;
             }
             // 近い2本だけを混ぜる。全部に smin を重ねがけすると膨らみが累積して
             // 本来まっすぐな辺が波打つ
-            let a1 = Infinity, a2 = Infinity;
+            let d1 = Infinity, d2 = Infinity;
             for (let n = 0; n < P.length; n++) {
                 const p = P[n];
-                const reach = a2 + smoothK + p[6] + p[9];   // 遠いプリミティブは触らない
-                const ex = x - p[7], ey = y - p[8];
+                const reach = d2 + smoothK + p[4] + radius;   // 遠いプリミティブは触らない
+                const ex = x - p[5], ey = y - p[6];
                 if (ex * ex + ey * ey > reach * reach) continue;
-                const sd = coneSD(x, y, p);
-                if (sd < a1) { a2 = a1; a1 = sd; }
-                else if (sd < a2) { a2 = sd; }
+                const dd = segDist(x, y, p);
+                if (dd < d1) { d2 = d1; d1 = dd; }
+                else if (dd < d2) { d2 = dd; }
             }
-            const inStroke = -smin(a1, a2, smoothK);   // >= 0 が内側
+            const inStroke = radius - smin(d1, d2, smoothK);   // >= 0 が内側
             if (!carve || !Q.length) return THRESHOLD + inStroke;
             // OFF セルの円の外側。参考にしたグリフの凹んだ辺は、
-            // どれも OFF の円の弧になっている＝結んだ形から円を削っている
+            // どれも OFF の円の弧になっている＝張った形から円を押し込んでいる
             let o1 = Infinity, o2 = Infinity;
-            for (let n = 0; n < Q.length; n += 3) {
+            for (let n = 0; n < Q.length; n += 2) {
                 const ex = x - Q[n], ey = y - Q[n + 1];
-                const sd = Math.sqrt(ex * ex + ey * ey) - Q[n + 2];
-                if (sd < o1) { o2 = o1; o1 = sd; }
-                else if (sd < o2) { o2 = sd; }
+                const dd = Math.sqrt(ex * ex + ey * ey);
+                if (dd < o1) { o2 = o1; o1 = dd; }
+                else if (dd < o2) { o2 = dd; }
             }
-            const outHole = smin(o1, o2, smoothK);
+            const outHole = smin(o1, o2, smoothK) - carve;
             // 積集合。smin で継ぎ目にフィレットが入る
             // 距離場は線形なので、マーチングスクエアの補間がそのまま効く
             return THRESHOLD + smin(inStroke, outHole, smoothK);
@@ -618,18 +567,17 @@
             ctx.fillStyle = '#fff';
             ctx.fillRect(0, 0, cv.width, cv.height);
 
-            const cr = k => (stateAt(k) === OFF
-                ? (mode === 'edge' && carve ? carve : 0.4 * S)
-                : radius) * sizeAt(k) * scale;
+            const holeR = (mode === 'edge' && carve ? carve : 0.4 * S) * scale;
 
             if (outline) {
                 // 糸がどの円に張られているかを見るモード。
                 // 円を実寸で見せて、輪郭は線だけにする
-                for (const [k, c] of grid) {
+                for (const [k, v] of grid) {
                     const [i, j] = k.split(',').map(Number);
                     ctx.beginPath();
-                    ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, cr(k), 0, Math.PI * 2);
-                    if (c.v === ON) {
+                    ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale,
+                            v === ON ? radius * scale : holeR, 0, Math.PI * 2);
+                    if (v === ON) {
                         ctx.fillStyle = '#e6e6e6';
                         ctx.fill();
                     } else {
@@ -647,15 +595,15 @@
                 ctx.lineWidth = 1.6 * dpr;
                 ctx.stroke(pathFromLoops(scale, ox, oy));
             } else {
-                // OFF セルは実際に削る半径のまま下敷きに描く。避けている円が見える
+                // OFF セルは実際に押し込む半径のまま下敷きに描く。押している円が見える
                 ctx.fillStyle = '#efefef';
                 ctx.strokeStyle = '#e0e0e0';
                 ctx.lineWidth = Math.max(1, dpr);
-                for (const [k, c] of grid) {
-                    if (c.v !== OFF) continue;
+                for (const [k, v] of grid) {
+                    if (v !== OFF) continue;
                     const [i, j] = k.split(',').map(Number);
                     ctx.beginPath();
-                    ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, cr(k), 0, Math.PI * 2);
+                    ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, holeR, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
                 }
@@ -666,47 +614,34 @@
             // 格子が見えないと編集しづらいので、シルエットの上に印を置く
             for (let j = 0; j < rows; j++) {
                 for (let i = 0; i < cols; i++) {
-                    const k = key(i, j), v = stateAt(k);
+                    const v = stateAt(key(i, j));
                     const cx = ox + CX(i) * scale, cy = oy + CY(j) * scale;
                     ctx.beginPath();
                     if (v === OFF) {
+                        // 押し込む円だけリング。ひと目で他と区別がつく
                         ctx.strokeStyle = 'rgba(0,0,0,0.28)';
                         ctx.lineWidth = Math.max(1, dpr);
                         ctx.arc(cx, cy, 3.5 * dpr, 0, Math.PI * 2);
                         ctx.stroke();
                     } else {
-                        // 大きさをいじったセルは点も大きくする
-                        const rr = (v === ON ? 2.5 * (0.55 + 0.45 * sizeAt(k)) : 2.5) * dpr;
                         ctx.fillStyle = v === ON
                             ? (outline ? 'rgba(0,0,0,0.30)' : 'rgba(255,255,255,0.24)')
                             : 'rgba(0,0,0,0.13)';
-                        ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+                        ctx.arc(cx, cy, 2.5 * dpr, 0, Math.PI * 2);
                         ctx.fill();
                     }
                 }
             }
-
-            // 長押し中のセルは実寸のリングを出す
-            if (sizing && pressK) {
-                const [i, j] = pressK.split(',').map(Number);
-                const base = stateAt(pressK) === OFF ? carve : radius;
-                ctx.strokeStyle = 'rgba(220,60,60,0.9)';
-                ctx.lineWidth = 1.5 * dpr;
-                ctx.beginPath();
-                ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, base * sizeAt(pressK) * scale, 0, Math.PI * 2);
-                ctx.stroke();
-            }
         }
+
 
         function update() { rebuild(); draw(); }
 
         // ===== 入力 =========================================================
         // タップ：セルを NEUTRAL → ON → OFF と一巡
-        // ドラッグ：最初のタップで決まった状態を塗り続ける
-        // 長押ししてドラッグ：そのセルの大きさを変える
-        const LONG_PRESS = 320, DRAG_SLOP = 0.22, HOLD = 0.34;
-        let painting = false, paintTo = ON, sizing = false;
-        let pressK = null, pressPt = null, startSize = 1, lpTimer = null;
+        // ドラッグ：最初に触れたセルで決まった状態を塗り続ける
+        const HOLD = 0.34;
+        let painting = false, paintTo = ON;
 
         function toWorld(ev) {
             const rect = cv.getBoundingClientRect();
@@ -722,57 +657,27 @@
             return key(i, j);
         }
 
-        function clearPress() {
-            clearTimeout(lpTimer); lpTimer = null;
-            pressK = null; painting = false; sizing = false;
-        }
-
         cv.addEventListener('pointerdown', e => {
             const w = toWorld(e);
             const k = pickCell(w.x, w.y);
-            if (k) {
-                cv.setPointerCapture(e.pointerId);
-                pressK = k; pressPt = w; painting = false; sizing = false;
-                paintTo = NEXT[stateAt(k)];
-                lpTimer = setTimeout(() => {
-                    lpTimer = null; sizing = true;
-                    if (stateAt(pressK) === NEUTRAL) setCell(pressK, ON, 1);
-                    startSize = sizeAt(pressK);
-                    update();
-                }, LONG_PRESS);
-                return;
-            }
+            if (!k) return;
+            cv.setPointerCapture(e.pointerId);
+            painting = true;
+            paintTo = NEXT[stateAt(k)];
+            setCell(k, paintTo);
+            update();
         });
 
         cv.addEventListener('pointermove', e => {
-            if (!pressK) return;
+            if (!painting) return;
             const w = toWorld(e);
-            if (sizing) {
-                // 上へ引くと大きく、下へ引くと小さく
-                const s = Math.min(SIZE_MAX, Math.max(SIZE_MIN, startSize + (pressPt.y - w.y) * 0.9));
-                setCell(pressK, stateAt(pressK), Math.round(s * 20) / 20);
-                update();
-                return;
-            }
-            if (!painting && Math.hypot(w.x - pressPt.x, w.y - pressPt.y) > DRAG_SLOP * S) {
-                clearTimeout(lpTimer); lpTimer = null;
-                painting = true;
-                setCell(pressK, paintTo);
-            }
-            if (painting) {
-                const k = pickCell(w.x, w.y);
-                if (k && stateAt(k) !== paintTo) setCell(k, paintTo);
-                update();
-            }
+            const k = pickCell(w.x, w.y);
+            if (k && stateAt(k) !== paintTo) { setCell(k, paintTo); update(); }
         });
 
-        cv.addEventListener('pointerup', () => {
-            const tap = pressK && !painting && !sizing;
-            if (tap) setCell(pressK, paintTo);
-            clearPress();
-            update();   // 長押し中のリングを消すために必ず描き直す
-        });
-        cv.addEventListener('pointercancel', clearPress);
+        const stopPaint = () => { painting = false; };
+        cv.addEventListener('pointerup', stopPaint);
+        cv.addEventListener('pointercancel', stopPaint);
 
         // ===== コントロール =================================================
         const weight = document.getElementById('weight');
@@ -945,8 +850,8 @@
         // ===== 初期状態 =====================================================
         // 起動時は穴のある形（O）を置いておく。内側は OFF にして丸く抜く
         ['0,0', '1,0', '2,0', '3,0', '0,1', '3,1', '0,2', '3,2', '0,3', '3,3', '0,4', '1,4', '2,4', '3,4']
-            .forEach(k => setCell(k, ON, 1));
-        ['1,1', '2,1', '1,2', '2,2', '1,3', '2,3'].forEach(k => setCell(k, OFF, 1));
+            .forEach(k => setCell(k, ON));
+        ['1,1', '2,1', '1,2', '2,2', '1,3', '2,3'].forEach(k => setCell(k, OFF));
         refreshSegs();
         refreshStyle();
         refreshView();
