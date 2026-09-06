@@ -235,11 +235,6 @@
             <input type="range" id="weight" min="0" max="1000" value="620">
             <span class="value" id="weightVal">62</span>
         </div>
-        <div class="row" id="smoothRow">
-            <label>SMOOTH</label>
-            <input type="range" id="smooth" min="0" max="1000" value="250">
-            <span class="value" id="smoothVal">25</span>
-        </div>
         <div class="row" id="carveRow">
             <label>CARVE</label>
             <input type="range" id="carve" min="0" max="1000" value="500">
@@ -279,7 +274,6 @@
         const FADE_OUT = 2.1;    // ここで寄与ゼロ
         // EDGE（距離場）用
         const EDGE_MIN = 0.14, EDGE_MAX = 0.72;
-        const K_MAX = 0.30;      // 凹コーナーのフィレット半径の上限
         const CARVE_MAX = 0.62;  // OFF セルの円で削る半径の上限
         const GAP_MIN = 0.62, GAP_MAX = 1.45;   // 行間（列間を1としたときの比）
 
@@ -290,7 +284,6 @@
         let grid = new Map();    // "i,j" -> ON | OFF。持っていないセルは NEUTRAL
         let mode = 'edge';       // 'edge' | 'blob'
         let radius = 0.40;
-        let smoothK = 0.09;
         let carve = 0.35;
         let gapY = 1;            // 行間。円の間隔を変えると張り方が変わる
         let outline = false;     // 輪郭線だけ表示するモード
@@ -342,17 +335,11 @@
                     for (let m = 0; m <= n; m++) strung.add(key(i + m * di, j + m * dj));
                 }
             }
-            // どこにも張られていない円だけ単独で置く。張られている円にも足すと smin で膨らむ
+            // どこにも張られていない円だけ単独で置く
             for (const [i, j, k] of on) if (!strung.has(k)) push(i, j, i, j);
         }
 
-        // 多項式スムーズ min。凹んだ接合部に半径 k のフィレットが入る
-        function smin(a, b, k) {
-            if (k <= 0) return a < b ? a : b;
-            const h = Math.max(k - Math.abs(a - b), 0) / k;
-            return (a < b ? a : b) - h * h * k * 0.25;
-        }
-
+        // 点 (x, y) から線分 p までの距離
         function segDist(x, y, p) {
             const vx = p[2] - p[0], vy = p[3] - p[1];
             const wx = x - p[0], wy = y - p[1];
@@ -384,33 +371,27 @@
                 }
                 return sum;
             }
-            // 近い2本だけを混ぜる。全部に smin を重ねがけすると膨らみが累積して
-            // 本来まっすぐな辺が波打つ
-            let d1 = Infinity, d2 = Infinity;
+            let d1 = Infinity;
             for (let n = 0; n < P.length; n++) {
                 const p = P[n];
-                const reach = d2 + smoothK + p[4] + radius;   // 遠いプリミティブは触らない
+                const reach = d1 + p[4] + radius;   // 遠いプリミティブは触らない
                 const ex = x - p[5], ey = y - p[6];
                 if (ex * ex + ey * ey > reach * reach) continue;
                 const dd = segDist(x, y, p);
-                if (dd < d1) { d2 = d1; d1 = dd; }
-                else if (dd < d2) { d2 = dd; }
+                if (dd < d1) d1 = dd;
             }
-            const inStroke = radius - smin(d1, d2, smoothK);   // >= 0 が内側
+            const inStroke = radius - d1;   // >= 0 が内側
             if (!carve || !Q.length) return THRESHOLD + inStroke;
             // OFF セルの円の外側。参考にしたグリフの凹んだ辺は、
             // どれも OFF の円の弧になっている＝張った形から円を押し込んでいる
-            let o1 = Infinity, o2 = Infinity;
+            let o1 = Infinity;
             for (let n = 0; n < Q.length; n += 2) {
                 const ex = x - Q[n], ey = y - Q[n + 1];
                 const dd = Math.sqrt(ex * ex + ey * ey);
-                if (dd < o1) { o2 = o1; o1 = dd; }
-                else if (dd < o2) { o2 = dd; }
+                if (dd < o1) o1 = dd;
             }
-            const outHole = smin(o1, o2, smoothK) - carve;
-            // 積集合。smin で継ぎ目にフィレットが入る
-            // 距離場は線形なので、マーチングスクエアの補間がそのまま効く
-            return THRESHOLD + smin(inStroke, outHole, smoothK);
+            // 積集合。距離場は線形なので、マーチングスクエアの補間がそのまま効く
+            return THRESHOLD + Math.min(inStroke, o1 - carve);
         }
 
         // ===== マーチングスクエア =========================================
@@ -517,6 +498,43 @@
             return p;
         }
 
+        // ===== 糸を張り直す =================================================
+        // 等値線はカプセルの合成の輪郭でしかない。ピンと張った糸は、円に当たらない
+        // 限り次の接点まで直線で行くので、要らない頂点を落として結び直す。
+        // どの円も跨げないので、囲んでいる円・避けている円の関係は変わらない
+        function tighten(loop) {
+            const cs = [];
+            for (const [k, v] of grid) {
+                const [i, j] = k.split(',').map(Number);
+                cs.push([CX(i), CY(j), (v === ON ? radius : carve) - 1e-4]);
+            }
+            if (!cs.length) return loop;
+            const seg = [0, 0, 0, 0];
+            const blocked = (a, b) => {
+                seg[0] = a[0]; seg[1] = a[1]; seg[2] = b[0]; seg[3] = b[1];
+                for (let n = 0; n < cs.length; n++) {
+                    const c = cs[n];
+                    if (c[2] > 0 && segDist(c[0], c[1], seg) < c[2]) return true;
+                }
+                return false;
+            };
+            let pts = loop;
+            for (let pass = 0; pass < 24; pass++) {
+                const n = pts.length;
+                if (n < 4) break;
+                const out = [];
+                let anchor = pts[n - 1], removed = false;
+                for (let i = 0; i < n; i++) {
+                    if (!blocked(anchor, pts[(i + 1) % n])) { removed = true; continue; }
+                    out.push(pts[i]);
+                    anchor = pts[i];
+                }
+                if (!removed || out.length < 4) break;
+                pts = out;
+            }
+            return pts;
+        }
+
         function signedArea(loop) {
             let a = 0;
             for (let i = 0; i < loop.length; i++) {
@@ -527,8 +545,9 @@
         }
 
         function rebuild() {
+            // EDGE は張り直しで直線が出るので平滑化しない。BLOB は等値線をならす
             loops = contour()
-                .map(l => chaikin(l, 2))
+                .map(l => mode === 'edge' ? tighten(l) : chaikin(l, 2))
                 .filter(l => Math.abs(signedArea(l)) > 2e-3); // サンプリングのゴミを落とす
         }
 
@@ -682,9 +701,6 @@
         // ===== コントロール =================================================
         const weight = document.getElementById('weight');
         const weightVal = document.getElementById('weightVal');
-        const smooth = document.getElementById('smooth');
-        const smoothVal = document.getElementById('smoothVal');
-        const smoothRow = document.getElementById('smoothRow');
         const carveEl = document.getElementById('carve');
         const carveVal = document.getElementById('carveVal');
         const carveRow = document.getElementById('carveRow');
@@ -697,9 +713,6 @@
             const hi = mode === 'blob' ? BLOB_MAX : EDGE_MAX;
             radius = lo + (hi - lo) * t;
             weightVal.textContent = Math.round(t * 100);
-            const k = smooth.value / 1000;
-            smoothK = K_MAX * k;
-            smoothVal.textContent = Math.round(k * 100);
             const q = carveEl.value / 1000;
             carve = CARVE_MAX * q;
             carveVal.textContent = Math.round(q * 100);
@@ -707,7 +720,7 @@
             gapY = GAP_MIN + (GAP_MAX - GAP_MIN) * g;
             gapValEl.textContent = Math.round(g * 100);
         }
-        for (const el of [weight, smooth, carveEl, gapEl])
+        for (const el of [weight, carveEl, gapEl])
             el.addEventListener('input', () => { readSliders(); update(); });
 
         const viewSeg = document.getElementById('viewSeg');
@@ -732,7 +745,7 @@
                 b.onclick = () => { mode = m; refreshStyle(); readSliders(); update(); };
                 styleSeg.appendChild(b);
             }
-            smoothRow.style.display = carveRow.style.display = mode === 'edge' ? '' : 'none';
+            carveRow.style.display = mode === 'edge' ? '' : 'none';
         }
 
         function buildSeg(el, min, max, get, set) {
