@@ -216,7 +216,7 @@
 <body>
     <header>
         <h1>BLOB TYPE</h1>
-        <span class="hint">tap / drag to fill</span>
+        <span class="hint">tap: · → fill → hole</span>
     </header>
 
     <div class="stage">
@@ -275,8 +275,12 @@
         const K_MAX = 0.30;      // 凹コーナーのフィレット半径の上限
         const CARVE_MAX = 0.62;  // OFF セルの円で削る半径の上限
 
+        const ON = 1, OFF = -1, NEUTRAL = 0;
+        const NEXT = { 0: ON, 1: OFF, '-1': NEUTRAL };
+
         let cols = 4, rows = 5;
-        let cells = new Set();   // "i,j"
+        // "i,j" -> ON | OFF。持っていないセルは NEUTRAL（何もしない）
+        let grid = new Map();
         let mode = 'edge';       // 'edge' | 'blob'
         let radius = 0.40;
         let smoothK = 0.09;
@@ -284,12 +288,16 @@
         let loops = [];          // 平滑化後のポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
+        const at = k => grid.get(k) || NEUTRAL;
+        const isOn = (i, j) => grid.get(key(i, j)) === ON;
+        function setCell(k, v) { if (v === NEUTRAL) grid.delete(k); else grid.set(k, v); }
 
         // ===== プリミティブ ===============================================
         // EDGE：ON セルの中心を点、隣接（斜めを含む）ペアを線分として持ち、
         //       その距離場を radius だけ太らせたものが図形になる。
         //       メタボールと違って辺が直線になり、角だけが円弧になる。
-        // BLOB：中心座標だけ使う。
+        //       OFF セルの円はそこから引く。NEUTRAL は何もしない。
+        // BLOB：ON セルの中心座標だけ使う。
         let P = [];   // [ax, ay, bx, by, halfLen, midX, midY] × n（点は a==b）
         let Q = [];   // OFF セルの中心 [x, y, ...]（ここを削る）
         const DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];   // 重複しない8近傍
@@ -300,30 +308,28 @@
                 const hl = Math.hypot(bx - ax, by - ay) / 2;
                 P.push([ax * S, ay * S, bx * S, by * S, hl * S, (ax + bx) / 2 * S, (ay + by) / 2 * S]);
             };
+            const on = [];
+            Q = [];
+            for (const [k, v] of grid) {
+                const [i, j] = k.split(',').map(Number);
+                if (v === ON) on.push([i, j, k]);
+                else Q.push(i * S, j * S);
+            }
             const linked = new Set();
             // 一直線に並んだ分は1本の長い線分にまとめる。
             // 短い線分を重ねると smin が至るところで効いて、直線が波打つ
             for (const [di, dj] of DIRS) {
-                for (const c of cells) {
-                    const [i, j] = c.split(',').map(Number);
-                    if (cells.has(key(i - di, j - dj))) continue;   // 列の先頭だけ処理する
+                for (const [i, j] of on) {
+                    if (isOn(i - di, j - dj)) continue;   // 列の先頭だけ処理する
                     let n = 0;
-                    while (cells.has(key(i + (n + 1) * di, j + (n + 1) * dj))) n++;
+                    while (isOn(i + (n + 1) * di, j + (n + 1) * dj)) n++;
                     if (!n) continue;
                     push(i, j, i + n * di, j + n * dj);
                     for (let m = 0; m <= n; m++) linked.add(key(i + m * di, j + m * dj));
                 }
             }
             // 孤立セルだけ点を足す。線分を持つセルにも足すと smin で全体が膨らむ
-            for (const c of cells) {
-                if (linked.has(c)) continue;
-                const [i, j] = c.split(',').map(Number);
-                push(i, j, i, j);
-            }
-            Q = [];
-            for (let j = 0; j < rows; j++)
-                for (let i = 0; i < cols; i++)
-                    if (!cells.has(key(i, j))) Q.push(i * S, j * S);
+            for (const [i, j, k] of on) if (!linked.has(k)) push(i, j, i, j);
         }
 
         // 多項式スムーズ min。凹んだ接合部に半径 k のフィレットが入る
@@ -548,29 +554,40 @@
             ctx.fillStyle = '#fff';
             ctx.fillRect(0, 0, cv.width, cv.height);
 
-            // 下敷きのグリッド
-            ctx.strokeStyle = '#e6e6e6';
+            // OFF セルは実際に削る半径のまま下敷きに描く。避けている円が見える
+            const gr = (mode === 'edge' && carve ? carve : 0.4 * S) * scale;
+            ctx.fillStyle = '#efefef';
+            ctx.strokeStyle = '#e0e0e0';
             ctx.lineWidth = Math.max(1, dpr);
-            for (let j = 0; j < rows; j++) {
-                for (let i = 0; i < cols; i++) {
-                    ctx.beginPath();
-                    const gr = mode === 'edge' && carve ? carve : 0.4 * S;
-                    ctx.arc(ox + i * S * scale, oy + j * S * scale, gr * scale, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
+            for (const [k, v] of grid) {
+                if (v !== OFF) continue;
+                const [i, j] = k.split(',').map(Number);
+                ctx.beginPath();
+                ctx.arc(ox + i * S * scale, oy + j * S * scale, gr, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
             }
 
             ctx.fillStyle = '#000';
             ctx.fill(pathFromLoops(scale, ox, oy), 'evenodd');
 
-            // 格子が見えないと編集しづらいので、シルエットの上に点を置く
+            // 格子が見えないと編集しづらいので、シルエットの上に印を置く
             for (let j = 0; j < rows; j++) {
                 for (let i = 0; i < cols; i++) {
-                    const on = cells.has(key(i, j));
-                    ctx.fillStyle = on ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.14)';
+                    const v = at(key(i, j));
+                    const cx = ox + i * S * scale, cy = oy + j * S * scale;
                     ctx.beginPath();
-                    ctx.arc(ox + i * S * scale, oy + j * S * scale, 2.5 * dpr, 0, Math.PI * 2);
-                    ctx.fill();
+                    if (v === OFF) {
+                        // 抜きのセルだけリング。ひと目で他と区別がつく
+                        ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+                        ctx.lineWidth = Math.max(1, dpr);
+                        ctx.arc(cx, cy, 3.5 * dpr, 0, Math.PI * 2);
+                        ctx.stroke();
+                    } else {
+                        ctx.fillStyle = v === ON ? 'rgba(255,255,255,0.24)' : 'rgba(0,0,0,0.13)';
+                        ctx.arc(cx, cy, 2.5 * dpr, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 }
             }
         }
@@ -578,7 +595,7 @@
         function update() { rebuild(); draw(); }
 
         // ===== 入力 =========================================================
-        let painting = false, paintTo = true;
+        let painting = false, paintTo = ON;
 
         function cellAt(ev) {
             const rect = cv.getBoundingClientRect();
@@ -595,9 +612,8 @@
 
         function apply(ev) {
             const k = cellAt(ev);
-            if (!k) return;
-            if (paintTo) { if (cells.has(k)) return; cells.add(k); }
-            else { if (!cells.has(k)) return; cells.delete(k); }
+            if (!k || at(k) === paintTo) return;
+            setCell(k, paintTo);
             update();
         }
 
@@ -606,8 +622,11 @@
             if (!k) return;
             cv.setPointerCapture(e.pointerId);
             painting = true;
-            paintTo = !cells.has(k);   // 最初に触れたセルの状態で塗り／消しを決める
-            apply(e);
+            // タップで NEUTRAL → ON → OFF と一巡。
+            // ドラッグ中はその結果の状態を塗り続ける
+            paintTo = NEXT[at(k)];
+            setCell(k, paintTo);
+            update();
         });
         cv.addEventListener('pointermove', e => { if (painting) apply(e); });
         const stop = () => { painting = false; };
@@ -671,15 +690,15 @@
         }
         function resize(c, r) {
             cols = c; rows = r;
-            for (const k of [...cells]) {
+            for (const k of [...grid.keys()]) {
                 const [i, j] = k.split(',').map(Number);
-                if (i >= cols || j >= rows) cells.delete(k);
+                if (i >= cols || j >= rows) grid.delete(k);
             }
             refreshSegs();
             update();
         }
 
-        document.getElementById('btnClear').onclick = () => { cells.clear(); update(); };
+        document.getElementById('btnClear').onclick = () => { grid.clear(); update(); };
 
         // ===== 書き出し =====================================================
         // プレビューと同じ loops から作る。別計算しない
@@ -756,9 +775,10 @@
         };
 
         // ===== 初期状態 =====================================================
-        // 起動時は穴のある形（O）を置いておく
+        // 起動時は穴のある形（O）を置いておく。内側は OFF にして丸く抜く
         ['0,0', '1,0', '2,0', '3,0', '0,1', '3,1', '0,2', '3,2', '0,3', '3,3', '0,4', '1,4', '2,4', '3,4']
-            .forEach(k => cells.add(k));
+            .forEach(k => grid.set(k, ON));
+        ['1,1', '2,1', '1,2', '2,2', '1,3', '2,3'].forEach(k => grid.set(k, OFF));
         refreshSegs();
         refreshStyle();
         readSliders();
