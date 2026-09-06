@@ -591,11 +591,28 @@
             // 杭ひとつなら、その杭に巻きついた輪ゴム＝ただの円
             if (inside.length === 1 && pegs.length === 1) return [pegs[0]];
 
-            // 初期状態：抱える杭ぜんぶの凸包（左回り）
-            let hull = convexHull(inside.map(p => p.c));
-            if (hull.length > 2 && signedArea(hull) < 0) hull.reverse();
-            let cts = hull.map(h => pegs.findIndex(p => p.c[0] === h[0] && p.c[1] === h[1]));
-            if (cts.length < 1) cts = [pegs.indexOf(inside[0])];
+            // 抱える杭ぜんぶの凸包（左回り）
+            const hullSeed = () => {
+                let hull = convexHull(inside.map(p => p.c));
+                if (hull.length > 2 && signedArea(hull) < 0) hull.reverse();
+                const c = hull.map(h => pegs.findIndex(p => p.c[0] === h[0] && p.c[1] === h[1]));
+                return c.length ? c : [pegs.indexOf(inside[0])];
+            };
+            // 前回の接点列。毎回ゼロから最短形を探すと、ドラッグで作った経路が
+            // 捨てられて別の場所が凹んだ形に化ける。接点の列こそが状態なので、
+            // 前回の列から始めて局所的に直すだけにする
+            const prevSeed = () => {
+                if (!bandContacts || !bandContacts.length) return null;
+                const seq = [];
+                for (const ct of bandContacts) {
+                    const n = pegs.findIndex(p => p.k === ct.k);
+                    if (n >= 0 && (!seq.length || seq[seq.length - 1] !== n)) seq.push(n);
+                }
+                if (seq.length > 1 && seq[0] === seq[seq.length - 1]) seq.pop();
+                return seq.length ? seq : null;
+            };
+            let cts = prevSeed() || hullSeed();
+            const startedFromPrev = cts !== null && prevSeed() !== null;
 
             const ctOf = i => pegs[i];
 
@@ -641,6 +658,7 @@
                 return true;
             }
 
+            const solve = () => {
             for (let iter = 0; iter < 300; iter++) {
                 let changed = false;
 
@@ -719,6 +737,10 @@
                 }
                 if (!changed) break;
             }
+            };
+            solve();
+            // 前回の列から始めて成立しなければ、凸包からやり直す
+            if (startedFromPrev && !valid(cts)) { cts = hullSeed(); solve(); }
             return cts.map(i => pegs[i]);
         }
 
@@ -754,6 +776,14 @@
             return { x: -pad - (side - w) / 2, y: -pad - (side - h) / 2, size: side };
         }
 
+        function polyPath(pts, scale, ox, oy) {
+            const p = new Path2D();
+            p.moveTo(ox + pts[0][0] * scale, oy + pts[0][1] * scale);
+            for (let i = 1; i < pts.length; i++) p.lineTo(ox + pts[i][0] * scale, oy + pts[i][1] * scale);
+            p.closePath();
+            return p;
+        }
+
         function pathFromLoops(scale, ox, oy) {
             const p = new Path2D();
             for (const l of loops) {
@@ -777,6 +807,11 @@
             ctx.fillRect(0, 0, cv.width, cv.height);
 
             const cr = (mode === 'edge' ? radius : 0.4 * S) * scale;
+            // ドラッグ中は、張り直したあとの形ではなく、いま指で伸ばしている形を出す。
+            // 張り直した形だけを見せると、掴んだ辺が指について来ないので
+            // 別の辺が動いたように見える
+            const stretched = (dragging && restPath && dragPos)
+                ? [[dragPos.x, dragPos.y]].concat(restPath) : null;
 
             if (outline) {
                 // 糸がどの円に張られているかを見るモード。
@@ -802,7 +837,8 @@
                 }
                 ctx.strokeStyle = '#e03131';
                 ctx.lineWidth = 1.6 * dpr;
-                ctx.stroke(pathFromLoops(scale, ox, oy));
+                ctx.stroke(stretched ? polyPath(stretched, scale, ox, oy)
+                                     : pathFromLoops(scale, ox, oy));
             } else {
                 // OFF セルは実寸で下敷きに描く。押している円が見える
                 ctx.fillStyle = '#efefef';
@@ -817,20 +853,16 @@
                     ctx.stroke();
                 }
                 ctx.fillStyle = '#000';
-                ctx.fill(pathFromLoops(scale, ox, oy), 'evenodd');
+                ctx.fill(stretched ? polyPath(stretched, scale, ox, oy)
+                                   : pathFromLoops(scale, ox, oy), 'evenodd');
             }
 
-            // 引っぱっている V。どの辺を掴んでいるかが見える
-            if (dragging && anchorA && dragPos) {
-                ctx.strokeStyle = 'rgba(220,60,60,0.55)';
-                ctx.lineWidth = 1.5 * dpr;
-                ctx.setLineDash([5 * dpr, 4 * dpr]);
+            // 掴んでいる点
+            if (dragging && dragPos) {
+                ctx.fillStyle = 'rgba(220,60,60,0.9)';
                 ctx.beginPath();
-                ctx.moveTo(ox + anchorA[0] * scale, oy + anchorA[1] * scale);
-                ctx.lineTo(ox + dragPos.x * scale, oy + dragPos.y * scale);
-                ctx.lineTo(ox + anchorB[0] * scale, oy + anchorB[1] * scale);
-                ctx.stroke();
-                ctx.setLineDash([]);
+                ctx.arc(ox + dragPos.x * scale, oy + dragPos.y * scale, 4 * dpr, 0, Math.PI * 2);
+                ctx.fill();
             }
 
             // 格子が見えないと編集しづらいので、シルエットの上に印を置く
@@ -869,6 +901,9 @@
         let anchorA = null, anchorB = null, anchorKeys = null, origState = null;
         let origSpan = null;   // 掴んだときの、留め具から留め具までの輪郭
         let restPath = null;   // 掴んでいない側の輪郭。ここは動かない
+        let restSeq = null;    // 掴んでいない側の接点列。掃いた杭はこの後ろに入る
+        // restPath の両端が、掴んだ辺が留め具から離れる接点そのものなので、
+        // 伸ばした輪ゴムは「ポインタ＋動いていない側」で作れる
 
         function toWorld(ev) {
             const rect = cv.getBoundingClientRect();
@@ -883,6 +918,8 @@
             if (Math.hypot(x - CX(i), y - CY(j)) > HOLD * S) return null;
             return key(i, j);
         }
+
+        const pegC = k => { const [i, j] = k.split(',').map(Number); return [CX(i), CY(j)]; };
 
         // 輪ゴムまでの距離
         function bandDist(x, y) {
@@ -916,6 +953,12 @@
             anchorA = bandContacts[ia].c;
             anchorB = bandContacts[ib].c;
             anchorKeys = [bandContacts[ia].k, bandContacts[ib].k];
+            // 掴んでいない側の接点列。ib から ia まで（掴んだ辺の外側）
+            restSeq = [];
+            for (let i = ib; ; i = (i + 1) % m) {
+                restSeq.push({ k: bandContacts[i].k, s: bandContacts[i].s });
+                if (i === ia) break;
+            }
             // 留め具から留め具までの、元の輪郭をそのまま取っておく。
             // 掃いた範囲はこれと V のあいだで測る。留め具を結ぶ直線で測ると、
             // 外へ張り出している杭を内側へ押し出せない
@@ -931,7 +974,7 @@
                 restPath.push(loop[sa]);
             }
             origSpan.push(anchorB);
-            return true;
+            return restPath.length > 1;
         }
 
         // 引っぱったあとの輪ゴム全体（動かしていない部分＋V）を作って、
@@ -939,7 +982,7 @@
         // 掴んだ辺と V だけで囲むと、遠くまで引いたときに V の脚が図形の
         // 反対側を横切って、無関係な杭まで巻き込む
         function applyDrag(pos) {
-            const moved = [anchorA, [pos.x, pos.y], anchorB].concat(restPath);
+            const moved = [[pos.x, pos.y]].concat(restPath);
             let any = false;
             const next = new Map();
             for (const [k, v] of origState) {
@@ -952,7 +995,34 @@
             if (!any) return false;                       // 抱える杭が無くなると張れない
             let changed = false;
             for (const [k, v] of next) if (stateAt(k) !== v) { setCell(k, v); changed = true; }
-            return changed;
+            if (!changed) return false;
+            // 掃いた杭を、掴んだ辺の位置に順番どおり差し込む。
+            // これを伝えないと、ソルバが別の辺に掛けてしまう
+            const swept = [];
+            for (const [k, v] of next) {
+                if (v === origState.get(k)) continue;
+                if (anchorKeys.indexOf(k) >= 0) continue;
+                const c = pegC(k);
+                swept.push({ k, s: v === ON ? 1 : -1, t: alongDrag(c, pos) });
+            }
+            swept.sort((a, b) => a.t - b.t);
+            bandContacts = restSeq.concat(swept.map(x => ({ k: x.k, s: x.s, c: pegC(x.k) })));
+            return true;
+        }
+
+        // 掴んだ辺の始点からポインタを経て終点までの、どのあたりを通ったか
+        function alongDrag(c, pos) {
+            const a = restPath[restPath.length - 1], b = restPath[0], p = [pos.x, pos.y];
+            const l1 = Math.hypot(p[0] - a[0], p[1] - a[1]);
+            const d1 = segDist(c[0], c[1], [a[0], a[1], p[0], p[1]]);
+            const d2 = segDist(c[0], c[1], [p[0], p[1], b[0], b[1]]);
+            if (d1 <= d2) {
+                const t = ((c[0] - a[0]) * (p[0] - a[0]) + (c[1] - a[1]) * (p[1] - a[1])) / (l1 * l1 || 1);
+                return Math.max(0, Math.min(1, t));
+            }
+            const l2 = Math.hypot(b[0] - p[0], b[1] - p[1]);
+            const t = ((c[0] - p[0]) * (b[0] - p[0]) + (c[1] - p[1]) * (b[1] - p[1])) / (l2 * l2 || 1);
+            return 1 + Math.max(0, Math.min(1, t));
         }
 
         cv.addEventListener('pointerdown', e => {
@@ -1000,12 +1070,14 @@
                     if (k) setCell(k, stateAt(k) === NEUTRAL ? ON : NEUTRAL);
                 }
             }
-            painting = false; dragging = false; origState = null; origSpan = restPath = null;
+            painting = false; dragging = false; origState = null;
+            origSpan = restPath = restSeq = null;
             update();
         });
         cv.addEventListener('pointercancel', () => {
             if (dragging && origState) for (const [k, v] of origState) setCell(k, v);
-            painting = false; dragging = false; origState = null; origSpan = restPath = null; origSpan = null;
+            painting = false; dragging = false; origState = null;
+            origSpan = restPath = restSeq = null; origSpan = null;
             update();
         });
 
