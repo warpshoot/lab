@@ -499,23 +499,33 @@
         }
 
         // ===== 糸を張り直す =================================================
-        // 等値線はカプセルの合成の輪郭でしかない。ピンと張った糸は、円に当たらない
-        // 限り次の接点まで直線で行くので、要らない頂点を落として結び直す。
-        // どの円も跨げないので、囲んでいる円・避けている円の関係は変わらない
+        // 等値線はカプセルの合成の輪郭でしかない。ピンと張った糸は、邪魔が
+        // 入らない限り次の接点まで直線で行くので、要らない頂点を落として結び直す。
+        //
+        // 邪魔になるのは「円」ではなく「帯そのもの」。円だけを避ける判定にすると、
+        // 隣り合う円のあいだの隙間を糸がすり抜けてしまう
+        function segSegDist(ax, ay, bx, by, p) {
+            const cx = p[0], cy = p[1], dx = p[2], dy = p[3];
+            const d1 = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+            const d2 = (bx - ax) * (dy - ay) - (by - ay) * (dx - ax);
+            const d3 = (dx - cx) * (ay - cy) - (dy - cy) * (ax - cx);
+            const d4 = (dx - cx) * (by - cy) - (dy - cy) * (bx - cx);
+            if (d1 * d2 < 0 && d3 * d4 < 0) return 0;   // 交差している
+            // 交差していなければ最短はどれかの端点で取れる
+            const seg = [ax, ay, bx, by];
+            return Math.min(
+                segDist(cx, cy, seg), segDist(dx, dy, seg),
+                segDist(ax, ay, p), segDist(bx, by, p));
+        }
+
         function tighten(loop) {
-            const cs = [];
-            for (const [k, v] of grid) {
-                const [i, j] = k.split(',').map(Number);
-                cs.push([CX(i), CY(j), (v === ON ? radius : carve) - 1e-4]);
-            }
-            if (!cs.length) return loop;
-            const seg = [0, 0, 0, 0];
+            const EPS = 1e-4;
             const blocked = (a, b) => {
-                seg[0] = a[0]; seg[1] = a[1]; seg[2] = b[0]; seg[3] = b[1];
-                for (let n = 0; n < cs.length; n++) {
-                    const c = cs[n];
-                    if (c[2] > 0 && segDist(c[0], c[1], seg) < c[2]) return true;
-                }
+                for (let n = 0; n < P.length; n++)
+                    if (segSegDist(a[0], a[1], b[0], b[1], P[n]) < radius - EPS) return true;
+                const seg = [a[0], a[1], b[0], b[1]];
+                for (let n = 0; n < Q.length; n += 2)
+                    if (segDist(Q[n], Q[n + 1], seg) < carve - EPS) return true;
                 return false;
             };
             let pts = loop;
