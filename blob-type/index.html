@@ -230,13 +230,18 @@
         </div>
         <div class="row">
             <label>WEIGHT</label>
-            <input type="range" id="weight" min="0" max="1000" value="500">
-            <span class="value" id="weightVal">50</span>
+            <input type="range" id="weight" min="0" max="1000" value="620">
+            <span class="value" id="weightVal">62</span>
         </div>
         <div class="row" id="smoothRow">
             <label>SMOOTH</label>
-            <input type="range" id="smooth" min="0" max="1000" value="300">
-            <span class="value" id="smoothVal">30</span>
+            <input type="range" id="smooth" min="0" max="1000" value="250">
+            <span class="value" id="smoothVal">25</span>
+        </div>
+        <div class="row" id="carveRow">
+            <label>CARVE</label>
+            <input type="range" id="carve" min="0" max="1000" value="500">
+            <span class="value" id="carveVal">50</span>
         </div>
         <div class="row">
             <label>COLS</label>
@@ -266,14 +271,16 @@
         const FADE_IN = 1.5;     // ここから寄与を落とし始める（セル単位）
         const FADE_OUT = 2.1;    // ここで寄与ゼロ
         // EDGE（距離場）用
-        const EDGE_MIN = 0.14, EDGE_MAX = 0.56;
+        const EDGE_MIN = 0.14, EDGE_MAX = 0.72;
         const K_MAX = 0.30;      // 凹コーナーのフィレット半径の上限
+        const CARVE_MAX = 0.62;  // OFF セルの円で削る半径の上限
 
         let cols = 4, rows = 5;
         let cells = new Set();   // "i,j"
         let mode = 'edge';       // 'edge' | 'blob'
         let radius = 0.40;
-        let smoothK = 0.12;
+        let smoothK = 0.09;
+        let carve = 0.35;
         let loops = [];          // 平滑化後のポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
@@ -284,6 +291,7 @@
         //       メタボールと違って辺が直線になり、角だけが円弧になる。
         // BLOB：中心座標だけ使う。
         let P = [];   // [ax, ay, bx, by, halfLen, midX, midY] × n（点は a==b）
+        let Q = [];   // OFF セルの中心 [x, y, ...]（ここを削る）
         const DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];   // 重複しない8近傍
 
         function buildPrims() {
@@ -312,6 +320,10 @@
                 const [i, j] = c.split(',').map(Number);
                 push(i, j, i, j);
             }
+            Q = [];
+            for (let j = 0; j < rows; j++)
+                for (let i = 0; i < cols; i++)
+                    if (!cells.has(key(i, j))) Q.push(i * S, j * S);
         }
 
         // 多項式スムーズ min。凹んだ接合部に半径 k のフィレットが入る
@@ -364,9 +376,22 @@
                 if (dd < d1) { d2 = d1; d1 = dd; }
                 else if (dd < d2) { d2 = dd; }
             }
-            const d = smin(d1, d2, smoothK);
+            // 太らせた線分の内側（>= 0 が内側）
+            const inStroke = radius - smin(d1, d2, smoothK);
+            if (!carve || !Q.length) return THRESHOLD + inStroke;
+            // OFF セルの円の外側。参考にしたグリフの凹んだ辺は、
+            // どれも OFF の円の弧になっている＝結んだ形から円を削っている
+            let o1 = Infinity, o2 = Infinity;
+            for (let n = 0; n < Q.length; n += 2) {
+                const ex = x - Q[n], ey = y - Q[n + 1];
+                const dd = Math.sqrt(ex * ex + ey * ey);
+                if (dd < o1) { o2 = o1; o1 = dd; }
+                else if (dd < o2) { o2 = dd; }
+            }
+            const outHole = smin(o1, o2, smoothK) - carve;
+            // 積集合。smin で継ぎ目にフィレットが入る
             // 距離場は線形なので、マーチングスクエアの補間がそのまま効く
-            return THRESHOLD + (radius - d);
+            return THRESHOLD + smin(inStroke, outHole, smoothK);
         }
 
         // ===== マーチングスクエア =========================================
@@ -493,8 +518,8 @@
         const ctx = cv.getContext('2d');
 
         function view() {
-            // グリッド外形＋余白 0.7 セル。プレビューと SVG で同じ枠を使う
-            const pad = 0.7;
+            // グリッド外形＋余白 0.8 セル。プレビューと SVG で同じ枠を使う
+            const pad = 0.8;
             const w = (cols - 1) * S + pad * 2;
             const h = (rows - 1) * S + pad * 2;
             const side = Math.max(w, h);
@@ -529,7 +554,8 @@
             for (let j = 0; j < rows; j++) {
                 for (let i = 0; i < cols; i++) {
                     ctx.beginPath();
-                    ctx.arc(ox + i * S * scale, oy + j * S * scale, 0.4 * S * scale, 0, Math.PI * 2);
+                    const gr = mode === 'edge' && carve ? carve : 0.4 * S;
+                    ctx.arc(ox + i * S * scale, oy + j * S * scale, gr * scale, 0, Math.PI * 2);
                     ctx.stroke();
                 }
             }
@@ -594,6 +620,9 @@
         const smooth = document.getElementById('smooth');
         const smoothVal = document.getElementById('smoothVal');
         const smoothRow = document.getElementById('smoothRow');
+        const carveEl = document.getElementById('carve');
+        const carveVal = document.getElementById('carveVal');
+        const carveRow = document.getElementById('carveRow');
 
         function readSliders() {
             const t = weight.value / 1000;
@@ -604,9 +633,12 @@
             const k = smooth.value / 1000;
             smoothK = K_MAX * k;
             smoothVal.textContent = Math.round(k * 100);
+            const q = carveEl.value / 1000;
+            carve = CARVE_MAX * q;
+            carveVal.textContent = Math.round(q * 100);
         }
-        weight.addEventListener('input', () => { readSliders(); update(); });
-        smooth.addEventListener('input', () => { readSliders(); update(); });
+        for (const el of [weight, smooth, carveEl])
+            el.addEventListener('input', () => { readSliders(); update(); });
 
         const styleSeg = document.getElementById('styleSeg');
         function refreshStyle() {
@@ -618,7 +650,7 @@
                 b.onclick = () => { mode = m; refreshStyle(); readSliders(); update(); };
                 styleSeg.appendChild(b);
             }
-            smoothRow.style.display = mode === 'edge' ? '' : 'none';
+            smoothRow.style.display = carveRow.style.display = mode === 'edge' ? '' : 'none';
         }
 
         function buildSeg(el, min, max, get, set) {
