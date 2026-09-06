@@ -797,16 +797,18 @@
             return key(i, j);
         }
 
-        // 輪ゴムを掴める距離にいるか
-        function onBand(x, y) {
-            if (mode !== 'edge' || !loops.length) return false;
+        // 輪ゴムまでの距離
+        function bandDist(x, y) {
+            if (mode !== 'edge' || !loops.length) return Infinity;
             const e = [0, 0, 0, 0];
+            let d = Infinity;
             for (const loop of loops)
                 for (let i = 0, j = loop.length - 1; i < loop.length; j = i++) {
                     e[0] = loop[j][0]; e[1] = loop[j][1]; e[2] = loop[i][0]; e[3] = loop[i][1];
-                    if (segDist(x, y, e) < GRAB * S) return true;
+                    const dd = segDist(x, y, e);
+                    if (dd < d) d = dd;
                 }
-            return false;
+            return d;
         }
 
         // 掴んだ輪ゴムを動かした軌跡が跨いだ杭を、反対側へ移す
@@ -832,8 +834,12 @@
         cv.addEventListener('pointerdown', e => {
             const w = toWorld(e);
             const k = pickCell(w.x, w.y);
-            // 杭より輪ゴムを優先。杭の上でも、輪ゴムが掛かっていれば掴める
-            if (onBand(w.x, w.y) && (!k || stateAt(k) !== NEUTRAL)) {
+            // 輪ゴムと杭の、近いほうを掴む。
+            // 空セルより輪ゴムを優先しないと、直線の真ん中を掴もうとしたときに
+            // その辺りのセルに杭が生えてしまう
+            const db = bandDist(w.x, w.y);
+            const dk = k ? Math.hypot(w.x - CX(+k.split(',')[0]), w.y - CY(+k.split(',')[1])) : Infinity;
+            if (db < GRAB * S && db < dk) {
                 cv.setPointerCapture(e.pointerId);
                 dragging = true; lastPos = startPos = w; flipped = new Set();
                 return;
