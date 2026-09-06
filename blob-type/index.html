@@ -243,7 +243,9 @@
         <div class="row">
             <label>COLS</label>
             <div class="seg" id="colsSeg"></div>
-            <label style="width:auto;margin-left:12px">ROWS</label>
+        </div>
+        <div class="row">
+            <label>ROWS</label>
             <div class="seg" id="rowsSeg"></div>
         </div>
         <div class="actions">
@@ -1146,8 +1148,8 @@
         const colsSeg = document.getElementById('colsSeg');
         const rowsSeg = document.getElementById('rowsSeg');
         function refreshSegs() {
-            buildSeg(colsSeg, 3, 6, () => cols, n => { resize(n, rows); });
-            buildSeg(rowsSeg, 4, 7, () => rows, n => { resize(cols, n); });
+            buildSeg(colsSeg, 3, 8, () => cols, n => { resize(n, rows); });
+            buildSeg(rowsSeg, 3, 8, () => rows, n => { resize(cols, n); });
         }
         function resize(c, r) {
             cols = c; rows = r;
