@@ -232,13 +232,8 @@
         </div>
         <div class="row">
             <label>WEIGHT</label>
-            <input type="range" id="weight" min="0" max="1000" value="620">
-            <span class="value" id="weightVal">62</span>
-        </div>
-        <div class="row" id="carveRow">
-            <label>CARVE</label>
-            <input type="range" id="carve" min="0" max="1000" value="500">
-            <span class="value" id="carveVal">50</span>
+            <input type="range" id="weight" min="0" max="1000" value="860">
+            <span class="value" id="weightVal">86</span>
         </div>
         <div class="row">
             <label>GAP</label>
@@ -264,6 +259,11 @@
     <script>
         // ===== モデル =====================================================
         // セル間隔を 1 とする単位系で全部計算する。書き出し時だけ 100 倍する。
+        //
+        // 外周は一本の糸。ON の円は距離に関係なく必ずその内側に入るので、
+        // 素の形は ON の円ぜんぶの凸包になる。そこから OFF の円が外側から
+        // 押し込んで形を彫る。NEUTRAL の円は糸が素通りする。
+        // 円はすべて同じ半径。ON は内から押し広げ、OFF は外から押し込む。
         const S = 1;
         const THRESHOLD = 1.0;
         const RES = 12;          // セル間隔あたりのサンプル数
@@ -272,9 +272,8 @@
         const BLOB_MIN = 0.30, BLOB_MAX = 0.54;
         const FADE_IN = 1.5;     // ここから寄与を落とし始める（セル単位）
         const FADE_OUT = 2.1;    // ここで寄与ゼロ
-        // EDGE（距離場）用
-        const EDGE_MIN = 0.14, EDGE_MAX = 0.72;
-        const CARVE_MAX = 0.95;  // OFF セルの円で押し込む半径の上限
+        // EDGE（糸）用
+        const EDGE_MIN = 0.16, EDGE_MAX = 0.80;
         const GAP_MIN = 0.62, GAP_MAX = 1.45;   // 行間（列間を1としたときの比）
 
         const ON = 1, OFF = -1, NEUTRAL = 0;
@@ -283,60 +282,46 @@
         let cols = 4, rows = 5;
         let grid = new Map();    // "i,j" -> ON | OFF。持っていないセルは NEUTRAL
         let mode = 'edge';       // 'edge' | 'blob'
-        let radius = 0.40;
-        let carve = 0.35;
+        let radius = 0.55;
         let gapY = 1;            // 行間。円の間隔を変えると張り方が変わる
         let outline = false;     // 輪郭線だけ表示するモード
-        let loops = [];          // 平滑化後のポリライン（プレビューと書き出しで共用）
+        let loops = [];          // 張り直したポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
         const stateAt = k => grid.get(k) || NEUTRAL;
-        const isOn = (i, j) => grid.get(key(i, j)) === ON;
-        function setCell(k, v) { if (v === NEUTRAL) grid.delete(k); else grid.set(k, v); }
-        // 隣接した ON どうしは必ず繋がる。凹ませたいところは OFF セルの円で押し込む
-        const linked = (i, j, i2, j2) => isOn(i, j) && isOn(i2, j2);
         // 格子の座標。行間だけ可変
         const CX = i => i * S;
         const CY = j => j * S * gapY;
+        function setCell(k, v) { if (v === NEUTRAL) grid.delete(k); else grid.set(k, v); }
 
-        // ===== プリミティブ ===============================================
-        // 円のまわりに糸を張ったものが図形、という捉え方をする。
-        // ON セルの円が外へ、OFF セルの円が内へ糸を押す。2円をまたぐ直線は
-        // 共通接線で、太さに相当するパラメータは存在しない。
-        // 円はすべて同じ大きさなので、一直線に並んだ分は両端だけが糸に触れる。
-        // 間の円は帯に完全に飲み込まれて無視される。
-        // BLOB：ON セルの中心だけ使う。
-        let P = [];   // [ax, ay, bx, by, halfLen, midX, midY]（円は a==b）
-        let Q = [];   // OFF セルの中心 [x, y, ...]
-        let C = [];   // ON セルの中心 [x, y, ...]（BLOB 用）
-        const DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];   // 重複しない8近傍
+        let HULL = [];   // ON 円の中心の凸包
+        let PUSH = [];   // OFF 円の中心 [[x, y], ...]
+        let ONC = [];    // ON 円の中心 [[x, y], ...]
 
-        function buildPrims() {
-            P = []; Q = []; C = [];
-            const push = (i1, j1, i2, j2) => {
-                const ax = CX(i1), ay = CY(j1), bx = CX(i2), by = CY(j2);
-                P.push([ax, ay, bx, by, Math.hypot(bx - ax, by - ay) / 2,
-                        (ax + bx) / 2, (ay + by) / 2]);
+        function convexHull(pts) {
+            if (pts.length < 3) return pts.slice();
+            const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+            const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+            const half = src => {
+                const h = [];
+                for (const q of src) {
+                    while (h.length >= 2 && cross(h[h.length - 2], h[h.length - 1], q) <= 0) h.pop();
+                    h.push(q);
+                }
+                h.pop();
+                return h;
             };
-            const on = [];
+            const hull = half(p).concat(half(p.slice().reverse()));
+            return hull.length ? hull : p.slice(0, 2);
+        }
+
+        function build() {
+            ONC = []; PUSH = [];
             for (const [k, v] of grid) {
                 const [i, j] = k.split(',').map(Number);
-                if (v === ON) { on.push([i, j, k]); C.push(CX(i), CY(j)); }
-                else Q.push(CX(i), CY(j));
+                (v === ON ? ONC : PUSH).push([CX(i), CY(j)]);
             }
-            const strung = new Set();
-            for (const [di, dj] of DIRS) {
-                for (const [i, j] of on) {
-                    if (linked(i - di, j - dj, i, j)) continue;   // 並びの先頭だけ処理する
-                    let n = 0;
-                    while (linked(i + n * di, j + n * dj, i + (n + 1) * di, j + (n + 1) * dj)) n++;
-                    if (!n) continue;
-                    push(i, j, i + n * di, j + n * dj);
-                    for (let m = 0; m <= n; m++) strung.add(key(i + m * di, j + m * dj));
-                }
-            }
-            // どこにも張られていない円だけ単独で置く
-            for (const [i, j, k] of on) if (!strung.has(k)) push(i, j, i, j);
+            HULL = convexHull(ONC);
         }
 
         // 点 (x, y) から線分 p までの距離
@@ -350,13 +335,31 @@
             return Math.sqrt(dx * dx + dy * dy);
         }
 
+        // ON 円の中心がつくる凸包までの符号付き距離（内側が負）
+        const edgeBuf = [0, 0, 0, 0];
+        function hullSD(x, y) {
+            const n = HULL.length;
+            if (!n) return Infinity;
+            if (n === 1) return Math.hypot(x - HULL[0][0], y - HULL[0][1]);
+            let d = Infinity, inside = false;
+            for (let i = 0, j = n - 1; i < n; j = i++) {
+                const a = HULL[j], b = HULL[i];
+                edgeBuf[0] = a[0]; edgeBuf[1] = a[1]; edgeBuf[2] = b[0]; edgeBuf[3] = b[1];
+                const dd = segDist(x, y, edgeBuf);
+                if (dd < d) d = dd;
+                if (n > 2 && (a[1] > y) !== (b[1] > y)
+                    && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+            }
+            return inside ? -d : d;
+        }
+
         // ===== スカラー場 =================================================
         // 内側は f >= THRESHOLD。両モードとも同じ閾値に揃えてある
         function field(x, y) {
             if (mode === 'blob') {
                 let sum = 0;
-                for (let n = 0; n < C.length; n += 2) {
-                    const dx = x - C[n], dy = y - C[n + 1];
+                for (let n = 0; n < ONC.length; n++) {
+                    const dx = x - ONC[n][0], dy = y - ONC[n][1];
                     const d2 = dx * dx + dy * dy;
                     if (d2 < 1e-9) return 1e9;
                     const d = Math.sqrt(d2);
@@ -371,35 +374,23 @@
                 }
                 return sum;
             }
-            let d1 = Infinity;
-            for (let n = 0; n < P.length; n++) {
-                const p = P[n];
-                const reach = d1 + p[4] + radius;   // 遠いプリミティブは触らない
-                const ex = x - p[5], ey = y - p[6];
-                if (ex * ex + ey * ey > reach * reach) continue;
-                const dd = segDist(x, y, p);
-                if (dd < d1) d1 = dd;
+            // 凸包を半径ぶん太らせたものから、OFF の円を引く。
+            // ここで出るのは張り直し前の形で、位相を決めるためだけに使う
+            let f = radius - hullSD(x, y);
+            for (let n = 0; n < PUSH.length; n++) {
+                const dx = x - PUSH[n][0], dy = y - PUSH[n][1];
+                const g = Math.sqrt(dx * dx + dy * dy) - radius;
+                if (g < f) f = g;
             }
-            const inStroke = radius - d1;   // >= 0 が内側
-            if (!carve || !Q.length) return THRESHOLD + inStroke;
-            // OFF セルの円の外側。参考にしたグリフの凹んだ辺は、
-            // どれも OFF の円の弧になっている＝張った形から円を押し込んでいる
-            let o1 = Infinity;
-            for (let n = 0; n < Q.length; n += 2) {
-                const ex = x - Q[n], ey = y - Q[n + 1];
-                const dd = Math.sqrt(ex * ex + ey * ey);
-                if (dd < o1) o1 = dd;
-            }
-            // 積集合。距離場は線形なので、マーチングスクエアの補間がそのまま効く
-            return THRESHOLD + Math.min(inStroke, o1 - carve);
+            return THRESHOLD + f;
         }
 
         // ===== マーチングスクエア =========================================
         // 交点は格子辺そのものに乗るので、辺ID で頂点を同一視する。
         // 浮動小数の座標をキーにすると繋ぎ損ねるため。
         function contour() {
-            buildPrims();
-            if (!P.length) return [];
+            build();
+            if (!ONC.length) return [];
 
             const x0 = -MARGIN, y0 = -MARGIN;
             const step = S / RES;
@@ -499,47 +490,49 @@
         }
 
         // ===== 糸を張り直す =================================================
-        // 等値線はカプセルの合成の輪郭でしかない。ピンと張った糸は、邪魔が
-        // 入らない限り次の接点まで直線で行くので、要らない頂点を落として結び直す。
+        // 等値線は位相を決めるためだけのもの。ピンと張った糸は、円に当たらない
+        // 限り次の接点まで直線で行くので、要らない頂点を落として結び直す。
         //
-        // 邪魔になるのは「円」ではなく「帯そのもの」。円だけを避ける判定にすると、
-        // 隣り合う円のあいだの隙間を糸がすり抜けてしまう
-        function segSegDist(ax, ay, bx, by, p) {
-            const cx = p[0], cy = p[1], dx = p[2], dy = p[3];
-            const d1 = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
-            const d2 = (bx - ax) * (dy - ay) - (by - ay) * (dx - ax);
-            const d3 = (dx - cx) * (ay - cy) - (dy - cy) * (ax - cx);
-            const d4 = (dx - cx) * (by - cy) - (dy - cy) * (bx - cx);
-            if (d1 * d2 < 0 && d3 * d4 < 0) return 0;   // 交差している
-            // 交差していなければ最短はどれかの端点で取れる
-            const seg = [ax, ay, bx, by];
-            return Math.min(
-                segDist(cx, cy, seg), segDist(dx, dy, seg),
-                segDist(ax, ay, p), segDist(bx, by, p));
-        }
-
+        // 落としてよいのは、飛ばす弦がどの円にも当たらず、かつ
+        // 三角形 abc の中に円の中心が入っていないとき。後者を見ないと、
+        // 離れた2円のあいだで糸がくびれて千切れる
         function tighten(loop) {
             const EPS = 1e-4;
-            const blocked = (a, b) => {
-                for (let n = 0; n < P.length; n++)
-                    if (segSegDist(a[0], a[1], b[0], b[1], P[n]) < radius - EPS) return true;
-                const seg = [a[0], a[1], b[0], b[1]];
-                for (let n = 0; n < Q.length; n += 2)
-                    if (segDist(Q[n], Q[n + 1], seg) < carve - EPS) return true;
+            const cs = ONC.concat(PUSH);
+            if (!cs.length) return loop;
+            const chord = [0, 0, 0, 0];
+            const clear = (a, b) => {
+                chord[0] = a[0]; chord[1] = a[1]; chord[2] = b[0]; chord[3] = b[1];
+                for (let n = 0; n < cs.length; n++)
+                    if (segDist(cs[n][0], cs[n][1], chord) < radius - EPS) return false;
+                return true;
+            };
+            const side = (p, a, b) => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+            const swallows = (a, b, c) => {
+                for (let n = 0; n < cs.length; n++) {
+                    const p = cs[n];
+                    const s1 = side(p, a, b), s2 = side(p, b, c), s3 = side(p, c, a);
+                    if ((s1 > 0 && s2 > 0 && s3 > 0) || (s1 < 0 && s2 < 0 && s3 < 0)) return true;
+                }
                 return false;
             };
             let pts = loop;
-            for (let pass = 0; pass < 24; pass++) {
+            for (let pass = 0; pass < 40; pass++) {
                 const n = pts.length;
-                if (n < 4) break;
+                if (n < 5) break;
                 const out = [];
-                let anchor = pts[n - 1], removed = false;
+                let skip = false, removed = false;
                 for (let i = 0; i < n; i++) {
-                    if (!blocked(anchor, pts[(i + 1) % n])) { removed = true; continue; }
-                    out.push(pts[i]);
-                    anchor = pts[i];
+                    if (skip) { skip = false; out.push(pts[i]); continue; }
+                    const a = pts[(i - 1 + n) % n], b = pts[i], c = pts[(i + 1) % n];
+                    if (clear(a, c) && !swallows(a, b, c)) {
+                        // 隣どうしを同じ回で落とすと三角形の判定が成り立たなくなる
+                        skip = true; removed = true;
+                        continue;
+                    }
+                    out.push(b);
                 }
-                if (!removed || out.length < 4) break;
+                if (!removed || out.length < 5) break;
                 pts = out;
             }
             return pts;
@@ -596,7 +589,7 @@
             ctx.fillStyle = '#fff';
             ctx.fillRect(0, 0, cv.width, cv.height);
 
-            const holeR = (mode === 'edge' && carve ? carve : 0.4 * S) * scale;
+            const cr = (mode === 'edge' ? radius : 0.4 * S) * scale;
 
             if (outline) {
                 // 糸がどの円に張られているかを見るモード。
@@ -605,7 +598,7 @@
                     const [i, j] = k.split(',').map(Number);
                     ctx.beginPath();
                     ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale,
-                            v === ON ? radius * scale : holeR, 0, Math.PI * 2);
+                            cr, 0, Math.PI * 2);
                     if (v === ON) {
                         ctx.fillStyle = '#e6e6e6';
                         ctx.fill();
@@ -624,7 +617,7 @@
                 ctx.lineWidth = 1.6 * dpr;
                 ctx.stroke(pathFromLoops(scale, ox, oy));
             } else {
-                // OFF セルは実際に押し込む半径のまま下敷きに描く。押している円が見える
+                // OFF セルは実寸で下敷きに描く。押している円が見える
                 ctx.fillStyle = '#efefef';
                 ctx.strokeStyle = '#e0e0e0';
                 ctx.lineWidth = Math.max(1, dpr);
@@ -632,7 +625,7 @@
                     if (v !== OFF) continue;
                     const [i, j] = k.split(',').map(Number);
                     ctx.beginPath();
-                    ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, holeR, 0, Math.PI * 2);
+                    ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, cr, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
                 }
@@ -711,9 +704,6 @@
         // ===== コントロール =================================================
         const weight = document.getElementById('weight');
         const weightVal = document.getElementById('weightVal');
-        const carveEl = document.getElementById('carve');
-        const carveVal = document.getElementById('carveVal');
-        const carveRow = document.getElementById('carveRow');
         const gapEl = document.getElementById('gap');
         const gapValEl = document.getElementById('gapVal');
 
@@ -723,14 +713,11 @@
             const hi = mode === 'blob' ? BLOB_MAX : EDGE_MAX;
             radius = lo + (hi - lo) * t;
             weightVal.textContent = Math.round(t * 100);
-            const q = carveEl.value / 1000;
-            carve = CARVE_MAX * q;
-            carveVal.textContent = Math.round(q * 100);
             const g = gapEl.value / 1000;
             gapY = GAP_MIN + (GAP_MAX - GAP_MIN) * g;
             gapValEl.textContent = Math.round(g * 100);
         }
-        for (const el of [weight, carveEl, gapEl])
+        for (const el of [weight, gapEl])
             el.addEventListener('input', () => { readSliders(); update(); });
 
         const viewSeg = document.getElementById('viewSeg');
@@ -755,7 +742,6 @@
                 b.onclick = () => { mode = m; refreshStyle(); readSliders(); update(); };
                 styleSeg.appendChild(b);
             }
-            carveRow.style.display = mode === 'edge' ? '' : 'none';
         }
 
         function buildSeg(el, min, max, get, set) {
