@@ -216,7 +216,7 @@
 <body>
     <header>
         <h1>BLOB TYPE</h1>
-        <span class="hint">tap: · → fill → hole</span>
+        <span class="hint">tap: · → peg → push</span>
     </header>
 
     <div class="stage">
@@ -298,7 +298,6 @@
         const CY = j => j * S * gapY;
         function setCell(k, v) { if (v === NEUTRAL) grid.delete(k); else grid.set(k, v); }
 
-        let HULL = [];   // ON 円の中心の凸包
         let PUSH = [];   // OFF 円の中心 [[x, y], ...]
         let ONC = [];    // ON 円の中心 [[x, y], ...]
 
@@ -325,7 +324,6 @@
                 const [i, j] = k.split(',').map(Number);
                 (v === ON ? ONC : PUSH).push([CX(i), CY(j)]);
             }
-            HULL = convexHull(ONC);
         }
 
         // 点 (x, y) から線分 p までの距離
@@ -339,28 +337,11 @@
             return Math.sqrt(dx * dx + dy * dy);
         }
 
-        // ON 円の中心がつくる凸包までの符号付き距離（内側が負）
-        const edgeBuf = [0, 0, 0, 0];
-        function hullSD(x, y) {
-            const n = HULL.length;
-            if (!n) return Infinity;
-            if (n === 1) return Math.hypot(x - HULL[0][0], y - HULL[0][1]);
-            let d = Infinity, inside = false;
-            for (let i = 0, j = n - 1; i < n; j = i++) {
-                const a = HULL[j], b = HULL[i];
-                edgeBuf[0] = a[0]; edgeBuf[1] = a[1]; edgeBuf[2] = b[0]; edgeBuf[3] = b[1];
-                const dd = segDist(x, y, edgeBuf);
-                if (dd < d) d = dd;
-                if (n > 2 && (a[1] > y) !== (b[1] > y)
-                    && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
-            }
-            return inside ? -d : d;
-        }
-
         // ===== スカラー場 =================================================
         // 内側は f >= THRESHOLD。両モードとも同じ閾値に揃えてある
+        // BLOB スタイル専用。EDGE は等値線を使わない
         function field(x, y) {
-            if (mode === 'blob') {
+            {
                 let sum = 0;
                 for (let n = 0; n < ONC.length; n++) {
                     const dx = x - ONC[n][0], dy = y - ONC[n][1];
@@ -378,15 +359,6 @@
                 }
                 return sum;
             }
-            // 凸包を半径ぶん太らせたものから、OFF の円を引く。
-            // ここで出るのは張り直し前の形で、位相を決めるためだけに使う
-            let f = radius - hullSD(x, y);
-            for (let n = 0; n < PUSH.length; n++) {
-                const dx = x - PUSH[n][0], dy = y - PUSH[n][1];
-                const g = Math.sqrt(dx * dx + dy * dy) - radius;
-                if (g < f) f = g;
-            }
-            return THRESHOLD + f;
         }
 
         // ===== マーチングスクエア =========================================
@@ -493,62 +465,6 @@
             return p;
         }
 
-        // ===== 糸を張り直す =================================================
-        // 等値線は位相を決めるためだけのもの。ピンと張った糸は、円に当たらない
-        // 限り次の接点まで直線で行くので、要らない頂点を落として結び直す。
-        //
-        // 落としてよいのは、飛ばす弦がどの円にも当たらず、かつ
-        // 三角形 abc の中に円の中心が入っていないとき。後者を見ないと、
-        // 離れた2円のあいだで糸がくびれて千切れる
-        function tighten(loop) {
-            const EPS = 1e-4;
-            const cs = ONC.concat(PUSH);   // 糸はどの杭も跨げない
-            if (!cs.length) return loop;
-            const chord = [0, 0, 0, 0];
-            const clear = (a, b) => {
-                chord[0] = a[0]; chord[1] = a[1]; chord[2] = b[0]; chord[3] = b[1];
-                for (let n = 0; n < cs.length; n++)
-                    if (segDist(cs[n][0], cs[n][1], chord) < radius - EPS) return false;
-                return true;
-            };
-            const side = (p, a, b) => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
-            const hits = (list, a, b, c) => {
-                for (let n = 0; n < list.length; n++) {
-                    const p = list[n];
-                    const s1 = side(p, a, b), s2 = side(p, b, c), s3 = side(p, c, a);
-                    if ((s1 > 0 && s2 > 0 && s3 > 0) || (s1 < 0 && s2 < 0 && s3 < 0)) return true;
-                }
-                return false;
-            };
-            // 凸の頂点を落とすと三角形のぶん縮み、凹の頂点なら膨らむ。
-            // 縮む手は ON の杭を外に出してはいけない。膨らむ手は OFF の杭を
-            // 飲み込んではいけない。両方を一律に守ると、糸が押し込む杭の
-            // 裏側まで回り込んだまま外れなくなる
-            const orient = signedArea(loop) > 0 ? 1 : -1;
-            let pts = loop;
-            for (let pass = 0; pass < 40; pass++) {
-                const n = pts.length;
-                if (n < 5) break;
-                const out = [];
-                let skip = false, removed = false;
-                for (let i = 0; i < n; i++) {
-                    if (skip) { skip = false; out.push(pts[i]); continue; }
-                    const a = pts[(i - 1 + n) % n], b = pts[i], c = pts[(i + 1) % n];
-                    const turn = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
-                    const guard = turn * orient > 0 ? ONC : PUSH;
-                    if (clear(a, c) && !hits(guard, a, b, c)) {
-                        // 隣どうしを同じ回で落とすと三角形の判定が成り立たなくなる
-                        skip = true; removed = true;
-                        continue;
-                    }
-                    out.push(b);
-                }
-                if (!removed || out.length < 5) break;
-                pts = out;
-            }
-            return pts;
-        }
-
         function signedArea(loop) {
             let a = 0;
             for (let i = 0; i < loop.length; i++) {
@@ -556,145 +472,6 @@
                 a += p[0] * q[1] - q[0] * p[1];
             }
             return a / 2;
-        }
-
-        // ===== 接線で組み直す =============================================
-        // 張り直しは頂点を捨てることしかできないので、接点を円周上でずらせない。
-        // その結果、直線が杭に角で当たったままになる。
-        // どの杭にどの順で触れているかだけを張り直しから受け取り、
-        // 共通接線と弧で作り直す
-        function contactRuns(loop, cs) {
-            const own = loop.map(pt => {
-                for (let i = 0; i < cs.length; i++)
-                    if (Math.abs(Math.hypot(pt[0] - cs[i][0], pt[1] - cs[i][1]) - radius) < 0.03) return i;
-                return -1;
-            });
-            const n = loop.length;
-            let s = own.indexOf(-1);
-            if (s < 0) return null;   // 全部どれかの円の上（単独の円など）
-            const runs = [];
-            let cur = null;
-            for (let k = 0; k < n; k++) {
-                const i = (s + k) % n;
-                if (own[i] < 0) { cur = null; continue; }
-                if (cur && cur.peg === own[i]) { cur.pts.push(loop[i]); continue; }
-                cur = { peg: own[i], pts: [loop[i]] };
-                runs.push(cur);
-            }
-            return runs;
-        }
-
-        // 半径の等しい2円の共通接線。糸が実際に通っている側を、
-        // 張り直しが出した接点に近いほうで選ぶ
-        function tangentPair(A, B, sameSide, Pa, Pb) {
-            const dx = B[0] - A[0], dy = B[1] - A[1];
-            const d = Math.hypot(dx, dy);
-            if (d < 1e-9) return null;
-            const ux = dx / d, uy = dy / d;
-            let best = null, bestErr = Infinity;
-            for (const sg of [1, -1]) {
-                let ta, tb;
-                if (sameSide) {
-                    const nx = -uy * sg, ny = ux * sg;
-                    ta = [A[0] + nx * radius, A[1] + ny * radius];
-                    tb = [B[0] + nx * radius, B[1] + ny * radius];
-                } else {
-                    const cosA = 2 * radius / d;
-                    if (cosA > 1) continue;      // 杭が重なっていなければ必ず引ける
-                    const sinA = Math.sqrt(1 - cosA * cosA) * sg;
-                    const nx = -ux * cosA + uy * sinA;
-                    const ny = -uy * cosA - ux * sinA;
-                    ta = [A[0] - nx * radius, A[1] - ny * radius];
-                    tb = [B[0] + nx * radius, B[1] + ny * radius];
-                }
-                const err = Math.hypot(ta[0] - Pa[0], ta[1] - Pa[1])
-                          + Math.hypot(tb[0] - Pb[0], tb[1] - Pb[1]);
-                if (err < bestErr) { bestErr = err; best = [ta, tb]; }
-            }
-            return best;
-        }
-
-        function arcPts(c, from, to, via) {
-            const a0 = Math.atan2(from[1] - c[1], from[0] - c[0]);
-            const a1 = Math.atan2(to[1] - c[1], to[0] - c[0]);
-            const mid = Math.atan2(via[1] - c[1], via[0] - c[0]);
-            // 通っている側を含むほうの回り方を採る
-            let best = null, bestErr = Infinity;
-            for (const dir of [1, -1]) {
-                let sweep = (a1 - a0) * dir;
-                while (sweep < 0) sweep += Math.PI * 2;
-                const m = a0 + dir * sweep / 2;
-                let e = Math.abs(((m - mid + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI);
-                if (e < bestErr) { bestErr = e; best = [dir, sweep]; }
-            }
-            const [dir, sweep] = best;
-            const steps = Math.max(2, Math.ceil(sweep / (Math.PI / 45)));
-            const out = [];
-            for (let n = 0; n <= steps; n++) {
-                const a = a0 + dir * sweep * n / steps;
-                out.push([c[0] + Math.cos(a) * radius, c[1] + Math.sin(a) * radius]);
-            }
-            return out;
-        }
-
-        function nearestOnCircle(c, ref) {
-            let best = ref[0], bd = Infinity;
-            for (const q of ref) {
-                const d = Math.hypot(q[0] - c[0], q[1] - c[1]);
-                if (d < bd) { bd = d; best = q; }
-            }
-            const a = Math.atan2(best[1] - c[1], best[0] - c[0]);
-            return [c[0] + Math.cos(a) * radius, c[1] + Math.sin(a) * radius];
-        }
-
-        function taut(loop) {
-            const cs = ONC.concat(PUSH);
-            let runs = contactRuns(loop, cs);
-            if (!runs || runs.length < 2) return loop;
-            const inside = new Map();
-            for (let i = 0; i < cs.length; i++) inside.set(i, pointInPoly(cs[i], loop));
-            const seg = [0, 0, 0, 0];
-
-            for (let iter = 0; iter < 12; iter++) {
-                const m = runs.length;
-                const link = [];
-                for (let i = 0; i < m; i++) {
-                    const j = (i + 1) % m;
-                    const t = tangentPair(cs[runs[i].peg], cs[runs[j].peg],
-                        inside.get(runs[i].peg) === inside.get(runs[j].peg),
-                        runs[i].pts[runs[i].pts.length - 1], runs[j].pts[0]);
-                    if (!t) return loop;
-                    link.push(t);
-                }
-                // 組み直した接線が、接触列に無い杭を突っ切っていないか
-                let bad = null;
-                for (let i = 0; i < m && !bad; i++) {
-                    const j = (i + 1) % m;
-                    seg[0] = link[i][0][0]; seg[1] = link[i][0][1];
-                    seg[2] = link[i][1][0]; seg[3] = link[i][1][1];
-                    let worst = radius - 1e-4, hit = -1;
-                    for (let k = 0; k < cs.length; k++) {
-                        if (k === runs[i].peg || k === runs[j].peg) continue;
-                        const d = segDist(cs[k][0], cs[k][1], seg);
-                        if (d < worst) { worst = d; hit = k; }
-                    }
-                    if (hit >= 0) bad = { at: i, peg: hit };
-                }
-                if (!bad) {
-                    const out = [];
-                    for (let i = 0; i < m; i++) {
-                        const prev = link[(i - 1 + m) % m][1];
-                        const next = link[i][0];
-                        const via = runs[i].pts[runs[i].pts.length >> 1];
-                        out.push(...arcPts(cs[runs[i].peg], prev, next, via));
-                    }
-                    return out;
-                }
-                // 突っ切っていた杭を接触列に挿し込んでやり直す
-                runs.splice(bad.at + 1, 0,
-                    { peg: bad.peg, pts: [nearestOnCircle(cs[bad.peg], loop)] });
-            }
-            return loop;   // 収束しなければ張り直したままにする
         }
 
         function pointInPoly(p, poly) {
@@ -707,24 +484,172 @@
             return inside;
         }
 
-        function distToPoly(p, poly) {
-            const e = [0, 0, 0, 0];
-            let d = Infinity;
-            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-                e[0] = poly[j][0]; e[1] = poly[j][1]; e[2] = poly[i][0]; e[3] = poly[i][1];
-                const dd = segDist(p[0], p[1], e);
-                if (dd < d) d = dd;
-            }
-            return d;
-        }
-
         function circlePoly(c, r) {
             const out = [];
-            for (let n = 0; n < 64; n++) {
-                const a = n / 64 * Math.PI * 2;
+            for (let n = 0; n < 72; n++) {
+                const a = n / 72 * Math.PI * 2;
                 out.push([c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r]);
             }
             return out;
+        }
+
+        // ===== 輪ゴムを解く ===============================================
+        // 杭はすべて障害物。輪ゴムは接点の列でできていて、各接点は
+        // その杭を内側に抱えている（s=+1）か、外側へ押しのけている（s=-1）か
+        // のどちらか。列さえ決まれば、形は共通接線と弧だけで一意に決まる。
+        //
+        // 解き方：内側の杭ぜんぶを囲む凸包から始めて、
+        //   1. 外しても誰にも当たらない接点を外す（張力で外れる）
+        //   2. 接線が突っ切っている杭を挿す
+        //   3. 側が違う杭（外側のはずが中に入っている等）を挿す
+        // が収束するまで回す。1 があるので、常に短いほうの経路に落ちる
+
+        // 半径の等しい2円に、指定した側で接する直線
+        function linkOf(a, b) {
+            const dx = b.c[0] - a.c[0], dy = b.c[1] - a.c[1];
+            const L = Math.hypot(dx, dy);
+            const k = (a.s - b.s) * radius;
+            if (L < 1e-9 || Math.abs(k) > L) return null;
+            const phi = Math.atan2(dy, dx) - Math.acos(k / L);
+            const nx = Math.cos(phi), ny = Math.sin(phi);
+            return {
+                pa: [a.c[0] + a.s * radius * nx, a.c[1] + a.s * radius * ny],
+                pb: [b.c[0] + b.s * radius * nx, b.c[1] + b.s * radius * ny]
+            };
+        }
+
+        function arcOf(ct, from, to) {
+            const c = ct.c, dir = ct.s;   // 抱えている杭は左回り、押しのけている杭は右回り
+            const a0 = Math.atan2(from[1] - c[1], from[0] - c[0]);
+            const a1 = Math.atan2(to[1] - c[1], to[0] - c[0]);
+            let sweep = (a1 - a0) * dir;
+            while (sweep < 0) sweep += Math.PI * 2;
+            const steps = Math.max(1, Math.ceil(sweep / (Math.PI / 60)));
+            const out = [];
+            for (let n = 0; n <= steps; n++) {
+                const a = a0 + dir * sweep * n / steps;
+                out.push([c[0] + Math.cos(a) * radius, c[1] + Math.sin(a) * radius]);
+            }
+            return out;
+        }
+
+        function pathOf(cts) {
+            const m = cts.length;
+            if (!m) return null;
+            if (m === 1) return circlePoly(cts[0].c, radius);
+            const links = [];
+            for (let i = 0; i < m; i++) {
+                const L = linkOf(cts[i], cts[(i + 1) % m]);
+                if (!L) return null;
+                links.push(L);
+            }
+            const out = [];
+            for (let i = 0; i < m; i++)
+                out.push(...arcOf(cts[i], links[(i - 1 + m) % m].pb, links[i].pa));
+            return out;
+        }
+
+        // 線分 pa-pb が、両端の接点以外の杭に当たっていないか
+        const segBuf = [0, 0, 0, 0];
+        function blockedBy(pa, pb, pegs, skipA, skipB) {
+            segBuf[0] = pa[0]; segBuf[1] = pa[1]; segBuf[2] = pb[0]; segBuf[3] = pb[1];
+            let hit = -1, worst = radius - 1e-4;
+            for (let i = 0; i < pegs.length; i++) {
+                if (i === skipA || i === skipB) continue;
+                const d = segDist(pegs[i].c[0], pegs[i].c[1], segBuf);
+                if (d < worst) { worst = d; hit = i; }
+            }
+            return hit;
+        }
+
+        function solveBand() {
+            const pegs = [];
+            for (const [k, v] of grid) {
+                const [i, j] = k.split(',').map(Number);
+                pegs.push({ c: [CX(i), CY(j)], s: v === ON ? 1 : -1 });
+            }
+            const inside = pegs.filter(p => p.s > 0);
+            if (!inside.length) return null;
+            if (inside.length === 1 && pegs.length === 1) return [0];
+
+            // 初期状態：抱える杭ぜんぶの凸包（左回り）
+            let hull = convexHull(inside.map(p => p.c));
+            if (hull.length > 2 && signedArea(hull) < 0) hull.reverse();
+            let cts = hull.map(h => pegs.findIndex(p => p.c[0] === h[0] && p.c[1] === h[1]));
+            if (cts.length < 1) cts = [pegs.indexOf(inside[0])];
+
+            const ctOf = i => pegs[i];
+
+            // その接点列が条件を満たしているか。
+            // 接線が杭を突っ切らず、どの杭も指定どおりの側にいること
+            function valid(list) {
+                if (list.length < 1) return false;
+                const cs = list.map(ctOf);
+                const pts = pathOf(cs);
+                if (!pts) return false;
+                for (let i = 0; i < list.length; i++) {
+                    const j = (i + 1) % list.length;
+                    if (list.length < 2) break;
+                    const L = linkOf(cs[i], cs[j]);
+                    if (!L) return false;
+                    if (blockedBy(L.pa, L.pb, pegs, list[i], list[j]) >= 0) return false;
+                }
+                for (let i = 0; i < pegs.length; i++) {
+                    if (list.includes(i)) continue;
+                    if ((pegs[i].s > 0) !== pointInPoly(pegs[i].c, pts)) return false;
+                }
+                return true;
+            }
+
+            for (let iter = 0; iter < 300; iter++) {
+                let changed = false;
+
+                // 1. 接線が突っ切っている杭を挿す
+                for (let i = 0; i < cts.length && !changed; i++) {
+                    const j = (i + 1) % cts.length;
+                    if (cts.length < 2) break;
+                    const L = linkOf(ctOf(cts[i]), ctOf(cts[j]));
+                    if (!L) continue;
+                    const hit = blockedBy(L.pa, L.pb, pegs, cts[i], cts[j]);
+                    if (hit < 0) continue;
+                    cts.splice(i + 1, 0, hit);
+                    changed = true;
+                }
+                if (changed) continue;
+
+                // 2. 側が違う杭を、いちばん伸びの小さい辺に挿す
+                const pts = pathOf(cts.map(ctOf));
+                if (!pts) break;
+                for (let i = 0; i < pegs.length && !changed; i++) {
+                    if (cts.includes(i)) continue;
+                    if ((pegs[i].s > 0) === pointInPoly(pegs[i].c, pts)) continue;
+                    let at = 0, bestAdd = Infinity;
+                    const len = (p, q) => Math.hypot(q[0] - p[0], q[1] - p[1]);
+                    for (let e = 0; e < cts.length; e++) {
+                        const a = ctOf(cts[e]), b = ctOf(cts[(e + 1) % cts.length]);
+                        const L1 = linkOf(a, pegs[i]), L2 = linkOf(pegs[i], b);
+                        if (!L1 || !L2) continue;
+                        const L0 = cts.length > 1 ? linkOf(a, b) : null;
+                        const add = len(L1.pa, L1.pb) + len(L2.pa, L2.pb)
+                            - (L0 ? len(L0.pa, L0.pb) : 0);
+                        if (add < bestAdd) { bestAdd = add; at = e; }
+                    }
+                    cts.splice(at + 1, 0, i);
+                    changed = true;
+                }
+                if (changed) continue;
+
+                // 3. 外しても条件を満たす接点は、張力で外れる
+                for (let i = 0; i < cts.length; i++) {
+                    const trial = cts.slice(0, i).concat(cts.slice(i + 1));
+                    if (!trial.length || !valid(trial)) continue;
+                    cts = trial;
+                    changed = true;
+                    break;
+                }
+                if (!changed) break;
+            }
+            return cts.map(i => pegs[i]);
         }
 
         function rebuild() {
@@ -733,24 +658,11 @@
                     .filter(l => Math.abs(signedArea(l)) > 2e-3);
                 return;
             }
-            const raw = contour();
-            if (!raw.length) { loops = []; return; }
-            // 外周は一本の糸。面積が最大のループがそれ
-            let outer = raw[0], best = -1;
-            for (const l of raw) {
-                const a = Math.abs(signedArea(l));
-                if (a > best) { best = a; outer = l; }
-            }
-            outer = taut(tighten(outer));   // 位相を決めてから接線で組み直す
+            build();
+            const cts = solveBand();
+            const outer = cts && pathOf(cts);
+            if (!outer) { loops = []; return; }
             loops = [outer];
-            // 糸の内側に完全に入った杭は、そのまま真円の穴になる。
-            // 等値線が出す他のループ（接する杭どうしの隙間に取り残された島など）は
-            // 捨てる。糸が届かない場所に図形はできない
-            for (const c of PUSH) {
-                if (!pointInPoly(c, outer)) continue;
-                if (distToPoly(c, outer) < radius - 1e-6) continue;
-                loops.push(circlePoly(c, radius));
-            }
         }
 
         // ===== 描画 =========================================================
@@ -1058,11 +970,10 @@
         };
 
         // ===== 初期状態 =====================================================
-        // 起動時は穴のある形。糸の内側に入った杭がそのまま真円の穴になる
-        for (let j = 0; j < 5; j++)
-            for (let i = 0; i < 4; i++) setCell(key(i, j), ON);
-        setCell('1,1', OFF);
-        setCell('2,3', OFF);
+        // 起動時のかたち。バーと縦棒の杭を輪ゴムで囲み、両脇から押し込んである
+        cols = 5; rows = 4;
+        ['0,3', '1,3', '2,3', '3,3', '4,3', '2,0', '2,1', '2,2'].forEach(k => setCell(k, ON));
+        ['1,1', '3,1', '1,2', '3,2'].forEach(k => setCell(k, OFF));
 
         refreshSegs();
         refreshStyle();
