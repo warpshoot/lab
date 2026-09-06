@@ -227,6 +227,8 @@
         <div class="row">
             <label>STYLE</label>
             <div class="seg" id="styleSeg"></div>
+            <label style="width:auto;margin-left:12px">VIEW</label>
+            <div class="seg" id="viewSeg"></div>
         </div>
         <div class="row">
             <label>WEIGHT</label>
@@ -293,6 +295,7 @@
         let smoothK = 0.09;
         let carve = 0.35;
         let gapY = 1;            // 行間。円の間隔を変えると張り方が変わる
+        let outline = false;     // 輪郭線だけ表示するモード
         let loops = [];          // 平滑化後のポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
@@ -605,22 +608,50 @@
             ctx.fillStyle = '#fff';
             ctx.fillRect(0, 0, cv.width, cv.height);
 
-            // OFF セルは実際に削る半径のまま下敷きに描く。避けている円が見える
-            ctx.fillStyle = '#efefef';
-            ctx.strokeStyle = '#e0e0e0';
-            ctx.lineWidth = Math.max(1, dpr);
-            for (const [k, c] of grid) {
-                if (c.v !== OFF) continue;
-                const [i, j] = k.split(',').map(Number);
-                const gr = (mode === 'edge' && carve ? carve : 0.4 * S) * c.s * scale;
-                ctx.beginPath();
-                ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, gr, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-            }
+            const cr = k => (stateAt(k) === OFF
+                ? (mode === 'edge' && carve ? carve : 0.4 * S)
+                : radius) * sizeAt(k) * scale;
 
-            ctx.fillStyle = '#000';
-            ctx.fill(pathFromLoops(scale, ox, oy), 'evenodd');
+            if (outline) {
+                // 糸がどの円に張られているかを見るモード。
+                // 円を実寸で見せて、輪郭は線だけにする
+                for (const [k, c] of grid) {
+                    const [i, j] = k.split(',').map(Number);
+                    ctx.beginPath();
+                    ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, cr(k), 0, Math.PI * 2);
+                    if (c.v === ON) {
+                        ctx.fillStyle = '#e6e6e6';
+                        ctx.fill();
+                    } else {
+                        // 内側から押している円は塗らずに破線で
+                        ctx.fillStyle = '#fafafa';
+                        ctx.fill();
+                        ctx.strokeStyle = '#cfcfcf';
+                        ctx.lineWidth = Math.max(1, dpr);
+                        ctx.setLineDash([4 * dpr, 3 * dpr]);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+                }
+                ctx.strokeStyle = '#e03131';
+                ctx.lineWidth = 1.6 * dpr;
+                ctx.stroke(pathFromLoops(scale, ox, oy));
+            } else {
+                // OFF セルは実際に削る半径のまま下敷きに描く。避けている円が見える
+                ctx.fillStyle = '#efefef';
+                ctx.strokeStyle = '#e0e0e0';
+                ctx.lineWidth = Math.max(1, dpr);
+                for (const [k, c] of grid) {
+                    if (c.v !== OFF) continue;
+                    const [i, j] = k.split(',').map(Number);
+                    ctx.beginPath();
+                    ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, cr(k), 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+                ctx.fillStyle = '#000';
+                ctx.fill(pathFromLoops(scale, ox, oy), 'evenodd');
+            }
 
             // 切ってある接続に印。ここをタップすれば繋ぎ直せる
             ctx.strokeStyle = 'rgba(220,60,60,0.85)';
@@ -646,7 +677,6 @@
                     const cx = ox + CX(i) * scale, cy = oy + CY(j) * scale;
                     ctx.beginPath();
                     if (v === OFF) {
-                        // 抜きのセルだけリング。ひと目で他と区別がつく
                         ctx.strokeStyle = 'rgba(0,0,0,0.28)';
                         ctx.lineWidth = Math.max(1, dpr);
                         ctx.arc(cx, cy, 3.5 * dpr, 0, Math.PI * 2);
@@ -654,7 +684,9 @@
                     } else {
                         // 大きさをいじったセルは点も大きくする
                         const rr = (v === ON ? 2.5 * (0.55 + 0.45 * sizeAt(k)) : 2.5) * dpr;
-                        ctx.fillStyle = v === ON ? 'rgba(255,255,255,0.24)' : 'rgba(0,0,0,0.13)';
+                        ctx.fillStyle = v === ON
+                            ? (outline ? 'rgba(0,0,0,0.30)' : 'rgba(255,255,255,0.24)')
+                            : 'rgba(0,0,0,0.13)';
                         ctx.arc(cx, cy, rr, 0, Math.PI * 2);
                         ctx.fill();
                     }
@@ -805,6 +837,18 @@
         for (const el of [weight, smooth, carveEl, gapEl])
             el.addEventListener('input', () => { readSliders(); update(); });
 
+        const viewSeg = document.getElementById('viewSeg');
+        function refreshView() {
+            viewSeg.innerHTML = '';
+            for (const [v, label] of [[false, 'SOLID'], [true, 'LINE']]) {
+                const b = document.createElement('button');
+                b.textContent = label;
+                b.className = 'wide' + (v === outline ? ' on' : '');
+                b.onclick = () => { outline = v; refreshView(); draw(); };
+                viewSeg.appendChild(b);
+            }
+        }
+
         const styleSeg = document.getElementById('styleSeg');
         function refreshStyle() {
             styleSeg.innerHTML = '';
@@ -857,10 +901,14 @@
                 'M' + l.map(p => (p[0] * K).toFixed(2) + ' ' + (p[1] * K).toFixed(2)).join('L') + 'Z'
             ).join('');
             const size = (vb.size * K).toFixed(2);
+            // プレビューと同じ見え方で出す
+            const paint = outline
+                ? 'fill="none" stroke="#e03131" stroke-width="' + (1.6 / 540 * vb.size * K).toFixed(2) + '"'
+                : 'fill="#000" fill-rule="evenodd"';
             return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' +
                 (vb.x * K).toFixed(2) + ' ' + (vb.y * K).toFixed(2) + ' ' + size + ' ' + size +
                 '" width="' + size + '" height="' + size + '">\n' +
-                '  <path d="' + d + '" fill="#000" fill-rule="evenodd"/>\n</svg>\n';
+                '  <path d="' + d + '" ' + paint + '/>\n</svg>\n';
         }
 
         function toast(msg) {
@@ -917,8 +965,14 @@
                 for (let i = 1; i < l.length; i++) p.lineTo((l[i][0] - vb.x) * scale, (l[i][1] - vb.y) * scale);
                 p.closePath();
             }
-            g.fillStyle = '#000';
-            g.fill(p, 'evenodd');
+            if (outline) {
+                g.strokeStyle = '#e03131';
+                g.lineWidth = px / 540 * 1.6;
+                g.stroke(p);
+            } else {
+                g.fillStyle = '#000';
+                g.fill(p, 'evenodd');
+            }
             c.toBlob(b => download(b, 'blob-type.png'), 'image/png');
         };
 
@@ -929,6 +983,7 @@
         ['1,1', '2,1', '1,2', '2,2', '1,3', '2,3'].forEach(k => setCell(k, OFF, 1));
         refreshSegs();
         refreshStyle();
+        refreshView();
         readSliders();
         update();
         window.addEventListener('resize', draw);
