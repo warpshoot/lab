@@ -868,6 +868,7 @@
         let dragging = false, startPos = null, dragPos = null;
         let anchorA = null, anchorB = null, anchorKeys = null, origState = null;
         let origSpan = null;   // 掴んだときの、留め具から留め具までの輪郭
+        let restPath = null;   // 掴んでいない側の輪郭。ここは動かない
 
         function toWorld(ev) {
             const rect = cv.getBoundingClientRect();
@@ -922,23 +923,29 @@
             for (let i = 0; i < loop.length; i++) if (pathOwner[i] === ia) sa = i;
             for (let i = 0; i < loop.length; i++) if (pathOwner[i] === ib) { sb = i; break; }
             origSpan = [anchorA];
-            if (sa >= 0 && sb >= 0)
+            restPath = [];
+            if (sa >= 0 && sb >= 0) {
                 for (let i = (sa + 1) % loop.length; i !== sb; i = (i + 1) % loop.length)
                     origSpan.push(loop[i]);
+                for (let i = sb; i !== sa; i = (i + 1) % loop.length) restPath.push(loop[i]);
+                restPath.push(loop[sa]);
+            }
             origSpan.push(anchorB);
             return true;
         }
 
-        // 元の輪郭とポインタのあいだが、掃いた範囲。
-        // 毎回もとの状態から作り直すので、引き戻せばそのまま戻る
+        // 引っぱったあとの輪ゴム全体（動かしていない部分＋V）を作って、
+        // 各杭がその内側かどうかで決める。
+        // 掴んだ辺と V だけで囲むと、遠くまで引いたときに V の脚が図形の
+        // 反対側を横切って、無関係な杭まで巻き込む
         function applyDrag(pos) {
-            const swept = origSpan.concat([[pos.x, pos.y]]);
+            const moved = [anchorA, [pos.x, pos.y], anchorB].concat(restPath);
             let any = false;
             const next = new Map();
             for (const [k, v] of origState) {
                 const [i, j] = k.split(',').map(Number);
-                const flip = !anchorKeys.includes(k) && pointInPoly([CX(i), CY(j)], swept);
-                const nv = flip ? (v === ON ? OFF : ON) : v;
+                const nv = anchorKeys.includes(k) ? v
+                    : (pointInPoly([CX(i), CY(j)], moved) ? ON : OFF);
                 next.set(k, nv);
                 if (nv === ON) any = true;
             }
@@ -993,12 +1000,12 @@
                     if (k) setCell(k, stateAt(k) === NEUTRAL ? ON : NEUTRAL);
                 }
             }
-            painting = false; dragging = false; origState = null; origSpan = null;
+            painting = false; dragging = false; origState = null; origSpan = restPath = null;
             update();
         });
         cv.addEventListener('pointercancel', () => {
             if (dragging && origState) for (const [k, v] of origState) setCell(k, v);
-            painting = false; dragging = false; origState = null; origSpan = null; origSpan = null;
+            painting = false; dragging = false; origState = null; origSpan = restPath = null; origSpan = null;
             update();
         });
 
