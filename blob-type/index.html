@@ -754,6 +754,14 @@
             return { x: -pad - (side - w) / 2, y: -pad - (side - h) / 2, size: side };
         }
 
+        function polyPath(pts, scale, ox, oy) {
+            const p = new Path2D();
+            p.moveTo(ox + pts[0][0] * scale, oy + pts[0][1] * scale);
+            for (let i = 1; i < pts.length; i++) p.lineTo(ox + pts[i][0] * scale, oy + pts[i][1] * scale);
+            p.closePath();
+            return p;
+        }
+
         function pathFromLoops(scale, ox, oy) {
             const p = new Path2D();
             for (const l of loops) {
@@ -777,6 +785,11 @@
             ctx.fillRect(0, 0, cv.width, cv.height);
 
             const cr = (mode === 'edge' ? radius : 0.4 * S) * scale;
+            // ドラッグ中は、張り直したあとの形ではなく、いま指で伸ばしている形を出す。
+            // 張り直した形だけを見せると、掴んだ辺が指について来ないので
+            // 別の辺が動いたように見える
+            const stretched = (dragging && restPath && dragPos)
+                ? [[dragPos.x, dragPos.y]].concat(restPath) : null;
 
             if (outline) {
                 // 糸がどの円に張られているかを見るモード。
@@ -802,7 +815,8 @@
                 }
                 ctx.strokeStyle = '#e03131';
                 ctx.lineWidth = 1.6 * dpr;
-                ctx.stroke(pathFromLoops(scale, ox, oy));
+                ctx.stroke(stretched ? polyPath(stretched, scale, ox, oy)
+                                     : pathFromLoops(scale, ox, oy));
             } else {
                 // OFF セルは実寸で下敷きに描く。押している円が見える
                 ctx.fillStyle = '#efefef';
@@ -817,20 +831,16 @@
                     ctx.stroke();
                 }
                 ctx.fillStyle = '#000';
-                ctx.fill(pathFromLoops(scale, ox, oy), 'evenodd');
+                ctx.fill(stretched ? polyPath(stretched, scale, ox, oy)
+                                   : pathFromLoops(scale, ox, oy), 'evenodd');
             }
 
-            // 引っぱっている V。どの辺を掴んでいるかが見える
-            if (dragging && anchorA && dragPos) {
-                ctx.strokeStyle = 'rgba(220,60,60,0.55)';
-                ctx.lineWidth = 1.5 * dpr;
-                ctx.setLineDash([5 * dpr, 4 * dpr]);
+            // 掴んでいる点
+            if (dragging && dragPos) {
+                ctx.fillStyle = 'rgba(220,60,60,0.9)';
                 ctx.beginPath();
-                ctx.moveTo(ox + anchorA[0] * scale, oy + anchorA[1] * scale);
-                ctx.lineTo(ox + dragPos.x * scale, oy + dragPos.y * scale);
-                ctx.lineTo(ox + anchorB[0] * scale, oy + anchorB[1] * scale);
-                ctx.stroke();
-                ctx.setLineDash([]);
+                ctx.arc(ox + dragPos.x * scale, oy + dragPos.y * scale, 4 * dpr, 0, Math.PI * 2);
+                ctx.fill();
             }
 
             // 格子が見えないと編集しづらいので、シルエットの上に印を置く
@@ -869,6 +879,8 @@
         let anchorA = null, anchorB = null, anchorKeys = null, origState = null;
         let origSpan = null;   // 掴んだときの、留め具から留め具までの輪郭
         let restPath = null;   // 掴んでいない側の輪郭。ここは動かない
+        // restPath の両端が、掴んだ辺が留め具から離れる接点そのものなので、
+        // 伸ばした輪ゴムは「ポインタ＋動いていない側」で作れる
 
         function toWorld(ev) {
             const rect = cv.getBoundingClientRect();
@@ -931,7 +943,7 @@
                 restPath.push(loop[sa]);
             }
             origSpan.push(anchorB);
-            return true;
+            return restPath.length > 1;
         }
 
         // 引っぱったあとの輪ゴム全体（動かしていない部分＋V）を作って、
@@ -939,7 +951,7 @@
         // 掴んだ辺と V だけで囲むと、遠くまで引いたときに V の脚が図形の
         // 反対側を横切って、無関係な杭まで巻き込む
         function applyDrag(pos) {
-            const moved = [anchorA, [pos.x, pos.y], anchorB].concat(restPath);
+            const moved = [[pos.x, pos.y]].concat(restPath);
             let any = false;
             const next = new Map();
             for (const [k, v] of origState) {
