@@ -329,6 +329,11 @@
 
         function buildPrims() {
             P = []; Q = []; C = [];
+            const pushHull = (a, c) => {
+                const hl = Math.hypot(c[0] - a[0], c[1] - a[1]) / 2;
+                P.push([a[0], a[1], c[0], c[1], a[2], c[2],
+                        hl, (a[0] + c[0]) / 2, (a[1] + c[1]) / 2, Math.max(a[2], c[2])]);
+            };
             const push = (i1, j1, i2, j2, ra, rb) => {
                 const ax = CX(i1), ay = CY(j1), bx = CX(i2), by = CY(j2);
                 const hl = Math.hypot(bx - ax, by - ay) / 2;
@@ -341,33 +346,43 @@
                 if (c.v === ON) { on.push([i, j, k]); C.push(CX(i), CY(j), radius * c.s); }
                 else Q.push(CX(i), CY(j), carve * c.s);
             }
-            const hull = new Set();
+            // 一直線に並んだ円は、その並び全体の凸包の輪郭だけを張る。
+            // 隣り合うペアの凸包を足していくと、大きい円に挟まれた小さい円にも
+            // 糸が引っかかってしまう。ピンと張った糸はそこに触れない
+            const strung = new Set();
             for (const [di, dj] of DIRS) {
                 for (const [i, j] of on) {
+                    if (linked(i - di, j - dj, i, j)) continue;   // 並びの先頭だけ処理する
                     if (!linked(i, j, i + di, j + dj)) continue;
-                    const k0 = key(i, j), s0 = sizeAt(k0);
-                    const kn = key(i + di, j + dj);
-                    if (sizeAt(kn) !== s0) {   // 大きさが違う2円は1本ずつ張る
-                        push(i, j, i + di, j + dj, radius * s0, radius * sizeAt(kn));
-                        hull.add(k0); hull.add(kn);
-                        continue;
+                    const run = [];
+                    for (let n = 0; ; n++) {
+                        run.push([i + n * di, j + n * dj]);
+                        if (!linked(i + n * di, j + n * dj, i + (n + 1) * di, j + (n + 1) * dj)) break;
                     }
-                    // 同じ大きさで一直線に並んだ分はまとめて1本にする。
-                    // 短い凸包を重ねると smin が至るところで効いて、直線が波打つ
-                    if (linked(i - di, j - dj, i, j) && sizeAt(key(i - di, j - dj)) === s0) continue;
-                    let n = 1;
-                    while (linked(i + n * di, j + n * dj, i + (n + 1) * di, j + (n + 1) * dj)
-                        && sizeAt(key(i + (n + 1) * di, j + (n + 1) * dj)) === s0) n++;
-                    push(i, j, i + n * di, j + n * dj, radius * s0, radius * s0);
-                    for (let m = 0; m <= n; m++) hull.add(key(i + m * di, j + m * dj));
+                    for (const [ri, rj] of run) strung.add(key(ri, rj));
+                    // 凸包（単調鎖）。ひとつ前の円が前後2円の凸包に飲まれるなら捨てる
+                    const h = [];
+                    for (const [ri, rj] of run) {
+                        const c = [CX(ri), CY(rj), radius * sizeAt(key(ri, rj))];
+                        while (h.length >= 2 && swallowed(h[h.length - 1], h[h.length - 2], c)) h.pop();
+                        h.push(c);
+                    }
+                    for (let n = 0; n + 1 < h.length; n++)
+                        pushHull(h[n], h[n + 1]);
                 }
             }
             // どこにも張られていない円だけ単独で置く。張られている円にも足すと smin で膨らむ
             for (const [i, j, k] of on) {
-                if (hull.has(k)) continue;
+                if (strung.has(k)) continue;
                 const r = radius * sizeAt(k);
                 push(i, j, i, j, r, r);
             }
+        }
+
+        // 円 b が円 a と円 c の凸包に飲み込まれているか
+        function swallowed(b, a, c) {
+            const hull = [a[0], a[1], c[0], c[1], a[2], c[2], 0, 0, 0, 0];
+            return coneSD(b[0], b[1], hull) <= -b[2];
         }
 
         // 多項式スムーズ min。凹んだ接合部に半径 k のフィレットが入る
