@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Blob Type</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+            background: #0f0f0f;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 16px 48px;
+            gap: 20px;
+        }
+
+        header {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+        }
+
+        h1 {
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.14em;
+        }
+
+        .hint {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.32);
+            letter-spacing: 0.06em;
+        }
+
+        .stage {
+            width: 100%;
+            max-width: 420px;
+            aspect-ratio: 1 / 1;
+            background: #fff;
+            border-radius: 4px;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .panel {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .row label {
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            color: rgba(255, 255, 255, 0.42);
+            width: 74px;
+            flex-shrink: 0;
+        }
+
+        .value {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            width: 34px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            flex: 1;
+            height: 20px;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.22);
+        }
+
+        input[type=range]::-moz-range-track {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.22);
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #fff;
+            margin-top: -6.5px;
+        }
+
+        input[type=range]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border: none;
+            border-radius: 50%;
+            background: #fff;
+        }
+
+        .seg {
+            display: flex;
+            gap: 4px;
+        }
+
+        .seg button {
+            width: 26px;
+            height: 26px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: transparent;
+            color: rgba(255, 255, 255, 0.5);
+            font-family: inherit;
+            font-size: 11px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: 0.12s;
+        }
+
+        .seg button:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .seg button.on {
+            background: #fff;
+            border-color: #fff;
+            color: #0f0f0f;
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .actions button {
+            padding: 11px 0;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: transparent;
+            color: rgba(255, 255, 255, 0.82);
+            font-family: inherit;
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: 0.12s;
+        }
+
+        .actions button:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .actions button:active {
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            transform: translateX(-50%) translateY(8px);
+            background: #fff;
+            color: #0f0f0f;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            padding: 8px 14px;
+            border-radius: 3px;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.18s;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>BLOB TYPE</h1>
+        <span class="hint">tap / drag to fill</span>
+    </header>
+
+    <div class="stage">
+        <canvas id="cv"></canvas>
+    </div>
+
+    <div class="panel">
+        <div class="row">
+            <label>WEIGHT</label>
+            <input type="range" id="weight" min="0" max="1000" value="500">
+            <span class="value" id="weightVal">50</span>
+        </div>
+        <div class="row">
+            <label>COLS</label>
+            <div class="seg" id="colsSeg"></div>
+            <label style="width:auto;margin-left:12px">ROWS</label>
+            <div class="seg" id="rowsSeg"></div>
+        </div>
+        <div class="actions">
+            <button id="btnClear">CLEAR</button>
+            <button id="btnCopy">COPY SVG</button>
+            <button id="btnSvg">SVG</button>
+            <button id="btnPng">PNG</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ===== モデル =====================================================
+        // セル間隔を 1 とする単位系で全部計算する。書き出し時だけ 100 倍する。
+        const S = 1;
+        const THRESHOLD = 1.0;
+        const RES = 12;          // セル間隔あたりのサンプル数
+        const MARGIN = 1;        // サンプリング領域の余白（セル）
+        const R_MIN = 0.30;      // 円がばらける側
+        const R_MAX = 0.54;      // ベタ寄り
+        const FADE_IN = 1.5;     // ここから寄与を落とし始める（セル単位）
+        const FADE_OUT = 2.1;    // ここで寄与ゼロ
+
+        let cols = 4, rows = 5;
+        let cells = new Set();   // "i,j"
+        let radius = 0.46;
+        let loops = [];          // 平滑化後のポリライン（プレビューと書き出しで共用）
+
+        const key = (i, j) => i + ',' + j;
+
+        // ===== スカラー場 =================================================
+        function field(x, y, src) {
+            let sum = 0;
+            for (let n = 0; n < src.length; n += 2) {
+                const dx = x - src[n], dy = y - src[n + 1];
+                const d2 = dx * dx + dy * dy;
+                if (d2 < 1e-9) return 1e9;
+                const d = Math.sqrt(d2);
+                if (d >= FADE_OUT) continue;
+                let w = 1;
+                if (d > FADE_IN) {
+                    // 裾を滑らかに殺す。ハードクリップだと等値線にカクが出る
+                    const t = (d - FADE_IN) / (FADE_OUT - FADE_IN);
+                    w = 1 - t * t * (3 - 2 * t);
+                }
+                sum += (radius / d) * (radius / d) * w;
+            }
+            return sum;
+        }
+
+        // ===== マーチングスクエア =========================================
+        // 交点は格子辺そのものに乗るので、辺ID で頂点を同一視する。
+        // 浮動小数の座標をキーにすると繋ぎ損ねるため。
+        function contour() {
+            const src = [];
+            for (const c of cells) {
+                const [i, j] = c.split(',').map(Number);
+                src.push(i * S, j * S);
+            }
+            if (!src.length) return [];
+
+            const x0 = -MARGIN, y0 = -MARGIN;
+            const nx = (cols - 1 + MARGIN * 2) * RES;
+            const ny = (rows - 1 + MARGIN * 2) * RES;
+            const step = S / RES;
+            const px = i => x0 + i * step;
+            const py = j => y0 + j * step;
+
+            const v = new Float32Array((nx + 1) * (ny + 1));
+            for (let j = 0; j <= ny; j++)
+                for (let i = 0; i <= nx; i++)
+                    v[j * (nx + 1) + i] = field(px(i), py(j), src);
+            const val = (i, j) => v[j * (nx + 1) + i];
+
+            const pos = new Map();   // 辺ID -> [x, y]
+            const adj = new Map();   // 辺ID -> [辺ID, ...]
+            const lerp = (a, b) => (THRESHOLD - a) / (b - a);
+
+            function hEdge(i, j) {           // (i,j)-(i+1,j)
+                const id = 'h' + i + '_' + j;
+                if (!pos.has(id)) pos.set(id, [px(i) + lerp(val(i, j), val(i + 1, j)) * step, py(j)]);
+                return id;
+            }
+            function vEdge(i, j) {           // (i,j)-(i,j+1)
+                const id = 'v' + i + '_' + j;
+                if (!pos.has(id)) pos.set(id, [px(i), py(j) + lerp(val(i, j), val(i, j + 1)) * step]);
+                return id;
+            }
+            function link(a, b) {
+                if (!adj.has(a)) adj.set(a, []);
+                if (!adj.has(b)) adj.set(b, []);
+                adj.get(a).push(b);
+                adj.get(b).push(a);
+            }
+
+            for (let j = 0; j < ny; j++) {
+                for (let i = 0; i < nx; i++) {
+                    const tl = val(i, j) >= THRESHOLD, tr = val(i + 1, j) >= THRESHOLD;
+                    const br = val(i + 1, j + 1) >= THRESHOLD, bl = val(i, j + 1) >= THRESHOLD;
+                    const c = (tl ? 8 : 0) | (tr ? 4 : 0) | (br ? 2 : 0) | (bl ? 1 : 0);
+                    if (c === 0 || c === 15) continue;
+                    const T = () => hEdge(i, j), B = () => hEdge(i, j + 1);
+                    const L = () => vEdge(i, j), R = () => vEdge(i + 1, j);
+                    switch (c) {
+                        case 1: case 14: link(L(), B()); break;
+                        case 2: case 13: link(B(), R()); break;
+                        case 3: case 12: link(L(), R()); break;
+                        case 4: case 11: link(T(), R()); break;
+                        case 6: case 9: link(T(), B()); break;
+                        case 7: case 8: link(L(), T()); break;
+                        case 5: case 10: {
+                            // 曖昧ケース。セル中心の場の値で接続を決める
+                            const center = field(px(i) + step / 2, py(j) + step / 2, src) >= THRESHOLD;
+                            // TL/BR 側を切り落とすか、TR/BL 側を切り落とすか
+                            const cutTLBR = (c === 5) ? center : !center;
+                            if (cutTLBR) { link(L(), T()); link(B(), R()); }
+                            else { link(T(), R()); link(L(), B()); }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 辺IDは必ず2本のセグメントに共有される（＝次数2）ので素直に閉ループになる
+            const seen = new Set();
+            const out = [];
+            for (const start of adj.keys()) {
+                if (seen.has(start)) continue;
+                const loop = [];
+                let cur = start, prev = null;
+                while (cur !== undefined && !seen.has(cur)) {
+                    seen.add(cur);
+                    loop.push(pos.get(cur));
+                    const ns = adj.get(cur);
+                    const next = ns.find(n => n !== prev && !seen.has(n));
+                    prev = cur;
+                    cur = next;
+                }
+                if (loop.length > 2) out.push(loop);
+            }
+            return out;
+        }
+
+        // ===== Chaikin =====================================================
+        function chaikin(loop, times) {
+            let p = loop;
+            for (let t = 0; t < times; t++) {
+                const q = [];
+                for (let i = 0; i < p.length; i++) {
+                    const a = p[i], b = p[(i + 1) % p.length];
+                    q.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25]);
+                    q.push([a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+                }
+                p = q;
+            }
+            return p;
+        }
+
+        function signedArea(loop) {
+            let a = 0;
+            for (let i = 0; i < loop.length; i++) {
+                const p = loop[i], q = loop[(i + 1) % loop.length];
+                a += p[0] * q[1] - q[0] * p[1];
+            }
+            return a / 2;
+        }
+
+        function rebuild() {
+            loops = contour()
+                .map(l => chaikin(l, 2))
+                .filter(l => Math.abs(signedArea(l)) > 2e-3); // サンプリングのゴミを落とす
+        }
+
+        // ===== 描画 =========================================================
+        const cv = document.getElementById('cv');
+        const ctx = cv.getContext('2d');
+
+        function view() {
+            // グリッド外形＋余白 0.7 セル。プレビューと SVG で同じ枠を使う
+            const pad = 0.7;
+            const w = (cols - 1) * S + pad * 2;
+            const h = (rows - 1) * S + pad * 2;
+            const side = Math.max(w, h);
+            return { x: -pad - (side - w) / 2, y: -pad - (side - h) / 2, size: side };
+        }
+
+        function pathFromLoops(scale, ox, oy) {
+            const p = new Path2D();
+            for (const l of loops) {
+                p.moveTo(ox + l[0][0] * scale, oy + l[0][1] * scale);
+                for (let i = 1; i < l.length; i++) p.lineTo(ox + l[i][0] * scale, oy + l[i][1] * scale);
+                p.closePath();
+            }
+            return p;
+        }
+
+        function draw() {
+            const dpr = Math.min(window.devicePixelRatio || 1, 3);
+            const rect = cv.getBoundingClientRect();
+            cv.width = Math.round(rect.width * dpr);
+            cv.height = Math.round(rect.height * dpr);
+            const vb = view();
+            const scale = cv.width / vb.size;
+            const ox = -vb.x * scale, oy = -vb.y * scale;
+
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, cv.width, cv.height);
+
+            // 下敷きのグリッド
+            ctx.strokeStyle = '#e6e6e6';
+            ctx.lineWidth = Math.max(1, dpr);
+            for (let j = 0; j < rows; j++) {
+                for (let i = 0; i < cols; i++) {
+                    ctx.beginPath();
+                    ctx.arc(ox + i * S * scale, oy + j * S * scale, radius * scale * 0.82, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+
+            ctx.fillStyle = '#000';
+            ctx.fill(pathFromLoops(scale, ox, oy), 'evenodd');
+
+            // 格子が見えないと編集しづらいので、シルエットの上に点を置く
+            for (let j = 0; j < rows; j++) {
+                for (let i = 0; i < cols; i++) {
+                    const on = cells.has(key(i, j));
+                    ctx.fillStyle = on ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.14)';
+                    ctx.beginPath();
+                    ctx.arc(ox + i * S * scale, oy + j * S * scale, 2.5 * dpr, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        function update() { rebuild(); draw(); }
+
+        // ===== 入力 =========================================================
+        let painting = false, paintTo = true;
+
+        function cellAt(ev) {
+            const rect = cv.getBoundingClientRect();
+            const vb = view();
+            const scale = rect.width / vb.size;
+            const x = (ev.clientX - rect.left) / scale + vb.x;
+            const y = (ev.clientY - rect.top) / scale + vb.y;
+            const i = Math.round(x / S), j = Math.round(y / S);
+            if (i < 0 || j < 0 || i >= cols || j >= rows) return null;
+            // セルからあまりに遠い位置は拾わない
+            if (Math.hypot(x - i * S, y - j * S) > 0.62 * S) return null;
+            return key(i, j);
+        }
+
+        function apply(ev) {
+            const k = cellAt(ev);
+            if (!k) return;
+            if (paintTo) { if (cells.has(k)) return; cells.add(k); }
+            else { if (!cells.has(k)) return; cells.delete(k); }
+            update();
+        }
+
+        cv.addEventListener('pointerdown', e => {
+            const k = cellAt(e);
+            if (!k) return;
+            cv.setPointerCapture(e.pointerId);
+            painting = true;
+            paintTo = !cells.has(k);   // 最初に触れたセルの状態で塗り／消しを決める
+            apply(e);
+        });
+        cv.addEventListener('pointermove', e => { if (painting) apply(e); });
+        const stop = () => { painting = false; };
+        cv.addEventListener('pointerup', stop);
+        cv.addEventListener('pointercancel', stop);
+
+        // ===== コントロール =================================================
+        const weight = document.getElementById('weight');
+        const weightVal = document.getElementById('weightVal');
+        weight.addEventListener('input', () => {
+            const t = weight.value / 1000;
+            radius = R_MIN + (R_MAX - R_MIN) * t;
+            weightVal.textContent = Math.round(t * 100);
+            update();
+        });
+
+        function buildSeg(el, min, max, get, set) {
+            el.innerHTML = '';
+            for (let n = min; n <= max; n++) {
+                const b = document.createElement('button');
+                b.textContent = n;
+                b.className = n === get() ? 'on' : '';
+                b.onclick = () => { set(n); };
+                el.appendChild(b);
+            }
+        }
+        const colsSeg = document.getElementById('colsSeg');
+        const rowsSeg = document.getElementById('rowsSeg');
+        function refreshSegs() {
+            buildSeg(colsSeg, 3, 6, () => cols, n => { resize(n, rows); });
+            buildSeg(rowsSeg, 4, 7, () => rows, n => { resize(cols, n); });
+        }
+        function resize(c, r) {
+            cols = c; rows = r;
+            for (const k of [...cells]) {
+                const [i, j] = k.split(',').map(Number);
+                if (i >= cols || j >= rows) cells.delete(k);
+            }
+            refreshSegs();
+            update();
+        }
+
+        document.getElementById('btnClear').onclick = () => { cells.clear(); update(); };
+
+        // ===== 書き出し =====================================================
+        // プレビューと同じ loops から作る。別計算しない
+        function svgText() {
+            const vb = view();
+            const K = 100;
+            const d = loops.map(l =>
+                'M' + l.map(p => (p[0] * K).toFixed(2) + ' ' + (p[1] * K).toFixed(2)).join('L') + 'Z'
+            ).join('');
+            const size = (vb.size * K).toFixed(2);
+            return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' +
+                (vb.x * K).toFixed(2) + ' ' + (vb.y * K).toFixed(2) + ' ' + size + ' ' + size +
+                '" width="' + size + '" height="' + size + '">\n' +
+                '  <path d="' + d + '" fill="#000" fill-rule="evenodd"/>\n</svg>\n';
+        }
+
+        function toast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => t.classList.remove('show'), 1400);
+        }
+
+        function download(blob, name) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = name;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        document.getElementById('btnSvg').onclick = () => {
+            if (!loops.length) return toast('EMPTY');
+            download(new Blob([svgText()], { type: 'image/svg+xml' }), 'blob-type.svg');
+        };
+
+        document.getElementById('btnCopy').onclick = async () => {
+            if (!loops.length) return toast('EMPTY');
+            const text = svgText();
+            try {
+                await navigator.clipboard.writeText(text);
+                toast('COPIED');
+            } catch (e) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+                toast('COPIED');
+            }
+        };
+
+        document.getElementById('btnPng').onclick = () => {
+            if (!loops.length) return toast('EMPTY');
+            const vb = view();
+            const px = 1024;
+            const c = document.createElement('canvas');
+            c.width = c.height = px;
+            const g = c.getContext('2d');
+            g.fillStyle = '#fff';
+            g.fillRect(0, 0, px, px);
+            const scale = px / vb.size;
+            const p = new Path2D();
+            for (const l of loops) {
+                p.moveTo((l[0][0] - vb.x) * scale, (l[0][1] - vb.y) * scale);
+                for (let i = 1; i < l.length; i++) p.lineTo((l[i][0] - vb.x) * scale, (l[i][1] - vb.y) * scale);
+                p.closePath();
+            }
+            g.fillStyle = '#000';
+            g.fill(p, 'evenodd');
+            c.toBlob(b => download(b, 'blob-type.png'), 'image/png');
+        };
+
+        // ===== 初期状態 =====================================================
+        // 起動時は穴のある形（O）を置いておく
+        ['0,0', '1,0', '2,0', '3,0', '0,1', '3,1', '0,2', '3,2', '0,3', '3,3', '0,4', '1,4', '2,4', '3,4']
+            .forEach(k => cells.add(k));
+        refreshSegs();
+        weight.dispatchEvent(new Event('input'));
+        window.addEventListener('resize', draw);
+    </script>
+</body>
+
+</html>
