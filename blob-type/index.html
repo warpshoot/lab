@@ -278,7 +278,8 @@
         const FADE_OUT = 2.1;    // ここで寄与ゼロ
         // EDGE（糸）用。杭間隔の半分に対する割合
         const EDGE_MIN = 0.30, EDGE_MAX = 0.97;   // 1.0 ちょうどは杭が接して糸の通り道が消える
-        const GAP_MIN = 0.62, GAP_MAX = 1.45;   // 行間（列間を1としたときの比）
+        // 格子の縦横比（行間 ÷ 列間）。面積は保つので、行間を広げると列間が詰まる
+        const GAP_MIN = 0.55, GAP_MAX = 1.80;
 
         const ON = 1, OFF = -1, NEUTRAL = 0;
 
@@ -286,15 +287,16 @@
         let grid = new Map();    // "i,j" -> ON | OFF。持っていないセルは NEUTRAL
         let mode = 'edge';       // 'edge' | 'blob'
         let radius = 0.55;
-        let gapY = 1;            // 行間。円の間隔を変えると張り方が変わる
+        let gap = 1;             // 格子の縦横比
+        let sx = 1, sy = 1;      // 列間・行間。sx * sy = 1 に保つ
         let outline = false;     // 輪郭線だけ表示するモード
         let loops = [];          // 張り直したポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
         const stateAt = k => grid.get(k) || NEUTRAL;
         // 格子の座標。行間だけ可変
-        const CX = i => i * S;
-        const CY = j => j * S * gapY;
+        const CX = i => i * sx;
+        const CY = j => j * sy;
         function setCell(k, v) { if (v === NEUTRAL) grid.delete(k); else grid.set(k, v); }
 
         let PUSH = [];   // OFF 円の中心 [[x, y], ...]
@@ -369,8 +371,8 @@
 
             const x0 = -MARGIN, y0 = -MARGIN;
             const step = S / RES;
-            const nx = Math.ceil(((cols - 1) * S + MARGIN * 2) / step);
-            const ny = Math.ceil((CY(rows - 1) + MARGIN * 2) / step);
+            const nx = Math.ceil(((cols - 1) * sx + MARGIN * 2) / step);
+            const ny = Math.ceil(((rows - 1) * sy + MARGIN * 2) / step);
             const px = i => x0 + i * step;
             const py = j => y0 + j * step;
 
@@ -669,11 +671,15 @@
         const ctx = cv.getContext('2d');
 
         function view() {
-            // グリッド外形＋余白 0.8 セル。プレビューと SVG で同じ枠を使う
+            // グリッド外形＋余白 0.8 セル。プレビューと SVG で同じ枠を使う。
+            // 枠は縦横比がいちばん伸びたときに合わせて固定する。現在の外形で
+            // 取ると、縦が横を追い越したところで基準が入れ替わり、
+            // スライダを一方向に動かしているのに拡大率が反転する
             const pad = 0.8;
-            const w = (cols - 1) * S + pad * 2;
-            const h = CY(rows - 1) + pad * 2;
-            const side = Math.max(w, h);
+            const w = (cols - 1) * sx + pad * 2;
+            const h = (rows - 1) * sy + pad * 2;
+            const side = Math.max((cols - 1) / Math.sqrt(GAP_MIN),
+                                  (rows - 1) * Math.sqrt(GAP_MAX)) + pad * 2;
             return { x: -pad - (side - w) / 2, y: -pad - (side - h) / 2, size: side };
         }
 
@@ -785,22 +791,24 @@
         }
 
         function pickCell(x, y) {
-            const i = Math.round(x / S), j = Math.round(y / (S * gapY));
+            const i = Math.round(x / sx), j = Math.round(y / sy);
             if (i < 0 || j < 0 || i >= cols || j >= rows) return null;
             if (Math.hypot(x - CX(i), y - CY(j)) > HOLD * S) return null;
             return key(i, j);
         }
 
-        // 輪ゴムを掴める距離にいるか
-        function onBand(x, y) {
-            if (mode !== 'edge' || !loops.length) return false;
+        // 輪ゴムまでの距離
+        function bandDist(x, y) {
+            if (mode !== 'edge' || !loops.length) return Infinity;
             const e = [0, 0, 0, 0];
+            let d = Infinity;
             for (const loop of loops)
                 for (let i = 0, j = loop.length - 1; i < loop.length; j = i++) {
                     e[0] = loop[j][0]; e[1] = loop[j][1]; e[2] = loop[i][0]; e[3] = loop[i][1];
-                    if (segDist(x, y, e) < GRAB * S) return true;
+                    const dd = segDist(x, y, e);
+                    if (dd < d) d = dd;
                 }
-            return false;
+            return d;
         }
 
         // 掴んだ輪ゴムを動かした軌跡が跨いだ杭を、反対側へ移す
@@ -826,8 +834,12 @@
         cv.addEventListener('pointerdown', e => {
             const w = toWorld(e);
             const k = pickCell(w.x, w.y);
-            // 杭より輪ゴムを優先。杭の上でも、輪ゴムが掛かっていれば掴める
-            if (onBand(w.x, w.y) && (!k || stateAt(k) !== NEUTRAL)) {
+            // 輪ゴムと杭の、近いほうを掴む。
+            // 空セルより輪ゴムを優先しないと、直線の真ん中を掴もうとしたときに
+            // その辺りのセルに杭が生えてしまう
+            const db = bandDist(w.x, w.y);
+            const dk = k ? Math.hypot(w.x - CX(+k.split(',')[0]), w.y - CY(+k.split(',')[1])) : Infinity;
+            if (db < GRAB * S && db < dk) {
                 cv.setPointerCapture(e.pointerId);
                 dragging = true; lastPos = startPos = w; flipped = new Set();
                 return;
@@ -876,14 +888,16 @@
 
         function readSliders() {
             const g = gapEl.value / 1000;
-            gapY = GAP_MIN + (GAP_MAX - GAP_MIN) * g;
+            gap = GAP_MIN + (GAP_MAX - GAP_MIN) * g;
+            sx = S / Math.sqrt(gap);
+            sy = S * Math.sqrt(gap);
             gapValEl.textContent = Math.round(g * 100);
             const t = weight.value / 1000;
             // 杭は重ならない。半径の上限は最小の杭間隔の半分で、
             // そこに達すると隣の杭とちょうど接する
             radius = mode === 'blob'
                 ? BLOB_MIN + (BLOB_MAX - BLOB_MIN) * t
-                : Math.min(S, S * gapY) * 0.5 * (EDGE_MIN + (EDGE_MAX - EDGE_MIN) * t);
+                : Math.min(sx, sy) * 0.5 * (EDGE_MIN + (EDGE_MAX - EDGE_MIN) * t);
             weightVal.textContent = Math.round(t * 100);
         }
         for (const el of [weight, gapEl])
