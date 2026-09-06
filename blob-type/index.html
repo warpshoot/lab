@@ -534,10 +534,16 @@
             return out;
         }
 
+        let pathOwner = [];   // 輪郭の各点が、どの接点の弧から来たか
+
         function pathOf(cts) {
             const m = cts.length;
             if (!m) return null;
-            if (m === 1) return circlePoly(cts[0].c, radius);
+            if (m === 1) {
+                const c = circlePoly(cts[0].c, radius);
+                pathOwner = c.map(() => 0);
+                return c;
+            }
             const links = [];
             for (let i = 0; i < m; i++) {
                 const L = linkOf(cts[i], cts[(i + 1) % m]);
@@ -545,8 +551,12 @@
                 links.push(L);
             }
             const out = [];
-            for (let i = 0; i < m; i++)
-                out.push(...arcOf(cts[i], links[(i - 1 + m) % m].pb, links[i].pa));
+            pathOwner = [];
+            for (let i = 0; i < m; i++) {
+                const arc = arcOf(cts[i], links[(i - 1 + m) % m].pb, links[i].pa);
+                out.push(...arc);
+                for (let n = 0; n < arc.length; n++) pathOwner.push(i);
+            }
             return out;
         }
 
@@ -563,15 +573,23 @@
             return hit;
         }
 
+        // 直線どうしの交差。弧は杭が重ならない以上ぶつからないので直線だけ見る
+        function segCross(p1, p2, p3, p4) {
+            const d = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+            const d1 = d(p3, p4, p1), d2 = d(p3, p4, p2), d3 = d(p1, p2, p3), d4 = d(p1, p2, p4);
+            return d1 * d2 < 0 && d3 * d4 < 0;
+        }
+
         function solveBand() {
             const pegs = [];
             for (const [k, v] of grid) {
                 const [i, j] = k.split(',').map(Number);
-                pegs.push({ c: [CX(i), CY(j)], s: v === ON ? 1 : -1 });
+                pegs.push({ c: [CX(i), CY(j)], s: v === ON ? 1 : -1, k });
             }
             const inside = pegs.filter(p => p.s > 0);
             if (!inside.length) return null;
-            if (inside.length === 1 && pegs.length === 1) return [0];
+            // 杭ひとつなら、その杭に巻きついた輪ゴム＝ただの円
+            if (inside.length === 1 && pegs.length === 1) return [pegs[0]];
 
             // 初期状態：抱える杭ぜんぶの凸包（左回り）
             let hull = convexHull(inside.map(p => p.c));
@@ -581,20 +599,41 @@
 
             const ctOf = i => pegs[i];
 
-            // その接点列が条件を満たしているか。
-            // 接線が杭を突っ切らず、どの杭も指定どおりの側にいること
-            function valid(list) {
-                if (list.length < 1) return false;
+            // 接線が杭を突っ切らず、糸どうしも交差していないか。
+            // 交差を見ないと、深いスリットを作ったときに二重巻きの線が出る
+            function links(list) {
                 const cs = list.map(ctOf);
-                const pts = pathOf(cs);
-                if (!pts) return false;
+                const out = [];
+                for (let i = 0; i < list.length; i++) {
+                    const L = linkOf(cs[i], cs[(i + 1) % list.length]);
+                    if (!L) return null;
+                    out.push(L);
+                }
+                return out;
+            }
+
+            function taut(list) {
+                if (list.length < 2) return true;
+                const ls = links(list);
+                if (!ls) return false;
                 for (let i = 0; i < list.length; i++) {
                     const j = (i + 1) % list.length;
-                    if (list.length < 2) break;
-                    const L = linkOf(cs[i], cs[j]);
-                    if (!L) return false;
-                    if (blockedBy(L.pa, L.pb, pegs, list[i], list[j]) >= 0) return false;
+                    if (blockedBy(ls[i].pa, ls[i].pb, pegs, list[i], list[j]) >= 0) return false;
                 }
+                for (let i = 0; i < ls.length; i++)
+                    for (let j = i + 2; j < ls.length; j++) {
+                        if (i === 0 && j === ls.length - 1) continue;
+                        if (segCross(ls[i].pa, ls[i].pb, ls[j].pa, ls[j].pb)) return false;
+                    }
+                return true;
+            }
+
+            // そのうえで、どの杭も指定どおりの側にいること
+            function valid(list) {
+                if (list.length < 1) return false;
+                if (!taut(list)) return false;
+                const pts = pathOf(list.map(ctOf));
+                if (!pts) return false;
                 for (let i = 0; i < pegs.length; i++) {
                     if (list.includes(i)) continue;
                     if ((pegs[i].s > 0) !== pointInPoly(pegs[i].c, pts)) return false;
@@ -621,19 +660,49 @@
                 // 2. 側が違う杭を、いちばん伸びの小さい辺に挿す
                 const pts = pathOf(cts.map(ctOf));
                 if (!pts) break;
+                const pending = [];
                 for (let i = 0; i < pegs.length && !changed; i++) {
                     if (cts.includes(i)) continue;
                     if ((pegs[i].s > 0) === pointInPoly(pegs[i].c, pts)) continue;
-                    let at = 0, bestAdd = Infinity;
-                    const len = (p, q) => Math.hypot(q[0] - p[0], q[1] - p[1]);
+                    // いちばん近い辺に挿す。伸びの少なさで選ぶと、深く入り込んだ杭が
+                    // 遠くの辺に繋がって糸が絡まる。近い辺から順に入れていけば、
+                    // 何本もの杭が同じスリットに素直に並ぶ
+                    const cand = [];
                     for (let e = 0; e < cts.length; e++) {
                         const a = ctOf(cts[e]), b = ctOf(cts[(e + 1) % cts.length]);
                         const L1 = linkOf(a, pegs[i]), L2 = linkOf(pegs[i], b);
                         if (!L1 || !L2) continue;
                         const L0 = cts.length > 1 ? linkOf(a, b) : null;
-                        const add = len(L1.pa, L1.pb) + len(L2.pa, L2.pb)
-                            - (L0 ? len(L0.pa, L0.pb) : 0);
-                        if (add < bestAdd) { bestAdd = add; at = e; }
+                        const near = L0
+                            ? segDist(pegs[i].c[0], pegs[i].c[1],
+                                [L0.pa[0], L0.pa[1], L0.pb[0], L0.pb[1]])
+                            : 0;
+                        cand.push({ at: e, add: near });
+                    }
+                    cand.sort((x, y) => x.add - y.add);
+                    // 近い順に見て、糸が交差しない位置に入れる。
+                    // どこに入れても交差するなら、この杭は後回しにする。
+                    // 先に別の杭が入って形が変われば、素直に入る場所ができる
+                    let at = -1;
+                    for (const c of cand) {
+                        const trial = cts.slice(0, c.at + 1).concat([i], cts.slice(c.at + 1));
+                        if (taut(trial)) { at = c.at; break; }
+                    }
+                    if (at < 0) { pending.push(i); continue; }
+                    cts.splice(at + 1, 0, i);
+                    changed = true;
+                }
+                // 全部が後回しになったら、いちばん近い場所に押し込んで先へ進める
+                if (!changed && pending.length) {
+                    const i = pending[0];
+                    let at = 0, best = Infinity;
+                    for (let e = 0; e < cts.length; e++) {
+                        const a = ctOf(cts[e]), b = ctOf(cts[(e + 1) % cts.length]);
+                        const L0 = cts.length > 1 ? linkOf(a, b) : null;
+                        if (!L0) continue;
+                        const d = segDist(pegs[i].c[0], pegs[i].c[1],
+                            [L0.pa[0], L0.pa[1], L0.pb[0], L0.pb[1]]);
+                        if (d < best) { best = d; at = e; }
                     }
                     cts.splice(at + 1, 0, i);
                     changed = true;
@@ -653,6 +722,8 @@
             return cts.map(i => pegs[i]);
         }
 
+        let bandContacts = null;   // いま張られている輪ゴムの接点列
+
         function rebuild() {
             if (mode === 'blob') {
                 loops = contour().map(l => chaikin(l, 2))
@@ -660,9 +731,9 @@
                 return;
             }
             build();
-            const cts = solveBand();
-            const outer = cts && pathOf(cts);
-            if (!outer) { loops = []; return; }
+            bandContacts = solveBand();
+            const outer = bandContacts && pathOf(bandContacts);
+            if (!outer) { loops = []; bandContacts = null; return; }
             loops = [outer];
         }
 
@@ -749,6 +820,19 @@
                 ctx.fill(pathFromLoops(scale, ox, oy), 'evenodd');
             }
 
+            // 引っぱっている V。どの辺を掴んでいるかが見える
+            if (dragging && anchorA && dragPos) {
+                ctx.strokeStyle = 'rgba(220,60,60,0.55)';
+                ctx.lineWidth = 1.5 * dpr;
+                ctx.setLineDash([5 * dpr, 4 * dpr]);
+                ctx.beginPath();
+                ctx.moveTo(ox + anchorA[0] * scale, oy + anchorA[1] * scale);
+                ctx.lineTo(ox + dragPos.x * scale, oy + dragPos.y * scale);
+                ctx.lineTo(ox + anchorB[0] * scale, oy + anchorB[1] * scale);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
             // 格子が見えないと編集しづらいので、シルエットの上に印を置く
             for (let j = 0; j < rows; j++) {
                 for (let i = 0; i < cols; i++) {
@@ -764,7 +848,7 @@
                     } else {
                         ctx.fillStyle = v === ON
                             ? (outline ? 'rgba(0,0,0,0.30)' : 'rgba(255,255,255,0.24)')
-                            : 'rgba(0,0,0,0.13)';
+                            : 'rgba(0,0,0,0.2)';
                         ctx.arc(cx, cy, 2.5 * dpr, 0, Math.PI * 2);
                         ctx.fill();
                     }
@@ -781,7 +865,9 @@
         //   （＝輪ゴムをその杭の向こう側へ引っ掛ける／外す）
         const HOLD = 0.34, GRAB = 0.30;
         let painting = false, paintTo = ON;
-        let dragging = false, lastPos = null, startPos = null, flipped = null;
+        let dragging = false, startPos = null, dragPos = null;
+        let anchorA = null, anchorB = null, anchorKeys = null, origState = null;
+        let origSpan = null;   // 掴んだときの、留め具から留め具までの輪郭
 
         function toWorld(ev) {
             const rect = cv.getBoundingClientRect();
@@ -811,24 +897,55 @@
             return d;
         }
 
-        // 掴んだ輪ゴムを動かした軌跡が跨いだ杭を、反対側へ移す
-        function sweep(from, to) {
-            const e = [from.x, from.y, to.x, to.y];
-            let moved = false;
-            for (const [k, v] of [...grid]) {
-                if (flipped.has(k)) continue;
-                const [i, j] = k.split(',').map(Number);
-                if (segDist(CX(i), CY(j), e) > radius) continue;
-                flipped.add(k);
-                setCell(k, v === ON ? OFF : ON);
-                moved = true;
+        // 掴んだ辺の両端の杭を留め具にする。ここが動かないので、
+        // どれだけ深く引いても操作の対象が別の辺に乗り移らない
+        function grabAnchors(x, y) {
+            const loop = loops[0];
+            if (!loop || !bandContacts || !pathOwner.length) return false;
+            let n = 0, bd = Infinity;
+            for (let i = 0; i < loop.length; i++) {
+                const d = Math.hypot(x - loop[i][0], y - loop[i][1]);
+                if (d < bd) { bd = d; n = i; }
             }
-            if (!moved) return false;
-            // 抱える杭がひとつも無くなると輪ゴムが張れない
-            let any = false;
-            for (const v of grid.values()) if (v === ON) any = true;
-            if (!any) { for (const k of flipped) setCell(k, ON); return false; }
+            const m = bandContacts.length;
+            const o = pathOwner[n], o2 = pathOwner[(n + 1) % loop.length];
+            // 直線を掴んだなら両端の接点、弧を掴んだならその前後の接点を留める
+            const ia = o === o2 ? (o - 1 + m) % m : o;
+            const ib = o === o2 ? (o + 1) % m : o2;
+            anchorA = bandContacts[ia].c;
+            anchorB = bandContacts[ib].c;
+            anchorKeys = [bandContacts[ia].k, bandContacts[ib].k];
+            // 留め具から留め具までの、元の輪郭をそのまま取っておく。
+            // 掃いた範囲はこれと V のあいだで測る。留め具を結ぶ直線で測ると、
+            // 外へ張り出している杭を内側へ押し出せない
+            let sa = -1, sb = -1;
+            for (let i = 0; i < loop.length; i++) if (pathOwner[i] === ia) sa = i;
+            for (let i = 0; i < loop.length; i++) if (pathOwner[i] === ib) { sb = i; break; }
+            origSpan = [anchorA];
+            if (sa >= 0 && sb >= 0)
+                for (let i = (sa + 1) % loop.length; i !== sb; i = (i + 1) % loop.length)
+                    origSpan.push(loop[i]);
+            origSpan.push(anchorB);
             return true;
+        }
+
+        // 元の輪郭とポインタのあいだが、掃いた範囲。
+        // 毎回もとの状態から作り直すので、引き戻せばそのまま戻る
+        function applyDrag(pos) {
+            const swept = origSpan.concat([[pos.x, pos.y]]);
+            let any = false;
+            const next = new Map();
+            for (const [k, v] of origState) {
+                const [i, j] = k.split(',').map(Number);
+                const flip = !anchorKeys.includes(k) && pointInPoly([CX(i), CY(j)], swept);
+                const nv = flip ? (v === ON ? OFF : ON) : v;
+                next.set(k, nv);
+                if (nv === ON) any = true;
+            }
+            if (!any) return false;                       // 抱える杭が無くなると張れない
+            let changed = false;
+            for (const [k, v] of next) if (stateAt(k) !== v) { setCell(k, v); changed = true; }
+            return changed;
         }
 
         cv.addEventListener('pointerdown', e => {
@@ -839,9 +956,11 @@
             // その辺りのセルに杭が生えてしまう
             const db = bandDist(w.x, w.y);
             const dk = k ? Math.hypot(w.x - CX(+k.split(',')[0]), w.y - CY(+k.split(',')[1])) : Infinity;
-            if (db < GRAB * S && db < dk) {
+            if (db < GRAB * S && db < dk && grabAnchors(w.x, w.y)) {
                 cv.setPointerCapture(e.pointerId);
-                dragging = true; lastPos = startPos = w; flipped = new Set();
+                dragging = true; startPos = dragPos = w;
+                origState = new Map(grid);
+                draw();
                 return;
             }
             if (!k) return;
@@ -855,8 +974,8 @@
         cv.addEventListener('pointermove', e => {
             const w = toWorld(e);
             if (dragging) {
-                if (sweep(lastPos, w)) update();
-                lastPos = w;
+                dragPos = w;
+                if (applyDrag(w)) update(); else draw();
                 return;
             }
             if (!painting) return;
@@ -867,17 +986,20 @@
         cv.addEventListener('pointerup', e => {
             // 輪ゴムを掴んだまま動かさなかったら、その場のタップとして扱う。
             // 輪ゴムが掛かっている杭も抜けるようにするため
-            if (dragging && !flipped.size) {
+            if (dragging) {
                 const w = toWorld(e);
                 if (Math.hypot(w.x - startPos.x, w.y - startPos.y) < 0.1 * S) {
                     const k = pickCell(w.x, w.y);
-                    if (k) { setCell(k, stateAt(k) === NEUTRAL ? ON : NEUTRAL); update(); }
+                    if (k) setCell(k, stateAt(k) === NEUTRAL ? ON : NEUTRAL);
                 }
             }
-            painting = false; dragging = false; flipped = null;
+            painting = false; dragging = false; origState = null; origSpan = null;
+            update();
         });
         cv.addEventListener('pointercancel', () => {
-            painting = false; dragging = false; flipped = null;
+            if (dragging && origState) for (const [k, v] of origState) setCell(k, v);
+            painting = false; dragging = false; origState = null; origSpan = null; origSpan = null;
+            update();
         });
 
         // ===== コントロール =================================================
