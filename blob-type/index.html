@@ -940,9 +940,14 @@
         function grabAnchors(x, y) {
             const loop = loops[0];
             if (!loop || !bandContacts || !pathOwner.length) return false;
+            // いちばん近い「線分」を探す。頂点で探すと、直線の辺には頂点が無いので
+            // 隣の杭の弧の始点が選ばれ、その辺ではなく弧を掴んだ扱いになる
             let n = 0, bd = Infinity;
+            const e = [0, 0, 0, 0];
             for (let i = 0; i < loop.length; i++) {
-                const d = Math.hypot(x - loop[i][0], y - loop[i][1]);
+                const j = (i + 1) % loop.length;
+                e[0] = loop[i][0]; e[1] = loop[i][1]; e[2] = loop[j][0]; e[3] = loop[j][1];
+                const d = segDist(x, y, e);
                 if (d < bd) { bd = d; n = i; }
             }
             const m = bandContacts.length;
