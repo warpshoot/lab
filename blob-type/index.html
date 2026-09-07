@@ -260,7 +260,10 @@
         <div class="row">
             <label>VIEW</label>
             <div class="seg" id="viewSeg"></div>
-            <div class="seg" id="previewSeg" style="margin-left:12px"></div>
+        </div>
+        <div class="row">
+            <label></label>
+            <div class="seg" id="toggleSeg"></div>
         </div>
         <div class="row">
             <label>WEIGHT</label>
@@ -315,6 +318,7 @@
         let sx = 1, sy = 1;      // 列間・行間。sx * sy = 1 に保つ
         let outline = true;      // 輪郭線だけ表示するモード
         let preview = false;     // 編集用の表示を全部消して、書き出しと同じ絵にする
+        let invert = false;      // 白黒反転
         let loops = [];          // 張り直したポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
@@ -684,7 +688,19 @@
             const scale = cv.width / vb.size;
             const ox = -vb.x * scale, oy = -vb.y * scale;
 
-            ctx.fillStyle = '#fff';
+            // 白黒反転。編集用の表示もまとめて入れ替える
+            const C = invert ? {
+                paper: '#000', ink: '#fff',
+                peg: '#262626', off: '#050505', offLine: '#303030',
+                solidOff: '#141414', solidOffLine: '#242424',
+                onDot: 'rgba(0,0,0,0.3)', dot: 'rgba(255,255,255,0.28)', ring: 'rgba(255,255,255,0.4)'
+            } : {
+                paper: '#fff', ink: '#000',
+                peg: '#e6e6e6', off: '#fafafa', offLine: '#cfcfcf',
+                solidOff: '#efefef', solidOffLine: '#e0e0e0',
+                onDot: 'rgba(255,255,255,0.24)', dot: 'rgba(0,0,0,0.2)', ring: 'rgba(0,0,0,0.28)'
+            };
+            ctx.fillStyle = C.paper;
             ctx.fillRect(0, 0, cv.width, cv.height);
 
             const cr = radius * scale;
@@ -703,27 +719,27 @@
                     ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale,
                             cr, 0, Math.PI * 2);
                     if (v === ON) {
-                        ctx.fillStyle = '#e6e6e6';
+                        ctx.fillStyle = C.peg;
                         ctx.fill();
                     } else {
                         // 内側から押している円は塗らずに破線で
-                        ctx.fillStyle = '#fafafa';
+                        ctx.fillStyle = C.off;
                         ctx.fill();
-                        ctx.strokeStyle = '#cfcfcf';
+                        ctx.strokeStyle = C.offLine;
                         ctx.lineWidth = Math.max(1, dpr);
                         ctx.setLineDash([4 * dpr, 3 * dpr]);
                         ctx.stroke();
                         ctx.setLineDash([]);
                     }
                 }
-                ctx.strokeStyle = '#e03131';
+                ctx.strokeStyle = C.ink;
                 ctx.lineWidth = 1.6 * dpr;
                 ctx.stroke(stretched ? polyPath(stretched, scale, ox, oy)
                                      : pathFromLoops(scale, ox, oy));
             } else {
                 // OFF セルは実寸で下敷きに描く。押している円が見える
-                ctx.fillStyle = '#efefef';
-                ctx.strokeStyle = '#e0e0e0';
+                ctx.fillStyle = C.solidOff;
+                ctx.strokeStyle = C.solidOffLine;
                 ctx.lineWidth = Math.max(1, dpr);
                 for (const [k, v] of (preview ? [] : grid)) {
                     if (v !== OFF) continue;
@@ -733,7 +749,7 @@
                     ctx.fill();
                     ctx.stroke();
                 }
-                ctx.fillStyle = '#000';
+                ctx.fillStyle = C.ink;
                 ctx.fill(stretched ? polyPath(stretched, scale, ox, oy)
                                    : pathFromLoops(scale, ox, oy), 'evenodd');
             }
@@ -754,14 +770,14 @@
                     ctx.beginPath();
                     if (v === OFF) {
                         // 押し込む円だけリング。ひと目で他と区別がつく
-                        ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+                        ctx.strokeStyle = C.ring;
                         ctx.lineWidth = Math.max(1, dpr);
                         ctx.arc(cx, cy, 3.5 * dpr, 0, Math.PI * 2);
                         ctx.stroke();
                     } else {
                         ctx.fillStyle = v === ON
-                            ? (outline ? 'rgba(0,0,0,0.30)' : 'rgba(255,255,255,0.24)')
-                            : 'rgba(0,0,0,0.2)';
+                            ? (outline ? C.ring : C.onDot)
+                            : C.dot;
                         ctx.arc(cx, cy, 2.5 * dpr, 0, Math.PI * 2);
                         ctx.fill();
                     }
@@ -988,14 +1004,18 @@
         for (const el of [weight, gapEl])
             el.addEventListener('input', () => { readSliders(); update(); });
 
-        const previewSeg = document.getElementById('previewSeg');
+        const toggleSeg = document.getElementById('toggleSeg');
         function refreshPreview() {
-            previewSeg.innerHTML = '';
-            const b = document.createElement('button');
-            b.textContent = 'PREVIEW';
-            b.className = 'wider' + (preview ? ' on' : '');
-            b.onclick = () => { preview = !preview; refreshPreview(); draw(); };
-            previewSeg.appendChild(b);
+            toggleSeg.innerHTML = '';
+            for (const t of [
+                { label: 'PREVIEW', get: () => preview, set: v => preview = v },
+                { label: 'INVERT', get: () => invert, set: v => invert = v }]) {
+                const b = document.createElement('button');
+                b.textContent = t.label;
+                b.className = 'wider' + (t.get() ? ' on' : '');
+                b.onclick = () => { t.set(!t.get()); refreshPreview(); draw(); };
+                toggleSeg.appendChild(b);
+            }
         }
 
         const viewSeg = document.getElementById('viewSeg');
@@ -1039,12 +1059,17 @@
             ).join('');
             const size = (vb.size * K).toFixed(2);
             // プレビューと同じ見え方で出す
+            const ink = invert ? '#fff' : '#000';
             const paint = outline
-                ? 'fill="none" stroke="#e03131" stroke-width="' + (1.6 / 540 * vb.size * K).toFixed(2) + '"'
-                : 'fill="#000" fill-rule="evenodd"';
+                ? 'fill="none" stroke="' + ink + '" stroke-width="' + (1.6 / 540 * vb.size * K).toFixed(2) + '"'
+                : 'fill="' + ink + '" fill-rule="evenodd"';
+            // 反転しているときは、白い図形が見えるように背景を敷く
+            const bg = invert
+                ? '  <rect x="' + (vb.x * K).toFixed(2) + '" y="' + (vb.y * K).toFixed(2) +
+                  '" width="' + size + '" height="' + size + '" fill="#000"/>\n' : '';
             return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' +
                 (vb.x * K).toFixed(2) + ' ' + (vb.y * K).toFixed(2) + ' ' + size + ' ' + size +
-                '" width="' + size + '" height="' + size + '">\n' +
+                '" width="' + size + '" height="' + size + '">\n' + bg +
                 '  <path d="' + d + '" ' + paint + '/>\n</svg>\n';
         }
 
@@ -1093,7 +1118,7 @@
             const c = document.createElement('canvas');
             c.width = c.height = px;
             const g = c.getContext('2d');
-            g.fillStyle = '#fff';
+            g.fillStyle = invert ? '#000' : '#fff';
             g.fillRect(0, 0, px, px);
             const scale = px / vb.size;
             const p = new Path2D();
@@ -1102,12 +1127,13 @@
                 for (let i = 1; i < l.length; i++) p.lineTo((l[i][0] - vb.x) * scale, (l[i][1] - vb.y) * scale);
                 p.closePath();
             }
+            const ink = invert ? '#fff' : '#000';
             if (outline) {
-                g.strokeStyle = '#e03131';
+                g.strokeStyle = ink;
                 g.lineWidth = px / 540 * 1.6;
                 g.stroke(p);
             } else {
-                g.fillStyle = '#000';
+                g.fillStyle = ink;
                 g.fill(p, 'evenodd');
             }
             c.toBlob(b => download(b, 'blob-type.png'), 'image/png');
