@@ -319,6 +319,39 @@
         const CY = j => j * S;
         function setCell(k, v) { if (v === NEUTRAL) grid.delete(k); else grid.set(k, v); }
 
+        // 消した杭の居場所（輪ゴムの前後の接点）を覚えておく。
+        // 列を持ち越す以上、抜いた杭をただ戻すだけでは元の位置に入らず、
+        // 杭を置いた順序で形が変わってしまう
+        const ghosts = new Map();
+
+        function setPeg(k, v) {
+            if (stateAt(k) === v) return;
+            if (v === NEUTRAL) {
+                const i = bandContacts ? bandContacts.findIndex(ct => ct.k === k) : -1;
+                if (i >= 0 && bandContacts.length > 1) {
+                    const m = bandContacts.length;
+                    ghosts.set(k, {
+                        prev: bandContacts[(i - 1 + m) % m].k,
+                        next: bandContacts[(i + 1) % m].k,
+                        s: bandContacts[i].s
+                    });
+                } else ghosts.delete(k);
+                setCell(k, NEUTRAL);
+                return;
+            }
+            setCell(k, v);
+            const g = ghosts.get(k);
+            ghosts.delete(k);
+            if (!g || !bandContacts) return;
+            const m = bandContacts.length;
+            const ip = bandContacts.findIndex(ct => ct.k === g.prev);
+            const inx = bandContacts.findIndex(ct => ct.k === g.next);
+            // 前後がまだ隣り合っているときだけ差し戻す。
+            // 崩れていたら普通に解かせたほうが素直
+            if (ip < 0 || inx < 0 || (ip + 1) % m !== inx) return;
+            bandContacts.splice(ip + 1, 0, { k, s: g.s, c: pegC(k) });
+        }
+
 
         function convexHull(pts) {
             if (pts.length < 3) return pts.slice();
@@ -954,7 +987,7 @@
             cv.setPointerCapture(e.pointerId);
             painting = true;
             paintTo = stateAt(k) === NEUTRAL ? ON : NEUTRAL;
-            setCell(k, paintTo);
+            setPeg(k, paintTo);
             update();
         });
 
@@ -967,7 +1000,7 @@
             }
             if (!painting) return;
             const k = pickCell(w.x, w.y);
-            if (k && stateAt(k) !== paintTo) { setCell(k, paintTo); update(); }
+            if (k && stateAt(k) !== paintTo) { setPeg(k, paintTo); update(); }
         });
 
         cv.addEventListener('pointerup', e => {
@@ -977,7 +1010,7 @@
                 const w = toWorld(e);
                 if (Math.hypot(w.x - startPos.x, w.y - startPos.y) < 0.1 * S) {
                     const k = pickCell(w.x, w.y);
-                    if (k) setCell(k, stateAt(k) === NEUTRAL ? ON : NEUTRAL);
+                    if (k) setPeg(k, stateAt(k) === NEUTRAL ? ON : NEUTRAL);
                 }
             }
             painting = false; dragging = false; origState = null;
@@ -1048,7 +1081,7 @@
             update();
         }
 
-        document.getElementById('btnClear').onclick = () => { grid.clear(); update(); };
+        document.getElementById('btnClear').onclick = () => { grid.clear(); ghosts.clear(); update(); };
 
         // ===== 書き出し =====================================================
         // プレビューと同じ loops から作る。別計算しない
