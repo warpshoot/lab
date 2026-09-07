@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Blob Type</title>
+    <title>PEGS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -248,7 +248,7 @@
 
 <body>
     <header>
-        <h1>BLOB TYPE</h1>
+        <h1>PEGS</h1>
         <span class="hint">tap: peg · drag the band</span>
     </header>
 
@@ -266,9 +266,9 @@
             <div class="seg" id="toggleSeg"></div>
         </div>
         <div class="row">
-            <label>WEIGHT</label>
-            <input type="range" id="weight" min="0" max="1000" value="860">
-            <span class="value" id="weightVal">86</span>
+            <label>RADIUS</label>
+            <input type="range" id="radiusRange" min="0" max="1000" value="860">
+            <span class="value" id="radiusVal">86</span>
         </div>
         <div class="row">
             <label>GRID</label>
@@ -1025,18 +1025,18 @@
         });
 
         // ===== コントロール =================================================
-        const weight = document.getElementById('weight');
-        const weightVal = document.getElementById('weightVal');
+        const radiusRange = document.getElementById('radiusRange');
+        const radiusVal = document.getElementById('radiusVal');
 
         function readSliders() {
-            const t = weight.value / 1000;
+            const t = radiusRange.value / 1000;
             // 杭は重ならない。半径の上限は最小の杭間隔の半分で、
             // そこに達すると隣の杭とちょうど接する
             // 杭は重ならない。半径の上限は杭間隔の半分
             radius = S * 0.5 * (EDGE_MIN + (EDGE_MAX - EDGE_MIN) * t);
-            weightVal.textContent = Math.round(t * 100);
+            radiusVal.textContent = Math.round(t * 100);
         }
-        weight.addEventListener('input', () => { readSliders(); update(); });
+        radiusRange.addEventListener('input', () => { readSliders(); update(); });
 
         const toggleSeg = document.getElementById('toggleSeg');
         function refreshPreview() {
@@ -1125,7 +1125,7 @@
 
         document.getElementById('btnSvg').onclick = () => {
             if (!loops.length) return toast('EMPTY');
-            download(new Blob([svgText()], { type: 'image/svg+xml' }), 'blob-type.svg');
+            download(new Blob([svgText()], { type: 'image/svg+xml' }), 'pegs.svg');
         };
 
         document.getElementById('btnCopy').onclick = async () => {
@@ -1170,14 +1170,14 @@
                 g.fillStyle = ink;
                 g.fill(p, 'evenodd');
             }
-            c.toBlob(b => download(b, 'blob-type.png'), 'image/png');
+            c.toBlob(b => download(b, 'pegs.png'), 'image/png');
         };
 
         // ===== 保存 =========================================================
         // PNG や SVG を開いて戻ってくると読み込み直しになる端末があるので、
         // 編集中の状態はそのつど置いておく。
         // 接点の列も形を決める状態なので、杭といっしょに持つ
-        const STORE = 'blob-type:state';
+        const STORE = 'pegs:state';
         let restoring = false;
 
         function save() {
@@ -1185,7 +1185,7 @@
             try {
                 localStorage.setItem(STORE, JSON.stringify({
                     cols, rows,
-                    weight: +weight.value,
+                    radius: +radiusRange.value,
                     outline, preview, invert,
                     grid: [...grid],
                     band: bandContacts ? bandContacts.map(ct => ({ k: ct.k, s: ct.s })) : null
@@ -1209,7 +1209,7 @@
                 if (i < 0 || j < 0 || i >= cols || j >= rows) continue;
                 if (v === ON || v === OFF) grid.set(k, v);
             }
-            if (Number.isFinite(s.weight)) weight.value = s.weight;
+            if (Number.isFinite(s.radius)) radiusRange.value = s.radius;
             outline = !!s.outline; preview = !!s.preview; invert = !!s.invert;
             bandContacts = Array.isArray(s.band) && s.band.length
                 ? s.band.filter(ct => grid.has(ct.k)).map(ct => ({ k: ct.k, s: ct.s, c: pegC(ct.k) }))

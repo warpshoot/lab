@@ -11,8 +11,8 @@
       "description": "Visualizes beat compositions with playback controls"
     },
     {
-      "path": "./blob-type/",
-      "title": "Blob Type",
+      "path": "./pegs/",
+      "title": "PEGS",
       "description": "杭に輪ゴムを張る要領で文字の輪郭を作り、SVG で書き出す"
     },
     {
