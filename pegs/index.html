@@ -736,6 +736,26 @@
             };
             const clean = list => valid(list) && simple(list);
             solve();
+            // 成立しなければ、まず接点の側を裏返して試す。
+            // 杭が抜けて輪ゴムが縮むと、それまで押しのけていた杭を
+            // 逆に抱え込むことがある。側は固定の制約ではない。
+            // ここを試さずに凸包へ戻すと、遠くの無関係な形まで作り直しになる
+            if (!clean(cts)) {
+                const seed0 = cts.slice();
+                const near = new Set();
+                for (const g of gaps) { near.add(g[0]); near.add(g[1]); }
+                // 跡地の隣にいた接点から順に。そこが縮んだ場所なので
+                const order = seed0.slice().sort(
+                    (a, b) => (near.has(ps[b].k) ? 1 : 0) - (near.has(ps[a].k) ? 1 : 0));
+                for (const i of order) {
+                    ps[i].s = -ps[i].s;
+                    cts = seed0.slice();
+                    solve();
+                    if (clean(cts)) break;
+                    ps[i].s = -ps[i].s;
+                    cts = seed0.slice();
+                }
+            }
             // 成立しなければ凸包からやり直す
             if (!clean(cts)) { cts = hullSeed(); solve(); }
             // それでも交差する形になったら、挿し込み無しの生の凸包まで戻す。
