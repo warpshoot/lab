@@ -736,28 +736,39 @@
             };
             const clean = list => valid(list) && simple(list);
             solve();
-            // 成立しなければ、まず接点の側を裏返して試す。
-            // 杭が抜けて輪ゴムが縮むと、それまで押しのけていた杭を
-            // 逆に抱え込むことがある。側は固定の制約ではない。
-            // ここを試さずに凸包へ戻すと、遠くの無関係な形まで作り直しになる
+            // 解けなかったときは、直し方の候補をいくつか作って選ぶ。
+            //   1. 凸包からやり直す
+            //   2. 接点の側を1つずつ裏返して解き直す
+            //      （杭が抜けて縮むと、押しのけていた杭を逆に抱え込むことがある。
+            //        側は固定の制約ではない）
+            // 選ぶ基準は「直前の接点をいちばん多く残すこと」。
+            // 先に成立したものを採ると、余計な杭を手放した形を掴んでしまう
             if (!clean(cts)) {
                 const seed0 = cts.slice();
-                const near = new Set();
-                for (const g of gaps) { near.add(g[0]); near.add(g[1]); }
-                // 跡地の隣にいた接点から順に。そこが縮んだ場所なので
-                const order = seed0.slice().sort(
-                    (a, b) => (near.has(ps[b].k) ? 1 : 0) - (near.has(ps[a].k) ? 1 : 0));
-                for (const i of order) {
+                const prev = new Set(seed0.map(i => ps[i].k));
+                const keeps = list => list.reduce((n, i) => n + (prev.has(ps[i].k) ? 1 : 0), 0);
+                let best = null, bestScore = -Infinity, bestFlip = null;
+                const consider = (list, flip) => {
+                    if (!clean(list)) return;
+                    // 側を裏返した形は、同点なら選ばない
+                    const sc = keeps(list) - (flip === null ? 0 : 0.5);
+                    if (sc > bestScore) { bestScore = sc; best = list.slice(); bestFlip = flip; }
+                };
+                cts = hullSeed(); solve();
+                consider(cts, null);
+                for (const i of seed0) {
                     ps[i].s = -ps[i].s;
-                    cts = seed0.slice();
-                    solve();
-                    if (clean(cts)) break;
+                    cts = seed0.slice(); solve();
+                    consider(cts, i);
                     ps[i].s = -ps[i].s;
-                    cts = seed0.slice();
+                }
+                if (best) {
+                    if (bestFlip !== null) ps[bestFlip].s = -ps[bestFlip].s;
+                    cts = best;
+                } else {
+                    cts = hullSeed(); solve();
                 }
             }
-            // 成立しなければ凸包からやり直す
-            if (!clean(cts)) { cts = hullSeed(); solve(); }
             // それでも交差する形になったら、挿し込み無しの生の凸包まで戻す。
             // 重ならない円の凸包は必ず単純な形になるので、ここを最後の砦にして、
             // 自己交差した輪郭を絶対に画面へ出さない（OFF 杭の押し込みは諦める）
