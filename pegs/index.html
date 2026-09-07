@@ -298,22 +298,25 @@
         // ===== モデル =====================================================
         // セル間隔を 1 とする単位系で全部計算する。書き出し時だけ 100 倍する。
         //
-        // プレートに杭を打ち、その外側に糸を張ったもの、と考える。
-        // ON の杭は距離に関係なく必ず糸の内側に入るので、素の形は ON の杭
-        // ぜんぶの凸包になる。OFF の杭は糸の外側から押し込んで形を彫る。
-        // NEUTRAL は杭が打たれていないので糸が素通りする。
+        // ジオボード。プレートに杭を打ち、そこへ輪ゴムを張ったもの。
+        // 杭は「有る」か「無い」かだけで、種類は無い。
+        // 形を決めているのは輪ゴムのほうで、その状態が接点の列。
+        //
+        // 各杭の IN / OUT は輪ゴムから見た側であって、杭の属性ではない。
+        // 張り直すたびに、いまの輪郭から取り直す。
         //
         // 杭どうしは絶対に重ならない（半径は杭間隔の半分まで）。これが効いていて、
         // 重ならない円は隙間を囲めないので、押し込みの合間に取り残された島は
-        // 発生しない。糸の内側に完全に入った杭は、そのまま真円の穴になる。
+        // 発生しない。
         const S = 1;
         const EDGE_MIN = 0.30, EDGE_MAX = 0.97;   // 1.0 ちょうどは杭が接して糸の通り道が消える
         const GRID_MIN = 3, GRID_MAX = 10;
 
-        const ON = 1, OFF = -1, NEUTRAL = 0;
+        const IN = 1, OUT = -1;
 
         let cols = 5, rows = 5;
-        let grid = new Map();    // "i,j" -> ON | OFF。持っていないセルは NEUTRAL
+        let pegs = new Set();    // 杭が打たれているセル "i,j"
+        let sides = new Map();   // "i,j" -> IN | OUT。輪ゴムがその杭のどちら側を通っているか
         let radius = 0.55;
         let outline = true;      // 輪郭線だけ表示するモード
         let preview = false;     // 編集用の表示を全部消して、書き出しと同じ絵にする
@@ -321,35 +324,28 @@
         let loops = [];          // 張り直したポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
-        const stateAt = k => grid.get(k) || NEUTRAL;
+        const hasPeg = k => pegs.has(k);
+        const sideOf = k => sides.get(k) === IN ? IN : OUT;
         // 格子の座標。行間だけ可変
         const CX = i => i * S;
         const CY = j => j * S;
-        function setCell(k, v) { if (v === NEUTRAL) grid.delete(k); else grid.set(k, v); }
 
         // 消した杭の居場所（輪ゴムの前後の接点）を覚えておく。
         // 列を持ち越す以上、抜いた杭をただ戻すだけでは元の位置に入らず、
         // 杭を置いた順序で形が変わってしまう
         const ghosts = new Map();
 
-        function setPeg(k, v) {
-            if (stateAt(k) === v) return;
-            if (v === NEUTRAL) {
-                const i = bandContacts ? bandContacts.findIndex(ct => ct.k === k) : -1;
-                if (i >= 0 && bandContacts.length > 1) {
-                    const m = bandContacts.length;
-                    ghosts.set(k, {
-                        prev: bandContacts[(i - 1 + m) % m].k,
-                        next: bandContacts[(i + 1) % m].k,
-                        s: bandContacts[i].s
-                    });
-                } else ghosts.delete(k);
-                setCell(k, NEUTRAL);
-                return;
-            }
-            setCell(k, v);
+        // 杭を打つ。輪ゴムには触らない。
+        // 置いただけで形に取り込むと、それまでに作った通り道が壊れる。
+        // 広げるのは輪ゴムを引っぱる操作のほう
+        function addPeg(k) {
+            if (pegs.has(k)) return;
+            pegs.add(k);
             const g = ghosts.get(k);
             ghosts.delete(k);
+            // 輪ゴムがまだ無いなら、この杭に巻きつけて始める
+            if (!loops.length) { sides.set(k, IN); return; }
+            sides.set(k, pointInPoly(pegC(k), loops[0]) ? IN : OUT);
             if (!g || !bandContacts) return;
             const m = bandContacts.length;
             const ip = bandContacts.findIndex(ct => ct.k === g.prev);
@@ -358,8 +354,28 @@
             // 崩れていたら普通に解かせたほうが素直
             if (ip < 0 || inx < 0 || (ip + 1) % m !== inx) return;
             bandContacts.splice(ip + 1, 0, { k, s: g.s, c: pegC(k) });
+            sides.set(k, g.s);
         }
 
+        // 杭を抜く。輪ゴムが掛かっていた場所を覚えておく。
+        // 接点の列を持ち越す以上、抜いた杭をただ戻すだけでは元の位置に入らず、
+        // 杭を置いた順序で形が変わってしまう
+        function removePeg(k) {
+            if (!pegs.has(k)) return;
+            const i = bandContacts ? bandContacts.findIndex(ct => ct.k === k) : -1;
+            if (i >= 0 && bandContacts.length > 1) {
+                const m = bandContacts.length;
+                ghosts.set(k, {
+                    prev: bandContacts[(i - 1 + m) % m].k,
+                    next: bandContacts[(i + 1) % m].k,
+                    s: bandContacts[i].s
+                });
+            } else ghosts.delete(k);
+            pegs.delete(k);
+            sides.delete(k);
+        }
+
+        const setPeg = (k, on) => on ? addPeg(k) : removePeg(k);
 
         function convexHull(pts) {
             if (pts.length < 3) return pts.slice();
@@ -504,22 +520,22 @@
         }
 
         function solveBand() {
-            const pegs = [];
-            for (const [k, v] of grid) {
+            const ps = [];
+            for (const k of pegs) {
                 const [i, j] = k.split(',').map(Number);
-                pegs.push({ c: [CX(i), CY(j)], s: v === ON ? 1 : -1, k });
+                ps.push({ c: [CX(i), CY(j)], s: sideOf(k), k });
             }
-            const inside = pegs.filter(p => p.s > 0);
+            const inside = ps.filter(p => p.s > 0);
             if (!inside.length) return null;
             // 杭ひとつなら、その杭に巻きついた輪ゴム＝ただの円
-            if (inside.length === 1 && pegs.length === 1) return [pegs[0]];
+            if (inside.length === 1 && ps.length === 1) return [ps[0]];
 
             // 抱える杭ぜんぶの凸包（左回り）
             const hullSeed = () => {
                 let hull = convexHull(inside.map(p => p.c));
                 if (hull.length > 2 && signedArea(hull) < 0) hull.reverse();
-                const c = hull.map(h => pegs.findIndex(p => p.c[0] === h[0] && p.c[1] === h[1]));
-                return c.length ? c : [pegs.indexOf(inside[0])];
+                const c = hull.map(h => ps.findIndex(p => p.c[0] === h[0] && p.c[1] === h[1]));
+                return c.length ? c : [ps.indexOf(inside[0])];
             };
             // 前回の接点列。毎回ゼロから最短形を探すと、ドラッグで作った経路が
             // 捨てられて別の場所が凹んだ形に化ける。接点の列こそが状態なので、
@@ -528,7 +544,7 @@
                 if (!bandContacts || !bandContacts.length) return null;
                 const seq = [];
                 for (const ct of bandContacts) {
-                    const n = pegs.findIndex(p => p.k === ct.k);
+                    const n = ps.findIndex(p => p.k === ct.k);
                     if (n >= 0 && (!seq.length || seq[seq.length - 1] !== n)) seq.push(n);
                 }
                 if (seq.length > 1 && seq[0] === seq[seq.length - 1]) seq.pop();
@@ -536,7 +552,7 @@
             };
             let cts = prevSeed() || hullSeed();
 
-            const ctOf = i => pegs[i];
+            const ctOf = i => ps[i];
 
             // 接線が杭を突っ切らず、糸どうしも交差していないか。
             // 交差を見ないと、深いスリットを作ったときに二重巻きの線が出る
@@ -562,7 +578,7 @@
                 if (!ls) return false;
                 for (let i = 0; i < list.length; i++) {
                     const j = (i + 1) % list.length;
-                    if (blockedBy(ls[i].pa, ls[i].pb, pegs, list[i], list[j]) >= 0) return false;
+                    if (blockedBy(ls[i].pa, ls[i].pb, ps, list[i], list[j]) >= 0) return false;
                 }
                 for (let i = 0; i < ls.length; i++)
                     for (let j = i + 2; j < ls.length; j++) {
@@ -578,9 +594,9 @@
                 if (!taut(list)) return false;
                 const pts = pathOf(list.map(ctOf));
                 if (!pts) return false;
-                for (let i = 0; i < pegs.length; i++) {
+                for (let i = 0; i < ps.length; i++) {
                     if (list.includes(i)) continue;
-                    if ((pegs[i].s > 0) !== pointInPoly(pegs[i].c, pts)) return false;
+                    if ((ps[i].s > 0) !== pointInPoly(ps[i].c, pts)) return false;
                 }
                 return true;
             }
@@ -595,7 +611,7 @@
                     if (cts.length < 2) break;
                     const L = linkOf(ctOf(cts[i]), ctOf(cts[j]));
                     if (!L) continue;
-                    const hit = blockedBy(L.pa, L.pb, pegs, cts[i], cts[j]);
+                    const hit = blockedBy(L.pa, L.pb, ps, cts[i], cts[j]);
                     if (hit < 0) continue;
                     // すでに接点になっている杭は挿さない。挿すと同じ円に弧が2つできる。
                     // ここで詰まったら列が破綻しているので、凸包からやり直させる
@@ -609,20 +625,20 @@
                 const pts = pathOf(cts.map(ctOf));
                 if (!pts) break;
                 const pending = [];
-                for (let i = 0; i < pegs.length && !changed; i++) {
+                for (let i = 0; i < ps.length && !changed; i++) {
                     if (cts.includes(i)) continue;
-                    if ((pegs[i].s > 0) === pointInPoly(pegs[i].c, pts)) continue;
+                    if ((ps[i].s > 0) === pointInPoly(ps[i].c, pts)) continue;
                     // いちばん近い辺に挿す。伸びの少なさで選ぶと、深く入り込んだ杭が
                     // 遠くの辺に繋がって糸が絡まる。近い辺から順に入れていけば、
                     // 何本もの杭が同じスリットに素直に並ぶ
                     const cand = [];
                     for (let e = 0; e < cts.length; e++) {
                         const a = ctOf(cts[e]), b = ctOf(cts[(e + 1) % cts.length]);
-                        const L1 = linkOf(a, pegs[i]), L2 = linkOf(pegs[i], b);
+                        const L1 = linkOf(a, ps[i]), L2 = linkOf(ps[i], b);
                         if (!L1 || !L2) continue;
                         const L0 = cts.length > 1 ? linkOf(a, b) : null;
                         const near = L0
-                            ? segDist(pegs[i].c[0], pegs[i].c[1],
+                            ? segDist(ps[i].c[0], ps[i].c[1],
                                 [L0.pa[0], L0.pa[1], L0.pb[0], L0.pb[1]])
                             : 0;
                         cand.push({ at: e, add: near });
@@ -648,7 +664,7 @@
                         const a = ctOf(cts[e]), b = ctOf(cts[(e + 1) % cts.length]);
                         const L0 = cts.length > 1 ? linkOf(a, b) : null;
                         if (!L0) continue;
-                        const d = segDist(pegs[i].c[0], pegs[i].c[1],
+                        const d = segDist(ps[i].c[0], ps[i].c[1],
                             [L0.pa[0], L0.pa[1], L0.pb[0], L0.pb[1]]);
                         if (d < best) { best = d; at = e; }
                     }
@@ -685,7 +701,7 @@
             solve();
             // 成立しなければ凸包からやり直す
             if (!clean(cts)) { cts = hullSeed(); solve(); }
-            return cts.map(i => pegs[i]);
+            return cts.map(i => ps[i]);
         }
 
         let bandContacts = null;   // いま張られている輪ゴムの接点列
@@ -695,6 +711,10 @@
             const outer = bandContacts && pathOf(bandContacts);
             if (!outer) { loops = []; bandContacts = null; return; }
             loops = [outer];
+            // 側は輪ゴムの状態。張り直した結果から取り直して、実物とずらさない
+            const on = new Map(bandContacts.map(ct => [ct.k, ct.s]));
+            for (const k of pegs)
+                sides.set(k, on.has(k) ? on.get(k) : (pointInPoly(pegC(k), outer) ? IN : OUT));
         }
 
         // ===== 描画 =========================================================
@@ -762,12 +782,12 @@
             if (outline) {
                 // 糸がどの円に張られているかを見るモード。
                 // 円を実寸で見せて、輪郭は線だけにする
-                for (const [k, v] of (preview ? [] : grid)) {
+                for (const k of (preview ? [] : pegs)) {
                     const [i, j] = k.split(',').map(Number);
                     ctx.beginPath();
                     ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale,
                             cr, 0, Math.PI * 2);
-                    if (v === ON) {
+                    if (sideOf(k) === IN) {
                         ctx.fillStyle = C.peg;
                         ctx.fill();
                     } else {
@@ -786,12 +806,12 @@
                 ctx.stroke(stretched ? polyPath(stretched, scale, ox, oy)
                                      : pathFromLoops(scale, ox, oy));
             } else {
-                // OFF セルは実寸で下敷きに描く。押している円が見える
+                // 外側の杭は実寸で下敷きに描く。輪ゴムが当たる円が見える
                 ctx.fillStyle = C.solidOff;
                 ctx.strokeStyle = C.solidOffLine;
                 ctx.lineWidth = Math.max(1, dpr);
-                for (const [k, v] of (preview ? [] : grid)) {
-                    if (v !== OFF) continue;
+                for (const k of (preview ? [] : pegs)) {
+                    if (sideOf(k) === IN) continue;
                     const [i, j] = k.split(',').map(Number);
                     ctx.beginPath();
                     ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, cr, 0, Math.PI * 2);
@@ -814,17 +834,18 @@
             // 格子が見えないと編集しづらいので、シルエットの上に印を置く
             for (let j = 0; !preview && j < rows; j++) {
                 for (let i = 0; i < cols; i++) {
-                    const v = stateAt(key(i, j));
+                    const k = key(i, j);
+                    const on = hasPeg(k), inside = on && sideOf(k) === IN;
                     const cx = ox + CX(i) * scale, cy = oy + CY(j) * scale;
                     ctx.beginPath();
-                    if (v === OFF) {
-                        // 押し込む円だけリング。ひと目で他と区別がつく
+                    if (on && !inside) {
+                        // 輪ゴムの外に立っている杭だけリング。ひと目で区別がつく
                         ctx.strokeStyle = C.ring;
                         ctx.lineWidth = Math.max(1, dpr);
                         ctx.arc(cx, cy, 3.5 * dpr, 0, Math.PI * 2);
                         ctx.stroke();
                     } else {
-                        ctx.fillStyle = v === ON
+                        ctx.fillStyle = inside
                             ? (outline ? C.ring : C.onDot)
                             : C.dot;
                         ctx.arc(cx, cy, 2.5 * dpr, 0, Math.PI * 2);
@@ -842,7 +863,7 @@
         // 輪ゴムを掴んでドラッグ：跨いだ杭の内外が入れ替わる
         //   （＝輪ゴムをその杭の向こう側へ引っ掛ける／外す）
         const HOLD = 0.34, GRAB = 0.30;
-        let painting = false, paintTo = ON;
+        let painting = false, paintTo = true;
         let dragging = false, startPos = null, dragPos = null;
         let anchorA = null, anchorB = null, anchorKeys = null, origState = null;
         let origSpan = null;   // 掴んだときの、留め具から留め具までの輪郭
@@ -914,8 +935,15 @@
             // 掃いた範囲はこれと V のあいだで測る。留め具を結ぶ直線で測ると、
             // 外へ張り出している杭を内側へ押し出せない
             let sa = -1, sb = -1;
-            for (let i = 0; i < loop.length; i++) if (pathOwner[i] === ia) sa = i;
-            for (let i = 0; i < loop.length; i++) if (pathOwner[i] === ib) { sb = i; break; }
+            if (m === 1) {
+                // 杭ひとつ＝ただの円。留め具が同じ杭なので、掴んだ点のところで
+                // 円を切って、そこから一周を「動かさない側」にする。
+                // 円のどこを掴んでも、その場所から伸びる
+                sa = n; sb = (n + 1) % loop.length;
+            } else {
+                for (let i = 0; i < loop.length; i++) if (pathOwner[i] === ia) sa = i;
+                for (let i = 0; i < loop.length; i++) if (pathOwner[i] === ib) { sb = i; break; }
+            }
             origSpan = [anchorA];
             restPath = [];
             if (sa >= 0 && sb >= 0) {
@@ -934,18 +962,25 @@
         // 反対側を横切って、無関係な杭まで巻き込む
         function applyDrag(pos) {
             const moved = [[pos.x, pos.y]].concat(restPath);
+            // 接点がひとつ＝ただの円。伸ばした輪ゴムは行きと帰りが重なった
+            // 針になっていて、面積が無いので内外では拾えない。
+            // 杭の中心から指までの線が掠めた杭を、引っ掛けたものとして扱う
+            const needle = restSeq.length === 1
+                ? [anchorA[0], anchorA[1], pos.x, pos.y] : null;
             let any = false;
             const next = new Map();
-            for (const [k, v] of origState) {
+            for (const k of pegs) {
                 const [i, j] = k.split(',').map(Number);
-                const nv = anchorKeys.includes(k) ? v
-                    : (pointInPoly([CX(i), CY(j)], moved) ? ON : OFF);
+                const hooked = needle
+                    ? segDist(CX(i), CY(j), needle) < radius
+                    : pointInPoly([CX(i), CY(j)], moved);
+                const nv = anchorKeys.includes(k) ? sideOf(k) : (hooked ? IN : OUT);
                 next.set(k, nv);
-                if (nv === ON) any = true;
+                if (nv === IN) any = true;
             }
             if (!any) return false;                       // 抱える杭が無くなると張れない
             let changed = false;
-            for (const [k, v] of next) if (stateAt(k) !== v) { setCell(k, v); changed = true; }
+            for (const [k, v] of next) if (sideOf(k) !== v) { sides.set(k, v); changed = true; }
             if (!changed) return false;
             // 掃いた杭を、掴んだ辺の位置に順番どおり差し込む。
             // これを伝えないと、ソルバが別の辺に掛けてしまう
@@ -954,7 +989,7 @@
                 if (v === origState.get(k)) continue;
                 if (anchorKeys.indexOf(k) >= 0) continue;
                 const c = pegC(k);
-                swept.push({ k, s: v === ON ? 1 : -1, t: alongDrag(c, pos) });
+                swept.push({ k, s: v, t: alongDrag(c, pos) });
             }
             swept.sort((a, b) => a.t - b.t);
             bandContacts = restSeq.concat(swept.map(x => ({ k: x.k, s: x.s, c: pegC(x.k) })));
@@ -988,7 +1023,7 @@
                 mark();
                 cv.setPointerCapture(e.pointerId);
                 dragging = true; startPos = dragPos = w;
-                origState = new Map(grid);
+                origState = new Map(sides);
                 draw();
                 return;
             }
@@ -996,7 +1031,7 @@
             mark();
             cv.setPointerCapture(e.pointerId);
             painting = true;
-            paintTo = stateAt(k) === NEUTRAL ? ON : NEUTRAL;
+            paintTo = !hasPeg(k);
             setPeg(k, paintTo);
             update();
         });
@@ -1010,7 +1045,7 @@
             }
             if (!painting) return;
             const k = pickCell(w.x, w.y);
-            if (k && stateAt(k) !== paintTo) { setPeg(k, paintTo); update(); }
+            if (k && hasPeg(k) !== paintTo) { setPeg(k, paintTo); update(); }
         });
 
         cv.addEventListener('pointerup', e => {
@@ -1020,7 +1055,7 @@
                 const w = toWorld(e);
                 if (Math.hypot(w.x - startPos.x, w.y - startPos.y) < 0.1 * S) {
                     const k = pickCell(w.x, w.y);
-                    if (k) setPeg(k, stateAt(k) === NEUTRAL ? ON : NEUTRAL);
+                    if (k) setPeg(k, !hasPeg(k));
                 }
             }
             painting = false; dragging = false; origState = null;
@@ -1028,7 +1063,7 @@
             update();
         });
         cv.addEventListener('pointercancel', () => {
-            if (dragging && origState) for (const [k, v] of origState) setCell(k, v);
+            if (dragging && origState) sides = new Map(origState);
             painting = false; dragging = false; origState = null;
             origSpan = restPath = restSeq = null; origSpan = null;
             update();
@@ -1083,9 +1118,9 @@
         function refreshSegs() { colsSel.value = cols; rowsSel.value = rows; }
         function resize(c, r) {
             cols = c; rows = r;
-            for (const k of [...grid.keys()]) {
+            for (const k of [...pegs]) {
                 const [i, j] = k.split(',').map(Number);
-                if (i >= cols || j >= rows) grid.delete(k);
+                if (i >= cols || j >= rows) { pegs.delete(k); sides.delete(k); }
             }
             refreshSegs();
             update();
@@ -1103,15 +1138,15 @@
         function snapshot() {
             return {
                 cols, rows,
-                grid: [...grid],
+                pegs: [...pegs].map(k => [k, sideOf(k)]),
                 band: bandContacts ? bandContacts.map(ct => ({ k: ct.k, s: ct.s })) : null
             };
         }
 
         function applySnapshot(s) {
             cols = s.cols; rows = s.rows;
-            grid.clear();
-            for (const [k, v] of s.grid) grid.set(k, v);
+            pegs.clear(); sides.clear();
+            for (const [k, v] of s.pegs) { pegs.add(k); sides.set(k, v); }
             ghosts.clear();
             bandContacts = s.band && s.band.length
                 ? s.band.map(ct => ({ k: ct.k, s: ct.s, c: pegC(ct.k) })) : null;
@@ -1154,7 +1189,9 @@
             if (e.shiftKey) redo(); else undo();
         });
 
-        document.getElementById('btnClear').onclick = () => { mark(); grid.clear(); ghosts.clear(); update(); };
+        document.getElementById('btnClear').onclick = () => {
+            mark(); pegs.clear(); sides.clear(); ghosts.clear(); update();
+        };
 
         // ===== 書き出し =====================================================
         // プレビューと同じ loops から作る。別計算しない
@@ -1260,7 +1297,7 @@
                     cols, rows,
                     radius: +radiusRange.value,
                     outline, preview, invert,
-                    grid: [...grid],
+                    pegs: [...pegs].map(k => [k, sideOf(k)]),
                     band: bandContacts ? bandContacts.map(ct => ({ k: ct.k, s: ct.s })) : null
                 }));
             } catch (e) { /* 保存できなくても編集は続けられる */ }
@@ -1269,23 +1306,25 @@
         function load() {
             let s = null;
             try { s = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { }
-            if (!s || !Array.isArray(s.grid)) return false;
+            const cells = s && (Array.isArray(s.pegs) ? s.pegs : s.grid);   // grid は旧形式
+            if (!s || !Array.isArray(cells)) return false;
             restoring = true;
             const clamp = (n, d) => Number.isFinite(n) ? Math.min(GRID_MAX, Math.max(GRID_MIN, Math.round(n))) : d;
             cols = clamp(s.cols, cols); rows = clamp(s.rows, rows);
-            grid.clear();
-            for (const e of s.grid) {
+            pegs.clear(); sides.clear();
+            for (const e of cells) {
                 if (!Array.isArray(e)) continue;
                 const [k, v] = e;
                 const [i, j] = String(k).split(',').map(Number);
                 if (!Number.isInteger(i) || !Number.isInteger(j)) continue;
                 if (i < 0 || j < 0 || i >= cols || j >= rows) continue;
-                if (v === ON || v === OFF) grid.set(k, v);
+                pegs.add(k);
+                sides.set(k, v === OUT ? OUT : IN);
             }
             if (Number.isFinite(s.radius)) radiusRange.value = s.radius;
             outline = !!s.outline; preview = !!s.preview; invert = !!s.invert;
             bandContacts = Array.isArray(s.band) && s.band.length
-                ? s.band.filter(ct => grid.has(ct.k)).map(ct => ({ k: ct.k, s: ct.s, c: pegC(ct.k) }))
+                ? s.band.filter(ct => pegs.has(ct.k)).map(ct => ({ k: ct.k, s: ct.s, c: pegC(ct.k) }))
                 : null;
             if (bandContacts && !bandContacts.length) bandContacts = null;
             restoring = false;
