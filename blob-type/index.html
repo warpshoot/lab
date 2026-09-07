@@ -152,6 +152,34 @@
             border-color: rgba(255, 255, 255, 0.4);
         }
 
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 3px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 11px;
+            padding: 6px 24px 6px 10px;
+            cursor: pointer;
+            background-image: linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.45) 50%),
+                              linear-gradient(135deg, rgba(255, 255, 255, 0.45) 50%, transparent 50%);
+            background-position: calc(100% - 13px) 13px, calc(100% - 9px) 13px;
+            background-size: 4px 4px;
+            background-repeat: no-repeat;
+        }
+
+        select option {
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        .times {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.35);
+        }
+
         .seg button.wide {
             width: 64px;
             letter-spacing: 0.08em;
@@ -225,9 +253,7 @@
 
     <div class="panel">
         <div class="row">
-            <label>STYLE</label>
-            <div class="seg" id="styleSeg"></div>
-            <label style="width:auto;margin-left:12px">VIEW</label>
+            <label>VIEW</label>
             <div class="seg" id="viewSeg"></div>
         </div>
         <div class="row">
@@ -241,12 +267,10 @@
             <span class="value" id="gapVal">46</span>
         </div>
         <div class="row">
-            <label>COLS</label>
-            <div class="seg" id="colsSeg"></div>
-        </div>
-        <div class="row">
-            <label>ROWS</label>
-            <div class="seg" id="rowsSeg"></div>
+            <label>GRID</label>
+            <select id="colsSel"></select>
+            <span class="times">&times;</span>
+            <select id="rowsSel"></select>
         </div>
         <div class="actions">
             <button id="btnClear">CLEAR</button>
@@ -271,27 +295,19 @@
         // 重ならない円は隙間を囲めないので、押し込みの合間に取り残された島は
         // 発生しない。糸の内側に完全に入った杭は、そのまま真円の穴になる。
         const S = 1;
-        const THRESHOLD = 1.0;
-        const RES = 12;          // セル間隔あたりのサンプル数
-        const MARGIN = 1;        // サンプリング領域の余白（セル）
-        // BLOB（メタボール）用
-        const BLOB_MIN = 0.30, BLOB_MAX = 0.54;
-        const FADE_IN = 1.5;     // ここから寄与を落とし始める（セル単位）
-        const FADE_OUT = 2.1;    // ここで寄与ゼロ
-        // EDGE（糸）用。杭間隔の半分に対する割合
         const EDGE_MIN = 0.30, EDGE_MAX = 0.97;   // 1.0 ちょうどは杭が接して糸の通り道が消える
         // 格子の縦横比（行間 ÷ 列間）。面積は保つので、行間を広げると列間が詰まる
         const GAP_MIN = 0.55, GAP_MAX = 1.80;
+        const GRID_MIN = 3, GRID_MAX = 10;
 
         const ON = 1, OFF = -1, NEUTRAL = 0;
 
         let cols = 4, rows = 5;
         let grid = new Map();    // "i,j" -> ON | OFF。持っていないセルは NEUTRAL
-        let mode = 'edge';       // 'edge' | 'blob'
         let radius = 0.55;
         let gap = 1;             // 格子の縦横比
         let sx = 1, sy = 1;      // 列間・行間。sx * sy = 1 に保つ
-        let outline = false;     // 輪郭線だけ表示するモード
+        let outline = true;      // 輪郭線だけ表示するモード
         let loops = [];          // 張り直したポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
@@ -301,8 +317,6 @@
         const CY = j => j * sy;
         function setCell(k, v) { if (v === NEUTRAL) grid.delete(k); else grid.set(k, v); }
 
-        let PUSH = [];   // OFF 円の中心 [[x, y], ...]
-        let ONC = [];    // ON 円の中心 [[x, y], ...]
 
         function convexHull(pts) {
             if (pts.length < 3) return pts.slice();
@@ -321,14 +335,6 @@
             return hull.length ? hull : p.slice(0, 2);
         }
 
-        function build() {
-            ONC = []; PUSH = [];
-            for (const [k, v] of grid) {
-                const [i, j] = k.split(',').map(Number);
-                (v === ON ? ONC : PUSH).push([CX(i), CY(j)]);
-            }
-        }
-
         // 点 (x, y) から線分 p までの距離
         function segDist(x, y, p) {
             const vx = p[2] - p[0], vy = p[3] - p[1];
@@ -338,134 +344,6 @@
             t = t < 0 ? 0 : t > 1 ? 1 : t;
             const dx = wx - t * vx, dy = wy - t * vy;
             return Math.sqrt(dx * dx + dy * dy);
-        }
-
-        // ===== スカラー場 =================================================
-        // 内側は f >= THRESHOLD。両モードとも同じ閾値に揃えてある
-        // BLOB スタイル専用。EDGE は等値線を使わない
-        function field(x, y) {
-            {
-                let sum = 0;
-                for (let n = 0; n < ONC.length; n++) {
-                    const dx = x - ONC[n][0], dy = y - ONC[n][1];
-                    const d2 = dx * dx + dy * dy;
-                    if (d2 < 1e-9) return 1e9;
-                    const d = Math.sqrt(d2);
-                    if (d >= FADE_OUT) continue;
-                    let w = 1;
-                    if (d > FADE_IN) {
-                        // 裾を滑らかに殺す。ハードクリップだと等値線にカクが出る
-                        const t = (d - FADE_IN) / (FADE_OUT - FADE_IN);
-                        w = 1 - t * t * (3 - 2 * t);
-                    }
-                    sum += (radius / d) * (radius / d) * w;
-                }
-                return sum;
-            }
-        }
-
-        // ===== マーチングスクエア =========================================
-        // 交点は格子辺そのものに乗るので、辺ID で頂点を同一視する。
-        // 浮動小数の座標をキーにすると繋ぎ損ねるため。
-        function contour() {
-            build();
-            if (!ONC.length) return [];
-
-            const x0 = -MARGIN, y0 = -MARGIN;
-            const step = S / RES;
-            const nx = Math.ceil(((cols - 1) * sx + MARGIN * 2) / step);
-            const ny = Math.ceil(((rows - 1) * sy + MARGIN * 2) / step);
-            const px = i => x0 + i * step;
-            const py = j => y0 + j * step;
-
-            const v = new Float32Array((nx + 1) * (ny + 1));
-            for (let j = 0; j <= ny; j++)
-                for (let i = 0; i <= nx; i++)
-                    v[j * (nx + 1) + i] = field(px(i), py(j));
-            const val = (i, j) => v[j * (nx + 1) + i];
-
-            const pos = new Map();   // 辺ID -> [x, y]
-            const adj = new Map();   // 辺ID -> [辺ID, ...]
-            const lerp = (a, b) => (THRESHOLD - a) / (b - a);
-
-            function hEdge(i, j) {           // (i,j)-(i+1,j)
-                const id = 'h' + i + '_' + j;
-                if (!pos.has(id)) pos.set(id, [px(i) + lerp(val(i, j), val(i + 1, j)) * step, py(j)]);
-                return id;
-            }
-            function vEdge(i, j) {           // (i,j)-(i,j+1)
-                const id = 'v' + i + '_' + j;
-                if (!pos.has(id)) pos.set(id, [px(i), py(j) + lerp(val(i, j), val(i, j + 1)) * step]);
-                return id;
-            }
-            function link(a, b) {
-                if (!adj.has(a)) adj.set(a, []);
-                if (!adj.has(b)) adj.set(b, []);
-                adj.get(a).push(b);
-                adj.get(b).push(a);
-            }
-
-            for (let j = 0; j < ny; j++) {
-                for (let i = 0; i < nx; i++) {
-                    const tl = val(i, j) >= THRESHOLD, tr = val(i + 1, j) >= THRESHOLD;
-                    const br = val(i + 1, j + 1) >= THRESHOLD, bl = val(i, j + 1) >= THRESHOLD;
-                    const c = (tl ? 8 : 0) | (tr ? 4 : 0) | (br ? 2 : 0) | (bl ? 1 : 0);
-                    if (c === 0 || c === 15) continue;
-                    const T = () => hEdge(i, j), B = () => hEdge(i, j + 1);
-                    const L = () => vEdge(i, j), R = () => vEdge(i + 1, j);
-                    switch (c) {
-                        case 1: case 14: link(L(), B()); break;
-                        case 2: case 13: link(B(), R()); break;
-                        case 3: case 12: link(L(), R()); break;
-                        case 4: case 11: link(T(), R()); break;
-                        case 6: case 9: link(T(), B()); break;
-                        case 7: case 8: link(L(), T()); break;
-                        case 5: case 10: {
-                            // 曖昧ケース。セル中心の場の値で接続を決める
-                            const center = field(px(i) + step / 2, py(j) + step / 2) >= THRESHOLD;
-                            // TL/BR 側を切り落とすか、TR/BL 側を切り落とすか
-                            const cutTLBR = (c === 5) ? center : !center;
-                            if (cutTLBR) { link(L(), T()); link(B(), R()); }
-                            else { link(T(), R()); link(L(), B()); }
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // 辺IDは必ず2本のセグメントに共有される（＝次数2）ので素直に閉ループになる
-            const seen = new Set();
-            const out = [];
-            for (const start of adj.keys()) {
-                if (seen.has(start)) continue;
-                const loop = [];
-                let cur = start, prev = null;
-                while (cur !== undefined && !seen.has(cur)) {
-                    seen.add(cur);
-                    loop.push(pos.get(cur));
-                    const ns = adj.get(cur);
-                    const next = ns.find(n => n !== prev && !seen.has(n));
-                    prev = cur;
-                    cur = next;
-                }
-                if (loop.length > 2) out.push(loop);
-            }
-            return out;
-        }
-
-        // ===== Chaikin =====================================================
-        function chaikin(loop, times) {
-            let p = loop;
-            for (let t = 0; t < times; t++) {
-                const q = [];
-                for (let i = 0; i < p.length; i++) {
-                    const a = p[i], b = p[(i + 1) % p.length];
-                    q.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25]);
-                    q.push([a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
-                }
-                p = q;
-            }
-            return p;
         }
 
         function signedArea(loop) {
@@ -749,12 +627,6 @@
         let bandContacts = null;   // いま張られている輪ゴムの接点列
 
         function rebuild() {
-            if (mode === 'blob') {
-                loops = contour().map(l => chaikin(l, 2))
-                    .filter(l => Math.abs(signedArea(l)) > 2e-3);
-                return;
-            }
-            build();
             bandContacts = solveBand();
             const outer = bandContacts && pathOf(bandContacts);
             if (!outer) { loops = []; bandContacts = null; return; }
@@ -808,7 +680,7 @@
             ctx.fillStyle = '#fff';
             ctx.fillRect(0, 0, cv.width, cv.height);
 
-            const cr = (mode === 'edge' ? radius : 0.4 * S) * scale;
+            const cr = radius * scale;
             // ドラッグ中は、張り直したあとの形ではなく、いま指で伸ばしている形を出す。
             // 張り直した形だけを見せると、掴んだ辺が指について来ないので
             // 別の辺が動いたように見える
@@ -925,7 +797,7 @@
 
         // 輪ゴムまでの距離
         function bandDist(x, y) {
-            if (mode !== 'edge' || !loops.length) return Infinity;
+            if (!loops.length) return Infinity;
             const e = [0, 0, 0, 0];
             let d = Infinity;
             for (const loop of loops)
@@ -1103,9 +975,7 @@
             const t = weight.value / 1000;
             // 杭は重ならない。半径の上限は最小の杭間隔の半分で、
             // そこに達すると隣の杭とちょうど接する
-            radius = mode === 'blob'
-                ? BLOB_MIN + (BLOB_MAX - BLOB_MIN) * t
-                : Math.min(sx, sy) * 0.5 * (EDGE_MIN + (EDGE_MAX - EDGE_MIN) * t);
+            radius = Math.min(sx, sy) * 0.5 * (EDGE_MIN + (EDGE_MAX - EDGE_MIN) * t);
             weightVal.textContent = Math.round(t * 100);
         }
         for (const el of [weight, gapEl])
@@ -1114,7 +984,7 @@
         const viewSeg = document.getElementById('viewSeg');
         function refreshView() {
             viewSeg.innerHTML = '';
-            for (const [v, label] of [[false, 'SOLID'], [true, 'LINE']]) {
+            for (const [v, label] of [[true, 'LINE'], [false, 'SOLID']]) {
                 const b = document.createElement('button');
                 b.textContent = label;
                 b.className = 'wide' + (v === outline ? ' on' : '');
@@ -1123,34 +993,13 @@
             }
         }
 
-        const styleSeg = document.getElementById('styleSeg');
-        function refreshStyle() {
-            styleSeg.innerHTML = '';
-            for (const m of ['edge', 'blob']) {
-                const b = document.createElement('button');
-                b.textContent = m.toUpperCase();
-                b.className = 'wide' + (m === mode ? ' on' : '');
-                b.onclick = () => { mode = m; refreshStyle(); readSliders(); update(); };
-                styleSeg.appendChild(b);
-            }
-        }
-
-        function buildSeg(el, min, max, get, set) {
-            el.innerHTML = '';
-            for (let n = min; n <= max; n++) {
-                const b = document.createElement('button');
-                b.textContent = n;
-                b.className = n === get() ? 'on' : '';
-                b.onclick = () => { set(n); };
-                el.appendChild(b);
-            }
-        }
-        const colsSeg = document.getElementById('colsSeg');
-        const rowsSeg = document.getElementById('rowsSeg');
-        function refreshSegs() {
-            buildSeg(colsSeg, 3, 8, () => cols, n => { resize(n, rows); });
-            buildSeg(rowsSeg, 3, 8, () => rows, n => { resize(cols, n); });
-        }
+        const colsSel = document.getElementById('colsSel');
+        const rowsSel = document.getElementById('rowsSel');
+        for (const el of [colsSel, rowsSel])
+            for (let n = GRID_MIN; n <= GRID_MAX; n++) el.appendChild(new Option(n, n));
+        colsSel.onchange = () => resize(+colsSel.value, rows);
+        rowsSel.onchange = () => resize(cols, +rowsSel.value);
+        function refreshSegs() { colsSel.value = cols; rowsSel.value = rows; }
         function resize(c, r) {
             cols = c; rows = r;
             for (const k of [...grid.keys()]) {
@@ -1254,7 +1103,6 @@
         ['1,1', '3,1', '1,2', '3,2'].forEach(k => setCell(k, OFF));
 
         refreshSegs();
-        refreshStyle();
         refreshView();
         readSliders();
         update();
