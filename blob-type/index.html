@@ -152,8 +152,41 @@
             border-color: rgba(255, 255, 255, 0.4);
         }
 
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 3px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 11px;
+            padding: 6px 24px 6px 10px;
+            cursor: pointer;
+            background-image: linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.45) 50%),
+                              linear-gradient(135deg, rgba(255, 255, 255, 0.45) 50%, transparent 50%);
+            background-position: calc(100% - 13px) 13px, calc(100% - 9px) 13px;
+            background-size: 4px 4px;
+            background-repeat: no-repeat;
+        }
+
+        select option {
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        .times {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.35);
+        }
+
         .seg button.wide {
             width: 64px;
+            letter-spacing: 0.08em;
+        }
+
+        .seg button.wider {
+            width: 88px;
             letter-spacing: 0.08em;
         }
 
@@ -225,10 +258,12 @@
 
     <div class="panel">
         <div class="row">
-            <label>STYLE</label>
-            <div class="seg" id="styleSeg"></div>
-            <label style="width:auto;margin-left:12px">VIEW</label>
+            <label>VIEW</label>
             <div class="seg" id="viewSeg"></div>
+        </div>
+        <div class="row">
+            <label></label>
+            <div class="seg" id="toggleSeg"></div>
         </div>
         <div class="row">
             <label>WEIGHT</label>
@@ -236,15 +271,10 @@
             <span class="value" id="weightVal">86</span>
         </div>
         <div class="row">
-            <label>GAP</label>
-            <input type="range" id="gap" min="0" max="1000" value="460">
-            <span class="value" id="gapVal">46</span>
-        </div>
-        <div class="row">
-            <label>COLS</label>
-            <div class="seg" id="colsSeg"></div>
-            <label style="width:auto;margin-left:12px">ROWS</label>
-            <div class="seg" id="rowsSeg"></div>
+            <label>GRID</label>
+            <select id="colsSel"></select>
+            <span class="times">&times;</span>
+            <select id="rowsSel"></select>
         </div>
         <div class="actions">
             <button id="btnClear">CLEAR</button>
@@ -269,38 +299,26 @@
         // 重ならない円は隙間を囲めないので、押し込みの合間に取り残された島は
         // 発生しない。糸の内側に完全に入った杭は、そのまま真円の穴になる。
         const S = 1;
-        const THRESHOLD = 1.0;
-        const RES = 12;          // セル間隔あたりのサンプル数
-        const MARGIN = 1;        // サンプリング領域の余白（セル）
-        // BLOB（メタボール）用
-        const BLOB_MIN = 0.30, BLOB_MAX = 0.54;
-        const FADE_IN = 1.5;     // ここから寄与を落とし始める（セル単位）
-        const FADE_OUT = 2.1;    // ここで寄与ゼロ
-        // EDGE（糸）用。杭間隔の半分に対する割合
         const EDGE_MIN = 0.30, EDGE_MAX = 0.97;   // 1.0 ちょうどは杭が接して糸の通り道が消える
-        // 格子の縦横比（行間 ÷ 列間）。面積は保つので、行間を広げると列間が詰まる
-        const GAP_MIN = 0.55, GAP_MAX = 1.80;
+        const GRID_MIN = 3, GRID_MAX = 10;
 
         const ON = 1, OFF = -1, NEUTRAL = 0;
 
         let cols = 4, rows = 5;
         let grid = new Map();    // "i,j" -> ON | OFF。持っていないセルは NEUTRAL
-        let mode = 'edge';       // 'edge' | 'blob'
         let radius = 0.55;
-        let gap = 1;             // 格子の縦横比
-        let sx = 1, sy = 1;      // 列間・行間。sx * sy = 1 に保つ
-        let outline = false;     // 輪郭線だけ表示するモード
+        let outline = true;      // 輪郭線だけ表示するモード
+        let preview = false;     // 編集用の表示を全部消して、書き出しと同じ絵にする
+        let invert = false;      // 白黒反転
         let loops = [];          // 張り直したポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
         const stateAt = k => grid.get(k) || NEUTRAL;
         // 格子の座標。行間だけ可変
-        const CX = i => i * sx;
-        const CY = j => j * sy;
+        const CX = i => i * S;
+        const CY = j => j * S;
         function setCell(k, v) { if (v === NEUTRAL) grid.delete(k); else grid.set(k, v); }
 
-        let PUSH = [];   // OFF 円の中心 [[x, y], ...]
-        let ONC = [];    // ON 円の中心 [[x, y], ...]
 
         function convexHull(pts) {
             if (pts.length < 3) return pts.slice();
@@ -319,14 +337,6 @@
             return hull.length ? hull : p.slice(0, 2);
         }
 
-        function build() {
-            ONC = []; PUSH = [];
-            for (const [k, v] of grid) {
-                const [i, j] = k.split(',').map(Number);
-                (v === ON ? ONC : PUSH).push([CX(i), CY(j)]);
-            }
-        }
-
         // 点 (x, y) から線分 p までの距離
         function segDist(x, y, p) {
             const vx = p[2] - p[0], vy = p[3] - p[1];
@@ -336,134 +346,6 @@
             t = t < 0 ? 0 : t > 1 ? 1 : t;
             const dx = wx - t * vx, dy = wy - t * vy;
             return Math.sqrt(dx * dx + dy * dy);
-        }
-
-        // ===== スカラー場 =================================================
-        // 内側は f >= THRESHOLD。両モードとも同じ閾値に揃えてある
-        // BLOB スタイル専用。EDGE は等値線を使わない
-        function field(x, y) {
-            {
-                let sum = 0;
-                for (let n = 0; n < ONC.length; n++) {
-                    const dx = x - ONC[n][0], dy = y - ONC[n][1];
-                    const d2 = dx * dx + dy * dy;
-                    if (d2 < 1e-9) return 1e9;
-                    const d = Math.sqrt(d2);
-                    if (d >= FADE_OUT) continue;
-                    let w = 1;
-                    if (d > FADE_IN) {
-                        // 裾を滑らかに殺す。ハードクリップだと等値線にカクが出る
-                        const t = (d - FADE_IN) / (FADE_OUT - FADE_IN);
-                        w = 1 - t * t * (3 - 2 * t);
-                    }
-                    sum += (radius / d) * (radius / d) * w;
-                }
-                return sum;
-            }
-        }
-
-        // ===== マーチングスクエア =========================================
-        // 交点は格子辺そのものに乗るので、辺ID で頂点を同一視する。
-        // 浮動小数の座標をキーにすると繋ぎ損ねるため。
-        function contour() {
-            build();
-            if (!ONC.length) return [];
-
-            const x0 = -MARGIN, y0 = -MARGIN;
-            const step = S / RES;
-            const nx = Math.ceil(((cols - 1) * sx + MARGIN * 2) / step);
-            const ny = Math.ceil(((rows - 1) * sy + MARGIN * 2) / step);
-            const px = i => x0 + i * step;
-            const py = j => y0 + j * step;
-
-            const v = new Float32Array((nx + 1) * (ny + 1));
-            for (let j = 0; j <= ny; j++)
-                for (let i = 0; i <= nx; i++)
-                    v[j * (nx + 1) + i] = field(px(i), py(j));
-            const val = (i, j) => v[j * (nx + 1) + i];
-
-            const pos = new Map();   // 辺ID -> [x, y]
-            const adj = new Map();   // 辺ID -> [辺ID, ...]
-            const lerp = (a, b) => (THRESHOLD - a) / (b - a);
-
-            function hEdge(i, j) {           // (i,j)-(i+1,j)
-                const id = 'h' + i + '_' + j;
-                if (!pos.has(id)) pos.set(id, [px(i) + lerp(val(i, j), val(i + 1, j)) * step, py(j)]);
-                return id;
-            }
-            function vEdge(i, j) {           // (i,j)-(i,j+1)
-                const id = 'v' + i + '_' + j;
-                if (!pos.has(id)) pos.set(id, [px(i), py(j) + lerp(val(i, j), val(i, j + 1)) * step]);
-                return id;
-            }
-            function link(a, b) {
-                if (!adj.has(a)) adj.set(a, []);
-                if (!adj.has(b)) adj.set(b, []);
-                adj.get(a).push(b);
-                adj.get(b).push(a);
-            }
-
-            for (let j = 0; j < ny; j++) {
-                for (let i = 0; i < nx; i++) {
-                    const tl = val(i, j) >= THRESHOLD, tr = val(i + 1, j) >= THRESHOLD;
-                    const br = val(i + 1, j + 1) >= THRESHOLD, bl = val(i, j + 1) >= THRESHOLD;
-                    const c = (tl ? 8 : 0) | (tr ? 4 : 0) | (br ? 2 : 0) | (bl ? 1 : 0);
-                    if (c === 0 || c === 15) continue;
-                    const T = () => hEdge(i, j), B = () => hEdge(i, j + 1);
-                    const L = () => vEdge(i, j), R = () => vEdge(i + 1, j);
-                    switch (c) {
-                        case 1: case 14: link(L(), B()); break;
-                        case 2: case 13: link(B(), R()); break;
-                        case 3: case 12: link(L(), R()); break;
-                        case 4: case 11: link(T(), R()); break;
-                        case 6: case 9: link(T(), B()); break;
-                        case 7: case 8: link(L(), T()); break;
-                        case 5: case 10: {
-                            // 曖昧ケース。セル中心の場の値で接続を決める
-                            const center = field(px(i) + step / 2, py(j) + step / 2) >= THRESHOLD;
-                            // TL/BR 側を切り落とすか、TR/BL 側を切り落とすか
-                            const cutTLBR = (c === 5) ? center : !center;
-                            if (cutTLBR) { link(L(), T()); link(B(), R()); }
-                            else { link(T(), R()); link(L(), B()); }
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // 辺IDは必ず2本のセグメントに共有される（＝次数2）ので素直に閉ループになる
-            const seen = new Set();
-            const out = [];
-            for (const start of adj.keys()) {
-                if (seen.has(start)) continue;
-                const loop = [];
-                let cur = start, prev = null;
-                while (cur !== undefined && !seen.has(cur)) {
-                    seen.add(cur);
-                    loop.push(pos.get(cur));
-                    const ns = adj.get(cur);
-                    const next = ns.find(n => n !== prev && !seen.has(n));
-                    prev = cur;
-                    cur = next;
-                }
-                if (loop.length > 2) out.push(loop);
-            }
-            return out;
-        }
-
-        // ===== Chaikin =====================================================
-        function chaikin(loop, times) {
-            let p = loop;
-            for (let t = 0; t < times; t++) {
-                const q = [];
-                for (let i = 0; i < p.length; i++) {
-                    const a = p[i], b = p[(i + 1) % p.length];
-                    q.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25]);
-                    q.push([a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
-                }
-                p = q;
-            }
-            return p;
         }
 
         function signedArea(loop) {
@@ -747,12 +629,6 @@
         let bandContacts = null;   // いま張られている輪ゴムの接点列
 
         function rebuild() {
-            if (mode === 'blob') {
-                loops = contour().map(l => chaikin(l, 2))
-                    .filter(l => Math.abs(signedArea(l)) > 2e-3);
-                return;
-            }
-            build();
             bandContacts = solveBand();
             const outer = bandContacts && pathOf(bandContacts);
             if (!outer) { loops = []; bandContacts = null; return; }
@@ -765,14 +641,10 @@
 
         function view() {
             // グリッド外形＋余白 0.8 セル。プレビューと SVG で同じ枠を使う。
-            // 枠は縦横比がいちばん伸びたときに合わせて固定する。現在の外形で
-            // 取ると、縦が横を追い越したところで基準が入れ替わり、
-            // スライダを一方向に動かしているのに拡大率が反転する
             const pad = 0.8;
-            const w = (cols - 1) * sx + pad * 2;
-            const h = (rows - 1) * sy + pad * 2;
-            const side = Math.max((cols - 1) / Math.sqrt(GAP_MIN),
-                                  (rows - 1) * Math.sqrt(GAP_MAX)) + pad * 2;
+            const w = (cols - 1) * S + pad * 2;
+            const h = (rows - 1) * S + pad * 2;
+            const side = Math.max(w, h);
             return { x: -pad - (side - w) / 2, y: -pad - (side - h) / 2, size: side };
         }
 
@@ -803,10 +675,22 @@
             const scale = cv.width / vb.size;
             const ox = -vb.x * scale, oy = -vb.y * scale;
 
-            ctx.fillStyle = '#fff';
+            // 白黒反転。編集用の表示もまとめて入れ替える
+            const C = invert ? {
+                paper: '#000', ink: '#fff',
+                peg: '#262626', off: '#050505', offLine: '#303030',
+                solidOff: '#141414', solidOffLine: '#242424',
+                onDot: 'rgba(0,0,0,0.3)', dot: 'rgba(255,255,255,0.28)', ring: 'rgba(255,255,255,0.4)'
+            } : {
+                paper: '#fff', ink: '#000',
+                peg: '#e6e6e6', off: '#fafafa', offLine: '#cfcfcf',
+                solidOff: '#efefef', solidOffLine: '#e0e0e0',
+                onDot: 'rgba(255,255,255,0.24)', dot: 'rgba(0,0,0,0.2)', ring: 'rgba(0,0,0,0.28)'
+            };
+            ctx.fillStyle = C.paper;
             ctx.fillRect(0, 0, cv.width, cv.height);
 
-            const cr = (mode === 'edge' ? radius : 0.4 * S) * scale;
+            const cr = radius * scale;
             // ドラッグ中は、張り直したあとの形ではなく、いま指で伸ばしている形を出す。
             // 張り直した形だけを見せると、掴んだ辺が指について来ないので
             // 別の辺が動いたように見える
@@ -816,35 +700,35 @@
             if (outline) {
                 // 糸がどの円に張られているかを見るモード。
                 // 円を実寸で見せて、輪郭は線だけにする
-                for (const [k, v] of grid) {
+                for (const [k, v] of (preview ? [] : grid)) {
                     const [i, j] = k.split(',').map(Number);
                     ctx.beginPath();
                     ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale,
                             cr, 0, Math.PI * 2);
                     if (v === ON) {
-                        ctx.fillStyle = '#e6e6e6';
+                        ctx.fillStyle = C.peg;
                         ctx.fill();
                     } else {
                         // 内側から押している円は塗らずに破線で
-                        ctx.fillStyle = '#fafafa';
+                        ctx.fillStyle = C.off;
                         ctx.fill();
-                        ctx.strokeStyle = '#cfcfcf';
+                        ctx.strokeStyle = C.offLine;
                         ctx.lineWidth = Math.max(1, dpr);
                         ctx.setLineDash([4 * dpr, 3 * dpr]);
                         ctx.stroke();
                         ctx.setLineDash([]);
                     }
                 }
-                ctx.strokeStyle = '#e03131';
+                ctx.strokeStyle = C.ink;
                 ctx.lineWidth = 1.6 * dpr;
                 ctx.stroke(stretched ? polyPath(stretched, scale, ox, oy)
                                      : pathFromLoops(scale, ox, oy));
             } else {
                 // OFF セルは実寸で下敷きに描く。押している円が見える
-                ctx.fillStyle = '#efefef';
-                ctx.strokeStyle = '#e0e0e0';
+                ctx.fillStyle = C.solidOff;
+                ctx.strokeStyle = C.solidOffLine;
                 ctx.lineWidth = Math.max(1, dpr);
-                for (const [k, v] of grid) {
+                for (const [k, v] of (preview ? [] : grid)) {
                     if (v !== OFF) continue;
                     const [i, j] = k.split(',').map(Number);
                     ctx.beginPath();
@@ -852,13 +736,13 @@
                     ctx.fill();
                     ctx.stroke();
                 }
-                ctx.fillStyle = '#000';
+                ctx.fillStyle = C.ink;
                 ctx.fill(stretched ? polyPath(stretched, scale, ox, oy)
                                    : pathFromLoops(scale, ox, oy), 'evenodd');
             }
 
             // 掴んでいる点
-            if (dragging && dragPos) {
+            if (dragging && dragPos && !preview) {
                 ctx.fillStyle = 'rgba(220,60,60,0.9)';
                 ctx.beginPath();
                 ctx.arc(ox + dragPos.x * scale, oy + dragPos.y * scale, 4 * dpr, 0, Math.PI * 2);
@@ -866,21 +750,21 @@
             }
 
             // 格子が見えないと編集しづらいので、シルエットの上に印を置く
-            for (let j = 0; j < rows; j++) {
+            for (let j = 0; !preview && j < rows; j++) {
                 for (let i = 0; i < cols; i++) {
                     const v = stateAt(key(i, j));
                     const cx = ox + CX(i) * scale, cy = oy + CY(j) * scale;
                     ctx.beginPath();
                     if (v === OFF) {
                         // 押し込む円だけリング。ひと目で他と区別がつく
-                        ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+                        ctx.strokeStyle = C.ring;
                         ctx.lineWidth = Math.max(1, dpr);
                         ctx.arc(cx, cy, 3.5 * dpr, 0, Math.PI * 2);
                         ctx.stroke();
                     } else {
                         ctx.fillStyle = v === ON
-                            ? (outline ? 'rgba(0,0,0,0.30)' : 'rgba(255,255,255,0.24)')
-                            : 'rgba(0,0,0,0.2)';
+                            ? (outline ? C.ring : C.onDot)
+                            : C.dot;
                         ctx.arc(cx, cy, 2.5 * dpr, 0, Math.PI * 2);
                         ctx.fill();
                     }
@@ -913,7 +797,7 @@
         }
 
         function pickCell(x, y) {
-            const i = Math.round(x / sx), j = Math.round(y / sy);
+            const i = Math.round(x / S), j = Math.round(y / S);
             if (i < 0 || j < 0 || i >= cols || j >= rows) return null;
             if (Math.hypot(x - CX(i), y - CY(j)) > HOLD * S) return null;
             return key(i, j);
@@ -923,7 +807,7 @@
 
         // 輪ゴムまでの距離
         function bandDist(x, y) {
-            if (mode !== 'edge' || !loops.length) return Infinity;
+            if (!loops.length) return Infinity;
             const e = [0, 0, 0, 0];
             let d = Infinity;
             for (const loop of loops)
@@ -1089,30 +973,35 @@
         // ===== コントロール =================================================
         const weight = document.getElementById('weight');
         const weightVal = document.getElementById('weightVal');
-        const gapEl = document.getElementById('gap');
-        const gapValEl = document.getElementById('gapVal');
 
         function readSliders() {
-            const g = gapEl.value / 1000;
-            gap = GAP_MIN + (GAP_MAX - GAP_MIN) * g;
-            sx = S / Math.sqrt(gap);
-            sy = S * Math.sqrt(gap);
-            gapValEl.textContent = Math.round(g * 100);
             const t = weight.value / 1000;
             // 杭は重ならない。半径の上限は最小の杭間隔の半分で、
             // そこに達すると隣の杭とちょうど接する
-            radius = mode === 'blob'
-                ? BLOB_MIN + (BLOB_MAX - BLOB_MIN) * t
-                : Math.min(sx, sy) * 0.5 * (EDGE_MIN + (EDGE_MAX - EDGE_MIN) * t);
+            // 杭は重ならない。半径の上限は杭間隔の半分
+            radius = S * 0.5 * (EDGE_MIN + (EDGE_MAX - EDGE_MIN) * t);
             weightVal.textContent = Math.round(t * 100);
         }
-        for (const el of [weight, gapEl])
-            el.addEventListener('input', () => { readSliders(); update(); });
+        weight.addEventListener('input', () => { readSliders(); update(); });
+
+        const toggleSeg = document.getElementById('toggleSeg');
+        function refreshPreview() {
+            toggleSeg.innerHTML = '';
+            for (const t of [
+                { label: 'PREVIEW', get: () => preview, set: v => preview = v },
+                { label: 'INVERT', get: () => invert, set: v => invert = v }]) {
+                const b = document.createElement('button');
+                b.textContent = t.label;
+                b.className = 'wider' + (t.get() ? ' on' : '');
+                b.onclick = () => { t.set(!t.get()); refreshPreview(); draw(); };
+                toggleSeg.appendChild(b);
+            }
+        }
 
         const viewSeg = document.getElementById('viewSeg');
         function refreshView() {
             viewSeg.innerHTML = '';
-            for (const [v, label] of [[false, 'SOLID'], [true, 'LINE']]) {
+            for (const [v, label] of [[true, 'LINE'], [false, 'SOLID']]) {
                 const b = document.createElement('button');
                 b.textContent = label;
                 b.className = 'wide' + (v === outline ? ' on' : '');
@@ -1121,34 +1010,13 @@
             }
         }
 
-        const styleSeg = document.getElementById('styleSeg');
-        function refreshStyle() {
-            styleSeg.innerHTML = '';
-            for (const m of ['edge', 'blob']) {
-                const b = document.createElement('button');
-                b.textContent = m.toUpperCase();
-                b.className = 'wide' + (m === mode ? ' on' : '');
-                b.onclick = () => { mode = m; refreshStyle(); readSliders(); update(); };
-                styleSeg.appendChild(b);
-            }
-        }
-
-        function buildSeg(el, min, max, get, set) {
-            el.innerHTML = '';
-            for (let n = min; n <= max; n++) {
-                const b = document.createElement('button');
-                b.textContent = n;
-                b.className = n === get() ? 'on' : '';
-                b.onclick = () => { set(n); };
-                el.appendChild(b);
-            }
-        }
-        const colsSeg = document.getElementById('colsSeg');
-        const rowsSeg = document.getElementById('rowsSeg');
-        function refreshSegs() {
-            buildSeg(colsSeg, 3, 6, () => cols, n => { resize(n, rows); });
-            buildSeg(rowsSeg, 4, 7, () => rows, n => { resize(cols, n); });
-        }
+        const colsSel = document.getElementById('colsSel');
+        const rowsSel = document.getElementById('rowsSel');
+        for (const el of [colsSel, rowsSel])
+            for (let n = GRID_MIN; n <= GRID_MAX; n++) el.appendChild(new Option(n, n));
+        colsSel.onchange = () => resize(+colsSel.value, rows);
+        rowsSel.onchange = () => resize(cols, +rowsSel.value);
+        function refreshSegs() { colsSel.value = cols; rowsSel.value = rows; }
         function resize(c, r) {
             cols = c; rows = r;
             for (const k of [...grid.keys()]) {
@@ -1171,12 +1039,17 @@
             ).join('');
             const size = (vb.size * K).toFixed(2);
             // プレビューと同じ見え方で出す
+            const ink = invert ? '#fff' : '#000';
             const paint = outline
-                ? 'fill="none" stroke="#e03131" stroke-width="' + (1.6 / 540 * vb.size * K).toFixed(2) + '"'
-                : 'fill="#000" fill-rule="evenodd"';
+                ? 'fill="none" stroke="' + ink + '" stroke-width="' + (1.6 / 540 * vb.size * K).toFixed(2) + '"'
+                : 'fill="' + ink + '" fill-rule="evenodd"';
+            // 反転しているときは、白い図形が見えるように背景を敷く
+            const bg = invert
+                ? '  <rect x="' + (vb.x * K).toFixed(2) + '" y="' + (vb.y * K).toFixed(2) +
+                  '" width="' + size + '" height="' + size + '" fill="#000"/>\n' : '';
             return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' +
                 (vb.x * K).toFixed(2) + ' ' + (vb.y * K).toFixed(2) + ' ' + size + ' ' + size +
-                '" width="' + size + '" height="' + size + '">\n' +
+                '" width="' + size + '" height="' + size + '">\n' + bg +
                 '  <path d="' + d + '" ' + paint + '/>\n</svg>\n';
         }
 
@@ -1225,7 +1098,7 @@
             const c = document.createElement('canvas');
             c.width = c.height = px;
             const g = c.getContext('2d');
-            g.fillStyle = '#fff';
+            g.fillStyle = invert ? '#000' : '#fff';
             g.fillRect(0, 0, px, px);
             const scale = px / vb.size;
             const p = new Path2D();
@@ -1234,12 +1107,13 @@
                 for (let i = 1; i < l.length; i++) p.lineTo((l[i][0] - vb.x) * scale, (l[i][1] - vb.y) * scale);
                 p.closePath();
             }
+            const ink = invert ? '#fff' : '#000';
             if (outline) {
-                g.strokeStyle = '#e03131';
+                g.strokeStyle = ink;
                 g.lineWidth = px / 540 * 1.6;
                 g.stroke(p);
             } else {
-                g.fillStyle = '#000';
+                g.fillStyle = ink;
                 g.fill(p, 'evenodd');
             }
             c.toBlob(b => download(b, 'blob-type.png'), 'image/png');
@@ -1252,8 +1126,8 @@
         ['1,1', '3,1', '1,2', '3,2'].forEach(k => setCell(k, OFF));
 
         refreshSegs();
-        refreshStyle();
         refreshView();
+        refreshPreview();
         readSliders();
         update();
         window.addEventListener('resize', draw);
