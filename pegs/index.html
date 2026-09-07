@@ -297,8 +297,11 @@
             <button id="btnClear">CLEAR</button>
             <button id="btnCopy">COPY SVG</button>
             <button id="btnSvg">SVG</button>
-            <button id="btnPng" class="span2">PNG</button>
+            <button id="btnPng">PNG</button>
+            <button id="btnExport">EXPORT</button>
+            <button id="btnImport" class="span2">IMPORT</button>
         </div>
+        <input type="file" id="fileImport" accept=".json,application/json" hidden>
     </div>
 
     <div class="toast" id="toast"></div>
@@ -1390,31 +1393,31 @@
 
         // ===== 保存 =========================================================
         // PNG や SVG を開いて戻ってくると読み込み直しになる端末があるので、
-        // 編集中の状態はそのつど置いておく。
-        // 接点の列も形を決める状態なので、杭といっしょに持つ
+        // 編集中の状態はそのつど localStorage に置いておく。
+        // それとは別に、盤面ごとファイルに書き出して取っておいたり、
+        // 人に渡したり、あとで読み込み直したりもできるようにする。
+        // どちらも同じ形の状態オブジェクトを使う
         const STORE = 'pegs:state';
+        const FILE_VERSION = 1;
         let restoring = false;
 
-        function save() {
-            if (restoring) return;
-            try {
-                localStorage.setItem(STORE, JSON.stringify({
-                    cols, rows,
-                    radius: +radiusRange.value,
-                    outline, preview, invert,
-                    pegs: [...pegs],
-                    active,
-                    bands: bands.map(b => ({
-                        c: b.contacts.map(ct => ({ k: ct.k, s: ct.s })),
-                        sd: [...b.sides]
-                    }))
-                }));
-            } catch (e) { /* 保存できなくても編集は続けられる */ }
+        // 接点の列も形を決める状態なので、杭といっしょに持つ
+        function snapshotState() {
+            return {
+                v: FILE_VERSION,
+                cols, rows,
+                radius: +radiusRange.value,
+                outline, preview, invert,
+                pegs: [...pegs],
+                active,
+                bands: bands.map(b => ({
+                    c: b.contacts.map(ct => ({ k: ct.k, s: ct.s })),
+                    sd: [...b.sides]
+                }))
+            };
         }
 
-        function load() {
-            let s = null;
-            try { s = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { }
+        function applyState(s) {
             const cells = s && (Array.isArray(s.pegs) ? s.pegs : s.grid);   // grid は旧形式
             if (!s || !Array.isArray(cells)) return false;
             restoring = true;
@@ -1453,6 +1456,43 @@
             restoring = false;
             return true;
         }
+
+        function save() {
+            if (restoring) return;
+            try { localStorage.setItem(STORE, JSON.stringify(snapshotState())); }
+            catch (e) { /* 保存できなくても編集は続けられる */ }
+        }
+
+        function load() {
+            let s = null;
+            try { s = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { }
+            return applyState(s);
+        }
+
+        // 盤面をファイルへ書き出し／ファイルから読み込む。バグ報告用にも、
+        // 作った形をただ取っておくためにも使える
+        document.getElementById('btnExport').onclick = () => {
+            const text = JSON.stringify(snapshotState(), null, 2);
+            download(new Blob([text], { type: 'application/json' }), 'pegs.json');
+        };
+
+        const fileImport = document.getElementById('fileImport');
+        document.getElementById('btnImport').onclick = () => fileImport.click();
+        fileImport.addEventListener('change', async () => {
+            const file = fileImport.files[0];
+            fileImport.value = '';   // 同じファイルを続けて選んでも change が発火するように
+            if (!file) return;
+            let s = null;
+            try { s = JSON.parse(await file.text()); } catch (e) { return toast('読めない形式'); }
+            const cells = s && (Array.isArray(s.pegs) ? s.pegs : s.grid);
+            if (!Array.isArray(cells)) return toast('読めない形式');
+            mark();
+            applyState(s);
+            refreshSegs(); refreshView(); refreshPreview(); readSliders();
+            refreshBands(true);
+            update();
+            toast('IMPORTED');
+        });
 
         // ===== 初期状態 =====================================================
         // 前回の続きがあれば拾う。無ければ空の盤面から始める
