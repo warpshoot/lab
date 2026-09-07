@@ -704,10 +704,9 @@
                 if (!changed) break;
             }
             };
-            // 最終的な輪郭が自分と交差していないか。
+            // 輪郭が自分と交差していないか。
             // 二重に巻いた列は、側の判定（内外）をすり抜けてしまう
-            const clean = list => {
-                if (!valid(list)) return false;
+            const simple = list => {
                 const pts = pathOf(list.map(ctOf));
                 if (!pts) return false;
                 const n = pts.length;
@@ -718,9 +717,14 @@
                     }
                 return true;
             };
+            const clean = list => valid(list) && simple(list);
             solve();
             // 成立しなければ凸包からやり直す
             if (!clean(cts)) { cts = hullSeed(); solve(); }
+            // それでも交差する形になったら、挿し込み無しの生の凸包まで戻す。
+            // 重ならない円の凸包は必ず単純な形になるので、ここを最後の砦にして、
+            // 自己交差した輪郭を絶対に画面へ出さない（OFF 杭の押し込みは諦める）
+            if (!simple(cts)) cts = hullSeed();
             return cts.map(i => ps[i]);
         }
 
@@ -899,6 +903,10 @@
         //   （＝輪ゴムをその杭の向こう側へ引っ掛ける／外す）
         const HOLD = 0.34, GRAB = 0.30;
         let dragging = false, startPos = null, dragPos = null;
+        // ドラッグ中に途中でスクロールバーが出るなどしてキャンバスの表示サイズが
+        // 変わると、指の位置から世界座標への換算が掴んだ瞬間とズレて、
+        // 輪ゴムが思わぬ形に化ける。ドラッグ中はこの換算を固定する
+        let dragRect = null, dragVB = null;
         let anchorA = null, anchorB = null, anchorKeys = null, origState = null;
         let tapKey = null;        // 押した杭。指が動かずに離れたときだけ効く
         let holdTimer = null;     // 長押しの計測。杭を押さえたままで新しい輪ゴム
@@ -910,8 +918,8 @@
         // 伸ばした輪ゴムは「ポインタ＋動いていない側」で作れる
 
         function toWorld(ev) {
-            const rect = cv.getBoundingClientRect();
-            const vb = view();
+            const rect = dragging && dragRect ? dragRect : cv.getBoundingClientRect();
+            const vb = dragging && dragVB ? dragVB : view();
             const scale = rect.width / vb.size;
             return { x: (ev.clientX - rect.left) / scale + vb.x, y: (ev.clientY - rect.top) / scale + vb.y };
         }
@@ -1067,6 +1075,7 @@
             if (db < GRAB * S && db < dk && grabAnchors(w.x, w.y)) {
                 mark();
                 cv.setPointerCapture(e.pointerId);
+                dragRect = cv.getBoundingClientRect(); dragVB = view();
                 dragging = true; startPos = dragPos = w;
                 origState = new Map(cur().sides);
                 draw();
@@ -1110,14 +1119,14 @@
                 setPeg(tapKey, !hasPeg(tapKey));
             }
             tapKey = null; dragging = false; origState = null;
-            origSpan = restPath = restSeq = null;
+            origSpan = restPath = restSeq = null; dragRect = dragVB = null;
             update();
         });
         cv.addEventListener('pointercancel', () => {
             clearTimeout(holdTimer); holdTimer = null;
             if (dragging && origState && cur()) cur().sides = new Map(origState);
             tapKey = null; dragging = false; origState = null;
-            origSpan = restPath = restSeq = null;
+            origSpan = restPath = restSeq = null; dragRect = dragVB = null;
             update();
         });
 
