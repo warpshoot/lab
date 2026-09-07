@@ -387,11 +387,13 @@
                 const i = b.contacts ? b.contacts.findIndex(ct => ct.k === k) : -1;
                 if (i >= 0 && b.contacts.length > 1) {
                     const m = b.contacts.length;
-                    b.ghosts.set(k, {
-                        prev: b.contacts[(i - 1 + m) % m].k,
-                        next: b.contacts[(i + 1) % m].k,
-                        s: b.contacts[i].s
-                    });
+                    const prev = b.contacts[(i - 1 + m) % m].k;
+                    const next = b.contacts[(i + 1) % m].k;
+                    b.ghosts.set(k, { prev, next, s: b.contacts[i].s });
+                    // 抜いた接点の跡地。ここは輪ゴムが閉じて掃く辺なので、
+                    // 飲み込まれた杭を押し出し直すときの行き先になる。
+                    // 次に解いたら使い切る一度きりの手がかり
+                    (b.gaps || (b.gaps = [])).push([prev, next]);
                 } else b.ghosts.delete(k);
                 b.sides.delete(k);
             }
@@ -575,6 +577,12 @@
             };
             let cts = prevSeed() || hullSeed();
 
+            // 抜いた杭の跡地（閉じたばかりの辺）と、そのときの輪郭。
+            // 手がかりは一度きりなので、ここで使い切る
+            const gaps = band.gaps || [];
+            band.gaps = [];
+            const wasOutside = c => !band.loop || !pointInPoly(c, band.loop);
+
             const ctOf = i => ps[i];
 
             // 接線が杭を突っ切らず、糸どうしも交差していないか。
@@ -654,6 +662,10 @@
                     // いちばん近い辺に挿す。伸びの少なさで選ぶと、深く入り込んだ杭が
                     // 遠くの辺に繋がって糸が絡まる。近い辺から順に入れていけば、
                     // 何本もの杭が同じスリットに素直に並ぶ
+                    // 外にいた杭が内側に入ってしまったのは、隙間が閉じて
+                    // 掃かれたから。そのときは跡地の辺へ戻すのが素直で、
+                    // 距離だけで選ぶと遠くの辺に深いスリットが生える
+                    const swept = gaps.length > 0 && wasOutside(ps[i].c);
                     const cand = [];
                     for (let e = 0; e < cts.length; e++) {
                         const a = ctOf(cts[e]), b = ctOf(cts[(e + 1) % cts.length]);
@@ -664,9 +676,11 @@
                             ? segDist(ps[i].c[0], ps[i].c[1],
                                 [L0.pa[0], L0.pa[1], L0.pb[0], L0.pb[1]])
                             : 0;
-                        cand.push({ at: e, add: near });
+                        const gap = swept && gaps.some(g =>
+                            (g[0] === a.k && g[1] === b.k) || (g[0] === b.k && g[1] === a.k));
+                        cand.push({ at: e, add: near, gap });
                     }
-                    cand.sort((x, y) => x.add - y.add);
+                    cand.sort((x, y) => x.gap === y.gap ? x.add - y.add : (x.gap ? -1 : 1));
                     // 近い順に見て、糸が交差しない位置に入れる。
                     // どこに入れても交差するなら、この杭は後回しにする。
                     // 先に別の杭が入って形が変われば、素直に入る場所ができる
