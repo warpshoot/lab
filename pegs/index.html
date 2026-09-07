@@ -859,13 +859,13 @@
         function update() { rebuild(); draw(); save(); }
 
         // ===== 入力 =========================================================
-        // タップ：杭を打つ／抜く。ドラッグで連続して打てる
+        // タップ：杭を打つ／抜く。1タップ1本。指を滑らせたぶんは効かない
         // 輪ゴムを掴んでドラッグ：跨いだ杭の内外が入れ替わる
         //   （＝輪ゴムをその杭の向こう側へ引っ掛ける／外す）
         const HOLD = 0.34, GRAB = 0.30;
-        let painting = false, paintTo = true;
         let dragging = false, startPos = null, dragPos = null;
         let anchorA = null, anchorB = null, anchorKeys = null, origState = null;
+        let tapKey = null;        // 押した杭。指が動かずに離れたときだけ効く
         let origSpan = null;   // 掴んだときの、留め具から留め具までの輪郭
         let restPath = null;   // 掴んでいない側の輪郭。ここは動かない
         let restSeq = null;    // 掴んでいない側の接点列。掃いた杭はこの後ろに入る
@@ -1028,12 +1028,10 @@
                 return;
             }
             if (!k) return;
-            mark();
+            // ここでは打たない。滑らせただけで杭が入れ替わると、
+            // 輪ゴムを掴み損ねたときに盤面が荒れる
             cv.setPointerCapture(e.pointerId);
-            painting = true;
-            paintTo = !hasPeg(k);
-            setPeg(k, paintTo);
-            update();
+            tapKey = k; startPos = w;
         });
 
         cv.addEventListener('pointermove', e => {
@@ -1041,31 +1039,31 @@
             if (dragging) {
                 dragPos = w;
                 if (applyDrag(w)) update(); else draw();
-                return;
             }
-            if (!painting) return;
-            const k = pickCell(w.x, w.y);
-            if (k && hasPeg(k) !== paintTo) { setPeg(k, paintTo); update(); }
         });
 
         cv.addEventListener('pointerup', e => {
             // 輪ゴムを掴んだまま動かさなかったら、その場のタップとして扱う。
             // 輪ゴムが掛かっている杭も抜けるようにするため
+            const w = toWorld(e);
+            const still = startPos && Math.hypot(w.x - startPos.x, w.y - startPos.y) < 0.2 * S;
             if (dragging) {
-                const w = toWorld(e);
-                if (Math.hypot(w.x - startPos.x, w.y - startPos.y) < 0.1 * S) {
+                if (still) {
                     const k = pickCell(w.x, w.y);
                     if (k) setPeg(k, !hasPeg(k));
                 }
+            } else if (tapKey && still && pickCell(w.x, w.y) === tapKey) {
+                mark();
+                setPeg(tapKey, !hasPeg(tapKey));
             }
-            painting = false; dragging = false; origState = null;
+            tapKey = null; dragging = false; origState = null;
             origSpan = restPath = restSeq = null;
             update();
         });
         cv.addEventListener('pointercancel', () => {
             if (dragging && origState) sides = new Map(origState);
-            painting = false; dragging = false; origState = null;
-            origSpan = restPath = restSeq = null; origSpan = null;
+            tapKey = null; dragging = false; origState = null;
+            origSpan = restPath = restSeq = null;
             update();
         });
 
