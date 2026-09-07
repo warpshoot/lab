@@ -190,6 +190,13 @@
             letter-spacing: 0.08em;
         }
 
+        /* 4つ並ぶので、中身に合わせて詰める */
+        .seg button.slim {
+            width: auto;
+            padding: 0 9px;
+            letter-spacing: 0.06em;
+        }
+
         .seg button.on {
             background: #fff;
             border-color: #fff;
@@ -276,6 +283,10 @@
             <div class="seg" id="viewSeg"></div>
         </div>
         <div class="row">
+            <label>COMBINE</label>
+            <div class="seg" id="combineSeg"></div>
+        </div>
+        <div class="row">
             <label></label>
             <div class="seg" id="toggleSeg"></div>
         </div>
@@ -337,6 +348,11 @@
         let outline = true;      // 輪郭線だけ表示するモード
         let preview = false;     // 編集用の表示を全部消して、書き出しと同じ絵にする
         let invert = false;      // 白黒反転
+        // 輪ゴムが重なったときの塗りの決め方。パスファインダーと同じ4つ。
+        // 塗り規則と巻き方向だけで出せるので、書き出しも同じ結果になる。
+        // 効くのは塗り（SOLID）だけ。LINE は輪ゴムそのものを見るための表示なので、
+        // 合成せずに1本ずつ輪郭を描く
+        let combine = 'xor';     // 'unite' | 'minus' | 'cross' | 'xor'
         let loops = [];          // 張り直したポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
@@ -833,15 +849,72 @@
         }
 
         // 引っぱっている最中は、アクティブな輪ゴムだけ伸ばした形に差し替える
+        // いま見えている輪郭。引っぱっている最中はアクティブなぶんを伸ばした形に差し替える
+        function shownLoops(stretched) {
+            return loops.map((l, n) => (stretched && n === active) ? stretched : l);
+        }
+
+        function addLoop(p, l, scale, ox, oy, flip) {
+            const n = l.length;
+            for (let i = 0; i < n; i++) {
+                const q = l[flip ? n - 1 - i : i];
+                if (i === 0) p.moveTo(ox + q[0] * scale, oy + q[1] * scale);
+                else p.lineTo(ox + q[0] * scale, oy + q[1] * scale);
+            }
+            p.closePath();
+        }
+
         function pathFromLoops(scale, ox, oy, stretched) {
             const p = new Path2D();
-            for (let n = 0; n < loops.length; n++) {
-                const l = (stretched && n === active) ? stretched : loops[n];
-                p.moveTo(ox + l[0][0] * scale, oy + l[0][1] * scale);
-                for (let i = 1; i < l.length; i++) p.lineTo(ox + l[i][0] * scale, oy + l[i][1] * scale);
-                p.closePath();
+            for (const l of shownLoops(stretched)) addLoop(p, l, scale, ox, oy, false);
+            return p;
+        }
+
+        // UNITE は巻き方向を揃えれば nonzero がそのまま合成になる
+        function unitePath(ls, scale, ox, oy) {
+            const p = new Path2D();
+            const ref = signedArea(ls[0]) >= 0 ? 1 : -1;
+            for (const l of ls) {
+                const sign = signedArea(l) >= 0 ? 1 : -1;
+                addLoop(p, l, scale, ox, oy, ref !== sign);
             }
             return p;
+        }
+
+        // 塗りつぶし。
+        // CROSS は重ねてクリップ、MINUS は「その形の外側」へクリップしてから塗る。
+        // MINUS を巻き方向でやると、はみ出した部分が nonzero で塗られてしまう
+        function fillShape(scale, ox, oy, stretched) {
+            const ls = shownLoops(stretched);
+            if (!ls.length) return;
+            if (combine === 'xor' || ls.length === 1) {
+                ctx.fill(pathFromLoops(scale, ox, oy, stretched), 'evenodd');
+                return;
+            }
+            if (combine === 'unite') {
+                ctx.fill(unitePath(ls, scale, ox, oy), 'nonzero');
+                return;
+            }
+            ctx.save();
+            if (combine === 'cross') {
+                for (const l of ls) {
+                    const p = new Path2D();
+                    addLoop(p, l, scale, ox, oy, false);
+                    ctx.clip(p);
+                }
+                ctx.fillRect(0, 0, cv.width, cv.height);
+            } else {   // minus: BAND 1 から他を抜く
+                for (let n = 1; n < ls.length; n++) {
+                    const p = new Path2D();
+                    p.rect(0, 0, cv.width, cv.height);
+                    addLoop(p, ls[n], scale, ox, oy, false);
+                    ctx.clip(p, 'evenodd');   // 矩形＋形 の evenodd ＝ 形の外側
+                }
+                const p0 = new Path2D();
+                addLoop(p0, ls[0], scale, ox, oy, false);
+                ctx.fill(p0);
+            }
+            ctx.restore();
         }
 
         function draw() {
@@ -922,7 +995,7 @@
                     ctx.stroke();
                 }
                 ctx.fillStyle = C.ink;
-                ctx.fill(pathFromLoops(scale, ox, oy, stretched), 'evenodd');
+                fillShape(scale, ox, oy, stretched);
             }
 
             // 掴んでいる点
@@ -1271,6 +1344,19 @@
             update();
         };
 
+        const combineSeg = document.getElementById('combineSeg');
+        function refreshCombine() {
+            combineSeg.innerHTML = '';
+            for (const [v, label] of [['unite', 'UNITE'], ['minus', 'MINUS'],
+                                      ['cross', 'CROSS'], ['xor', 'XOR']]) {
+                const b = document.createElement('button');
+                b.textContent = label;
+                b.className = 'slim' + (v === combine ? ' on' : '');
+                b.onclick = () => { combine = v; refreshCombine(); draw(); save(); };
+                combineSeg.appendChild(b);
+            }
+        }
+
         const colsSel = document.getElementById('colsSel');
         const rowsSel = document.getElementById('rowsSel');
         for (const el of [colsSel, rowsSel])
@@ -1366,23 +1452,57 @@
         function svgText() {
             const vb = view();
             const K = 100;
-            const d = loops.map(l =>
-                'M' + l.map(p => (p[0] * K).toFixed(2) + ' ' + (p[1] * K).toFixed(2)).join('L') + 'Z'
-            ).join('');
+            const sub = (l, flip) => {
+                const n = l.length, out = [];
+                for (let i = 0; i < n; i++) {
+                    const q = l[flip ? n - 1 - i : i];
+                    out.push((q[0] * K).toFixed(2) + ' ' + (q[1] * K).toFixed(2));
+                }
+                return 'M' + out.join('L') + 'Z';
+            };
             const size = (vb.size * K).toFixed(2);
-            // プレビューと同じ見え方で出す
             const ink = invert ? '#fff' : '#000';
-            const paint = outline
-                ? 'fill="none" stroke="' + ink + '" stroke-width="' + (1.6 / 540 * vb.size * K).toFixed(2) + '"'
-                : 'fill="' + ink + '" fill-rule="evenodd"';
             // 反転しているときは、白い図形が見えるように背景を敷く
             const bg = invert
                 ? '  <rect x="' + (vb.x * K).toFixed(2) + '" y="' + (vb.y * K).toFixed(2) +
                   '" width="' + size + '" height="' + size + '" fill="#000"/>\n' : '';
-            return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' +
+            const head = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' +
                 (vb.x * K).toFixed(2) + ' ' + (vb.y * K).toFixed(2) + ' ' + size + ' ' + size +
-                '" width="' + size + '" height="' + size + '">\n' + bg +
-                '  <path d="' + d + '" ' + paint + '/>\n</svg>\n';
+                '" width="' + size + '" height="' + size + '">\n' + bg;
+
+            // LINE は輪ゴムそのものを見る表示なので、合成せずに1本ずつ描く
+            if (outline) {
+                const d = loops.map(l => sub(l, false)).join('');
+                return head + '  <path d="' + d + '" fill="none" stroke="' + ink +
+                    '" stroke-width="' + (1.6 / 540 * vb.size * K).toFixed(2) + '"/>\n</svg>\n';
+            }
+            if (!loops.length) return head + '  <path d="" fill="' + ink + '"/>\n</svg>\n';
+            if (combine === 'xor' || loops.length === 1) {
+                const d = loops.map(l => sub(l, false)).join('');
+                return head + '  <path d="' + d + '" fill="' + ink + '" fill-rule="evenodd"/>\n</svg>\n';
+            }
+            if (combine === 'unite') {
+                // 巻き方向を揃えれば nonzero がそのまま合成になる
+                const refSign = signedArea(loops[0]) >= 0 ? 1 : -1;
+                const d = loops.map(l =>
+                    sub(l, refSign !== (signedArea(l) >= 0 ? 1 : -1))).join('');
+                return head + '  <path d="' + d + '" fill="' + ink + '" fill-rule="nonzero"/>\n</svg>\n';
+            }
+            // CROSS と MINUS は塗り規則では書けないので clipPath を入れ子にする。
+            // MINUS は「枠＋抜く形」を evenodd で切ると、その形の外側になる
+            const box = 'M' + [[vb.x, vb.y], [vb.x + vb.size, vb.y],
+                               [vb.x + vb.size, vb.y + vb.size], [vb.x, vb.y + vb.size]]
+                .map(q => (q[0] * K).toFixed(2) + ' ' + (q[1] * K).toFixed(2)).join('L') + 'Z';
+            let defs = '', ref = '';
+            for (let n = 1; n < loops.length; n++) {
+                const d = combine === 'cross' ? sub(loops[n], false) : box + sub(loops[n], false);
+                defs += '    <clipPath id="c' + n + '"' + (ref ? ' clip-path="' + ref + '"' : '') +
+                    '>\n      <path d="' + d + '" clip-rule="evenodd"/>\n    </clipPath>\n';
+                ref = 'url(#c' + n + ')';
+            }
+            return head + '  <defs>\n' + defs + '  </defs>\n' +
+                '  <path d="' + sub(loops[0], false) + '" fill="' + ink +
+                '" clip-path="' + ref + '"/>\n</svg>\n';
         }
 
         function toast(msg) {
@@ -1467,7 +1587,7 @@
                 v: FILE_VERSION,
                 cols, rows,
                 radius: +radiusRange.value,
-                outline, preview, invert,
+                outline, preview, invert, combine,
                 pegs: [...pegs],
                 active,
                 bands: bands.map(b => ({
@@ -1497,6 +1617,7 @@
             }
             if (Number.isFinite(s.radius)) radiusRange.value = s.radius;
             outline = !!s.outline; preview = !!s.preview; invert = !!s.invert;
+            combine = ['unite', 'minus', 'cross', 'xor'].includes(s.combine) ? s.combine : 'xor';
 
             const src = Array.isArray(s.bands) ? s.bands
                 : (Array.isArray(s.band) && s.band.length ? [{ c: s.band, sd: [...oldSide] }] : []);
@@ -1548,7 +1669,7 @@
             if (!Array.isArray(cells)) return toast('読めない形式');
             mark();
             applyState(s);
-            refreshSegs(); refreshView(); refreshPreview(); readSliders();
+            refreshSegs(); refreshView(); refreshPreview(); refreshCombine(); readSliders();
             refreshBands(true);
             update();
             toast('IMPORTED');
@@ -1561,6 +1682,7 @@
         refreshSegs();
         refreshUndo();
         refreshView();
+        refreshCombine();
         refreshPreview();
         readSliders();
         update();
