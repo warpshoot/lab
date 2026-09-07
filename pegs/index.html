@@ -223,6 +223,12 @@
             background: rgba(255, 255, 255, 0.18);
         }
 
+        .actions button:disabled {
+            opacity: 0.3;
+            cursor: default;
+            background: transparent;
+        }
+
         .toast {
             position: fixed;
             left: 50%;
@@ -277,6 +283,8 @@
             <select id="rowsSel"></select>
         </div>
         <div class="actions">
+            <button id="btnUndo">UNDO</button>
+            <button id="btnRedo">REDO</button>
             <button id="btnClear">CLEAR</button>
             <button id="btnCopy">COPY SVG</button>
             <button id="btnSvg">SVG</button>
@@ -977,6 +985,7 @@
             const db = bandDist(w.x, w.y);
             const dk = k ? Math.hypot(w.x - CX(+k.split(',')[0]), w.y - CY(+k.split(',')[1])) : Infinity;
             if (db < GRAB * S && db < dk && grabAnchors(w.x, w.y)) {
+                mark();
                 cv.setPointerCapture(e.pointerId);
                 dragging = true; startPos = dragPos = w;
                 origState = new Map(grid);
@@ -984,6 +993,7 @@
                 return;
             }
             if (!k) return;
+            mark();
             cv.setPointerCapture(e.pointerId);
             painting = true;
             paintTo = stateAt(k) === NEUTRAL ? ON : NEUTRAL;
@@ -1068,8 +1078,8 @@
         const rowsSel = document.getElementById('rowsSel');
         for (const el of [colsSel, rowsSel])
             for (let n = GRID_MIN; n <= GRID_MAX; n++) el.appendChild(new Option(n, n));
-        colsSel.onchange = () => resize(+colsSel.value, rows);
-        rowsSel.onchange = () => resize(cols, +rowsSel.value);
+        colsSel.onchange = () => { mark(); resize(+colsSel.value, rows); };
+        rowsSel.onchange = () => { mark(); resize(cols, +rowsSel.value); };
         function refreshSegs() { colsSel.value = cols; rowsSel.value = rows; }
         function resize(c, r) {
             cols = c; rows = r;
@@ -1081,7 +1091,70 @@
             update();
         }
 
-        document.getElementById('btnClear').onclick = () => { grid.clear(); ghosts.clear(); update(); };
+        // ===== アンドゥ =====================================================
+        // 状態は杭の配置と輪ゴムの接点列。どちらもただの配列なので、
+        // 操作の直前にまるごと控えておけば戻せる。
+        // 輪ゴムは接点列から張り直すので、戻したときに別の形にはならない
+        const UNDO_MAX = 60;
+        const undoStack = [], redoStack = [];
+        const btnUndo = document.getElementById('btnUndo');
+        const btnRedo = document.getElementById('btnRedo');
+
+        function snapshot() {
+            return {
+                cols, rows,
+                grid: [...grid],
+                band: bandContacts ? bandContacts.map(ct => ({ k: ct.k, s: ct.s })) : null
+            };
+        }
+
+        function applySnapshot(s) {
+            cols = s.cols; rows = s.rows;
+            grid.clear();
+            for (const [k, v] of s.grid) grid.set(k, v);
+            ghosts.clear();
+            bandContacts = s.band && s.band.length
+                ? s.band.map(ct => ({ k: ct.k, s: ct.s, c: pegC(ct.k) })) : null;
+            refreshSegs();
+            update();
+        }
+
+        function refreshUndo() {
+            btnUndo.disabled = !undoStack.length;
+            btnRedo.disabled = !redoStack.length;
+        }
+
+        // 操作を始める前に呼ぶ。ドラッグ1回＝1手なので、掴んだ時点で1枚
+        function mark() {
+            undoStack.push(snapshot());
+            if (undoStack.length > UNDO_MAX) undoStack.shift();
+            redoStack.length = 0;
+            refreshUndo();
+        }
+
+        function undo() {
+            if (!undoStack.length) return;
+            redoStack.push(snapshot());
+            applySnapshot(undoStack.pop());
+            refreshUndo();
+        }
+
+        function redo() {
+            if (!redoStack.length) return;
+            undoStack.push(snapshot());
+            applySnapshot(redoStack.pop());
+            refreshUndo();
+        }
+
+        btnUndo.onclick = undo;
+        btnRedo.onclick = redo;
+        window.addEventListener('keydown', e => {
+            if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return;
+            e.preventDefault();
+            if (e.shiftKey) redo(); else undo();
+        });
+
+        document.getElementById('btnClear').onclick = () => { mark(); grid.clear(); ghosts.clear(); update(); };
 
         // ===== 書き出し =====================================================
         // プレビューと同じ loops から作る。別計算しない
@@ -1224,6 +1297,7 @@
         load();
 
         refreshSegs();
+        refreshUndo();
         refreshView();
         refreshPreview();
         readSliders();
