@@ -827,7 +827,7 @@
         }
 
 
-        function update() { rebuild(); draw(); }
+        function update() { rebuild(); draw(); save(); }
 
         // ===== 入力 =========================================================
         // タップ：杭を打つ／抜く。ドラッグで連続して打てる
@@ -1047,7 +1047,7 @@
                 const b = document.createElement('button');
                 b.textContent = t.label;
                 b.className = 'wider' + (t.get() ? ' on' : '');
-                b.onclick = () => { t.set(!t.get()); refreshPreview(); draw(); };
+                b.onclick = () => { t.set(!t.get()); refreshPreview(); draw(); save(); };
                 toggleSeg.appendChild(b);
             }
         }
@@ -1059,7 +1059,7 @@
                 const b = document.createElement('button');
                 b.textContent = label;
                 b.className = 'wide' + (v === outline ? ' on' : '');
-                b.onclick = () => { outline = v; refreshView(); draw(); };
+                b.onclick = () => { outline = v; refreshView(); draw(); save(); };
                 viewSeg.appendChild(b);
             }
         }
@@ -1173,11 +1173,55 @@
             c.toBlob(b => download(b, 'blob-type.png'), 'image/png');
         };
 
+        // ===== 保存 =========================================================
+        // PNG や SVG を開いて戻ってくると読み込み直しになる端末があるので、
+        // 編集中の状態はそのつど置いておく。
+        // 接点の列も形を決める状態なので、杭といっしょに持つ
+        const STORE = 'blob-type:state';
+        let restoring = false;
+
+        function save() {
+            if (restoring) return;
+            try {
+                localStorage.setItem(STORE, JSON.stringify({
+                    cols, rows,
+                    weight: +weight.value,
+                    outline, preview, invert,
+                    grid: [...grid],
+                    band: bandContacts ? bandContacts.map(ct => ({ k: ct.k, s: ct.s })) : null
+                }));
+            } catch (e) { /* 保存できなくても編集は続けられる */ }
+        }
+
+        function load() {
+            let s = null;
+            try { s = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { }
+            if (!s || !Array.isArray(s.grid)) return false;
+            restoring = true;
+            const clamp = (n, d) => Number.isFinite(n) ? Math.min(GRID_MAX, Math.max(GRID_MIN, Math.round(n))) : d;
+            cols = clamp(s.cols, cols); rows = clamp(s.rows, rows);
+            grid.clear();
+            for (const e of s.grid) {
+                if (!Array.isArray(e)) continue;
+                const [k, v] = e;
+                const [i, j] = String(k).split(',').map(Number);
+                if (!Number.isInteger(i) || !Number.isInteger(j)) continue;
+                if (i < 0 || j < 0 || i >= cols || j >= rows) continue;
+                if (v === ON || v === OFF) grid.set(k, v);
+            }
+            if (Number.isFinite(s.weight)) weight.value = s.weight;
+            outline = !!s.outline; preview = !!s.preview; invert = !!s.invert;
+            bandContacts = Array.isArray(s.band) && s.band.length
+                ? s.band.filter(ct => grid.has(ct.k)).map(ct => ({ k: ct.k, s: ct.s, c: pegC(ct.k) }))
+                : null;
+            if (bandContacts && !bandContacts.length) bandContacts = null;
+            restoring = false;
+            return true;
+        }
+
         // ===== 初期状態 =====================================================
-        // 起動時のかたち。バーと縦棒の杭を輪ゴムで囲み、両脇から押し込んである
-        cols = 5; rows = 4;
-        ['0,3', '1,3', '2,3', '3,3', '4,3', '2,0', '2,1', '2,2'].forEach(k => setCell(k, ON));
-        ['1,1', '3,1', '1,2', '3,2'].forEach(k => setCell(k, OFF));
+        // 前回の続きがあれば拾う。無ければ空の盤面から始める
+        load();
 
         refreshSegs();
         refreshView();
@@ -1185,6 +1229,8 @@
         readSliders();
         update();
         window.addEventListener('resize', draw);
+        window.addEventListener('pagehide', save);
+        document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
     </script>
 </body>
 
