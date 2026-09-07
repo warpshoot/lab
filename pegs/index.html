@@ -598,7 +598,10 @@
                 return out;
             }
 
-            function taut(list) {
+            // lax: すでに接点になっている杭に当たるのを見逃す。
+            // 挿し直しようがない当たり方なので、最終的に受け入れるかの判断でだけ緩める。
+            // 接点を外す判断（張力で外れる）まで緩めると、余計な杭を手放す
+            function taut(list, lax) {
                 // 同じ杭が2回出てくる列は、同じ円に弧が2つできて交差する。
                 // 直線どうしの交差判定では拾えないのでここで弾く
                 for (let i = 0; i < list.length; i++)
@@ -609,7 +612,8 @@
                 if (!ls) return false;
                 for (let i = 0; i < list.length; i++) {
                     const j = (i + 1) % list.length;
-                    if (blockedBy(ls[i].pa, ls[i].pb, ps, list[i], list[j]) >= 0) return false;
+                    const hit = blockedBy(ls[i].pa, ls[i].pb, ps, list[i], list[j]);
+                    if (hit >= 0 && !(lax && list.indexOf(hit) >= 0)) return false;
                 }
                 for (let i = 0; i < ls.length; i++)
                     for (let j = i + 2; j < ls.length; j++) {
@@ -620,9 +624,9 @@
             }
 
             // そのうえで、どの杭も指定どおりの側にいること
-            function valid(list) {
+            function valid(list, lax) {
                 if (list.length < 1) return false;
-                if (!taut(list)) return false;
+                if (!taut(list, lax)) return false;
                 const pts = pathOf(list.map(ctOf));
                 if (!pts) return false;
                 for (let i = 0; i < ps.length; i++) {
@@ -734,7 +738,9 @@
                     }
                 return true;
             };
-            const clean = list => valid(list) && simple(list);
+            // 受け入れの判断だけ緩める。挿し直せない当たり方で弾いて凸包へ落ちると、
+            // 遠くの無関係な形まで作り直しになる。糸が杭を少し掠めるほうがまし
+            const clean = list => valid(list, true) && simple(list);
             solve();
             // 解けなかったときは、直し方の候補をいくつか作って選ぶ。
             //   1. 凸包からやり直す
@@ -745,8 +751,17 @@
             // 先に成立したものを採ると、余計な杭を手放した形を掴んでしまう
             if (!clean(cts)) {
                 const seed0 = cts.slice();
-                const prev = new Set(seed0.map(i => ps[i].k));
-                const keeps = list => list.reduce((n, i) => n + (prev.has(ps[i].k) ? 1 : 0), 0);
+                // 残り具合は「どの接点が居るか」ではなく「どの順に繋がっているか」で測る。
+                // 集合で数えると、並びが裏返って形が別物になった候補が満点を取る
+                const prevAdj = new Set();
+                for (let i = 0; i < seed0.length; i++)
+                    prevAdj.add(ps[seed0[i]].k + '>' + ps[seed0[(i + 1) % seed0.length]].k);
+                const keeps = list => {
+                    let n = 0;
+                    for (let i = 0; i < list.length; i++)
+                        if (prevAdj.has(ps[list[i]].k + '>' + ps[list[(i + 1) % list.length]].k)) n++;
+                    return n;
+                };
                 let best = null, bestScore = -Infinity, bestFlip = null;
                 const consider = (list, flip) => {
                     if (!clean(list)) return;
