@@ -185,6 +185,11 @@
             letter-spacing: 0.08em;
         }
 
+        .seg button.wider {
+            width: 88px;
+            letter-spacing: 0.08em;
+        }
+
         .seg button.on {
             background: #fff;
             border-color: #fff;
@@ -255,6 +260,7 @@
         <div class="row">
             <label>VIEW</label>
             <div class="seg" id="viewSeg"></div>
+            <div class="seg" id="previewSeg" style="margin-left:12px"></div>
         </div>
         <div class="row">
             <label>WEIGHT</label>
@@ -308,6 +314,7 @@
         let gap = 1;             // 格子の縦横比
         let sx = 1, sy = 1;      // 列間・行間。sx * sy = 1 に保つ
         let outline = true;      // 輪郭線だけ表示するモード
+        let preview = false;     // 編集用の表示を全部消して、書き出しと同じ絵にする
         let loops = [];          // 張り直したポリライン（プレビューと書き出しで共用）
 
         const key = (i, j) => i + ',' + j;
@@ -690,7 +697,7 @@
             if (outline) {
                 // 糸がどの円に張られているかを見るモード。
                 // 円を実寸で見せて、輪郭は線だけにする
-                for (const [k, v] of grid) {
+                for (const [k, v] of (preview ? [] : grid)) {
                     const [i, j] = k.split(',').map(Number);
                     ctx.beginPath();
                     ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale,
@@ -718,7 +725,7 @@
                 ctx.fillStyle = '#efefef';
                 ctx.strokeStyle = '#e0e0e0';
                 ctx.lineWidth = Math.max(1, dpr);
-                for (const [k, v] of grid) {
+                for (const [k, v] of (preview ? [] : grid)) {
                     if (v !== OFF) continue;
                     const [i, j] = k.split(',').map(Number);
                     ctx.beginPath();
@@ -732,7 +739,7 @@
             }
 
             // 掴んでいる点
-            if (dragging && dragPos) {
+            if (dragging && dragPos && !preview) {
                 ctx.fillStyle = 'rgba(220,60,60,0.9)';
                 ctx.beginPath();
                 ctx.arc(ox + dragPos.x * scale, oy + dragPos.y * scale, 4 * dpr, 0, Math.PI * 2);
@@ -740,7 +747,7 @@
             }
 
             // 格子が見えないと編集しづらいので、シルエットの上に印を置く
-            for (let j = 0; j < rows; j++) {
+            for (let j = 0; !preview && j < rows; j++) {
                 for (let i = 0; i < cols; i++) {
                     const v = stateAt(key(i, j));
                     const cx = ox + CX(i) * scale, cy = oy + CY(j) * scale;
@@ -981,6 +988,16 @@
         for (const el of [weight, gapEl])
             el.addEventListener('input', () => { readSliders(); update(); });
 
+        const previewSeg = document.getElementById('previewSeg');
+        function refreshPreview() {
+            previewSeg.innerHTML = '';
+            const b = document.createElement('button');
+            b.textContent = 'PREVIEW';
+            b.className = 'wider' + (preview ? ' on' : '');
+            b.onclick = () => { preview = !preview; refreshPreview(); draw(); };
+            previewSeg.appendChild(b);
+        }
+
         const viewSeg = document.getElementById('viewSeg');
         function refreshView() {
             viewSeg.innerHTML = '';
@@ -1104,6 +1121,7 @@
 
         refreshSegs();
         refreshView();
+        refreshPreview();
         readSliders();
         update();
         window.addEventListener('resize', draw);
