@@ -319,6 +319,39 @@
         const CY = j => j * S;
         function setCell(k, v) { if (v === NEUTRAL) grid.delete(k); else grid.set(k, v); }
 
+        // 消した杭の居場所（輪ゴムの前後の接点）を覚えておく。
+        // 列を持ち越す以上、抜いた杭をただ戻すだけでは元の位置に入らず、
+        // 杭を置いた順序で形が変わってしまう
+        const ghosts = new Map();
+
+        function setPeg(k, v) {
+            if (stateAt(k) === v) return;
+            if (v === NEUTRAL) {
+                const i = bandContacts ? bandContacts.findIndex(ct => ct.k === k) : -1;
+                if (i >= 0 && bandContacts.length > 1) {
+                    const m = bandContacts.length;
+                    ghosts.set(k, {
+                        prev: bandContacts[(i - 1 + m) % m].k,
+                        next: bandContacts[(i + 1) % m].k,
+                        s: bandContacts[i].s
+                    });
+                } else ghosts.delete(k);
+                setCell(k, NEUTRAL);
+                return;
+            }
+            setCell(k, v);
+            const g = ghosts.get(k);
+            ghosts.delete(k);
+            if (!g || !bandContacts) return;
+            const m = bandContacts.length;
+            const ip = bandContacts.findIndex(ct => ct.k === g.prev);
+            const inx = bandContacts.findIndex(ct => ct.k === g.next);
+            // 前後がまだ隣り合っているときだけ差し戻す。
+            // 崩れていたら普通に解かせたほうが素直
+            if (ip < 0 || inx < 0 || (ip + 1) % m !== inx) return;
+            bandContacts.splice(ip + 1, 0, { k, s: g.s, c: pegC(k) });
+        }
+
 
         function convexHull(pts) {
             if (pts.length < 3) return pts.slice();
@@ -494,7 +527,6 @@
                 return seq.length ? seq : null;
             };
             let cts = prevSeed() || hullSeed();
-            const startedFromPrev = cts !== null && prevSeed() !== null;
 
             const ctOf = i => pegs[i];
 
@@ -512,6 +544,11 @@
             }
 
             function taut(list) {
+                // 同じ杭が2回出てくる列は、同じ円に弧が2つできて交差する。
+                // 直線どうしの交差判定では拾えないのでここで弾く
+                for (let i = 0; i < list.length; i++)
+                    for (let j = i + 1; j < list.length; j++)
+                        if (list[i] === list[j]) return false;
                 if (list.length < 2) return true;
                 const ls = links(list);
                 if (!ls) return false;
@@ -552,6 +589,9 @@
                     if (!L) continue;
                     const hit = blockedBy(L.pa, L.pb, pegs, cts[i], cts[j]);
                     if (hit < 0) continue;
+                    // すでに接点になっている杭は挿さない。挿すと同じ円に弧が2つできる。
+                    // ここで詰まったら列が破綻しているので、凸包からやり直させる
+                    if (cts.indexOf(hit) >= 0) continue;
                     cts.splice(i + 1, 0, hit);
                     changed = true;
                 }
@@ -620,9 +660,23 @@
                 if (!changed) break;
             }
             };
+            // 最終的な輪郭が自分と交差していないか。
+            // 二重に巻いた列は、側の判定（内外）をすり抜けてしまう
+            const clean = list => {
+                if (!valid(list)) return false;
+                const pts = pathOf(list.map(ctOf));
+                if (!pts) return false;
+                const n = pts.length;
+                for (let i = 0; i < n; i++)
+                    for (let j = i + 2; j < n; j++) {
+                        if (i === 0 && j === n - 1) continue;
+                        if (segCross(pts[i], pts[(i + 1) % n], pts[j], pts[(j + 1) % n])) return false;
+                    }
+                return true;
+            };
             solve();
-            // 前回の列から始めて成立しなければ、凸包からやり直す
-            if (startedFromPrev && !valid(cts)) { cts = hullSeed(); solve(); }
+            // 成立しなければ凸包からやり直す
+            if (!clean(cts)) { cts = hullSeed(); solve(); }
             return cts.map(i => pegs[i]);
         }
 
@@ -933,7 +987,7 @@
             cv.setPointerCapture(e.pointerId);
             painting = true;
             paintTo = stateAt(k) === NEUTRAL ? ON : NEUTRAL;
-            setCell(k, paintTo);
+            setPeg(k, paintTo);
             update();
         });
 
@@ -946,7 +1000,7 @@
             }
             if (!painting) return;
             const k = pickCell(w.x, w.y);
-            if (k && stateAt(k) !== paintTo) { setCell(k, paintTo); update(); }
+            if (k && stateAt(k) !== paintTo) { setPeg(k, paintTo); update(); }
         });
 
         cv.addEventListener('pointerup', e => {
@@ -956,7 +1010,7 @@
                 const w = toWorld(e);
                 if (Math.hypot(w.x - startPos.x, w.y - startPos.y) < 0.1 * S) {
                     const k = pickCell(w.x, w.y);
-                    if (k) setCell(k, stateAt(k) === NEUTRAL ? ON : NEUTRAL);
+                    if (k) setPeg(k, stateAt(k) === NEUTRAL ? ON : NEUTRAL);
                 }
             }
             painting = false; dragging = false; origState = null;
@@ -1027,7 +1081,7 @@
             update();
         }
 
-        document.getElementById('btnClear').onclick = () => { grid.clear(); update(); };
+        document.getElementById('btnClear').onclick = () => { grid.clear(); ghosts.clear(); update(); };
 
         // ===== 書き出し =====================================================
         // プレビューと同じ loops から作る。別計算しない
