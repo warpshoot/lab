@@ -271,11 +271,6 @@
             <span class="value" id="weightVal">86</span>
         </div>
         <div class="row">
-            <label>GAP</label>
-            <input type="range" id="gap" min="0" max="1000" value="460">
-            <span class="value" id="gapVal">46</span>
-        </div>
-        <div class="row">
             <label>GRID</label>
             <select id="colsSel"></select>
             <span class="times">&times;</span>
@@ -305,8 +300,6 @@
         // 発生しない。糸の内側に完全に入った杭は、そのまま真円の穴になる。
         const S = 1;
         const EDGE_MIN = 0.30, EDGE_MAX = 0.97;   // 1.0 ちょうどは杭が接して糸の通り道が消える
-        // 格子の縦横比（行間 ÷ 列間）。面積は保つので、行間を広げると列間が詰まる
-        const GAP_MIN = 0.55, GAP_MAX = 1.80;
         const GRID_MIN = 3, GRID_MAX = 10;
 
         const ON = 1, OFF = -1, NEUTRAL = 0;
@@ -314,8 +307,6 @@
         let cols = 4, rows = 5;
         let grid = new Map();    // "i,j" -> ON | OFF。持っていないセルは NEUTRAL
         let radius = 0.55;
-        let gap = 1;             // 格子の縦横比
-        let sx = 1, sy = 1;      // 列間・行間。sx * sy = 1 に保つ
         let outline = true;      // 輪郭線だけ表示するモード
         let preview = false;     // 編集用の表示を全部消して、書き出しと同じ絵にする
         let invert = false;      // 白黒反転
@@ -324,8 +315,8 @@
         const key = (i, j) => i + ',' + j;
         const stateAt = k => grid.get(k) || NEUTRAL;
         // 格子の座標。行間だけ可変
-        const CX = i => i * sx;
-        const CY = j => j * sy;
+        const CX = i => i * S;
+        const CY = j => j * S;
         function setCell(k, v) { if (v === NEUTRAL) grid.delete(k); else grid.set(k, v); }
 
 
@@ -650,14 +641,10 @@
 
         function view() {
             // グリッド外形＋余白 0.8 セル。プレビューと SVG で同じ枠を使う。
-            // 枠は縦横比がいちばん伸びたときに合わせて固定する。現在の外形で
-            // 取ると、縦が横を追い越したところで基準が入れ替わり、
-            // スライダを一方向に動かしているのに拡大率が反転する
             const pad = 0.8;
-            const w = (cols - 1) * sx + pad * 2;
-            const h = (rows - 1) * sy + pad * 2;
-            const side = Math.max((cols - 1) / Math.sqrt(GAP_MIN),
-                                  (rows - 1) * Math.sqrt(GAP_MAX)) + pad * 2;
+            const w = (cols - 1) * S + pad * 2;
+            const h = (rows - 1) * S + pad * 2;
+            const side = Math.max(w, h);
             return { x: -pad - (side - w) / 2, y: -pad - (side - h) / 2, size: side };
         }
 
@@ -810,7 +797,7 @@
         }
 
         function pickCell(x, y) {
-            const i = Math.round(x / sx), j = Math.round(y / sy);
+            const i = Math.round(x / S), j = Math.round(y / S);
             if (i < 0 || j < 0 || i >= cols || j >= rows) return null;
             if (Math.hypot(x - CX(i), y - CY(j)) > HOLD * S) return null;
             return key(i, j);
@@ -986,23 +973,16 @@
         // ===== コントロール =================================================
         const weight = document.getElementById('weight');
         const weightVal = document.getElementById('weightVal');
-        const gapEl = document.getElementById('gap');
-        const gapValEl = document.getElementById('gapVal');
 
         function readSliders() {
-            const g = gapEl.value / 1000;
-            gap = GAP_MIN + (GAP_MAX - GAP_MIN) * g;
-            sx = S / Math.sqrt(gap);
-            sy = S * Math.sqrt(gap);
-            gapValEl.textContent = Math.round(g * 100);
             const t = weight.value / 1000;
             // 杭は重ならない。半径の上限は最小の杭間隔の半分で、
             // そこに達すると隣の杭とちょうど接する
-            radius = Math.min(sx, sy) * 0.5 * (EDGE_MIN + (EDGE_MAX - EDGE_MIN) * t);
+            // 杭は重ならない。半径の上限は杭間隔の半分
+            radius = S * 0.5 * (EDGE_MIN + (EDGE_MAX - EDGE_MIN) * t);
             weightVal.textContent = Math.round(t * 100);
         }
-        for (const el of [weight, gapEl])
-            el.addEventListener('input', () => { readSliders(); update(); });
+        weight.addEventListener('input', () => { readSliders(); update(); });
 
         const toggleSeg = document.getElementById('toggleSeg');
         function refreshPreview() {
