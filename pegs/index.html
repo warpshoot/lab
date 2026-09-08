@@ -884,37 +884,38 @@
         // 塗りつぶし。
         // CROSS は重ねてクリップ、MINUS は「その形の外側」へクリップしてから塗る。
         // MINUS を巻き方向でやると、はみ出した部分が nonzero で塗られてしまう
-        function fillShape(scale, ox, oy, stretched) {
+        // g と枠の大きさを受け取る。画面と PNG 書き出しで同じ処理を通すため
+        function fillShape(g, scale, ox, oy, stretched, w, h) {
             const ls = shownLoops(stretched);
             if (!ls.length) return;
             if (combine === 'xor' || ls.length === 1) {
-                ctx.fill(pathFromLoops(scale, ox, oy, stretched), 'evenodd');
+                g.fill(pathFromLoops(scale, ox, oy, stretched), 'evenodd');
                 return;
             }
             if (combine === 'unite') {
-                ctx.fill(unitePath(ls, scale, ox, oy), 'nonzero');
+                g.fill(unitePath(ls, scale, ox, oy), 'nonzero');
                 return;
             }
-            ctx.save();
+            g.save();
             if (combine === 'cross') {
                 for (const l of ls) {
                     const p = new Path2D();
                     addLoop(p, l, scale, ox, oy, false);
-                    ctx.clip(p);
+                    g.clip(p);
                 }
-                ctx.fillRect(0, 0, cv.width, cv.height);
+                g.fillRect(0, 0, w, h);
             } else {   // minus: BAND 1 から他を抜く
                 for (let n = 1; n < ls.length; n++) {
                     const p = new Path2D();
-                    p.rect(0, 0, cv.width, cv.height);
+                    p.rect(0, 0, w, h);
                     addLoop(p, ls[n], scale, ox, oy, false);
-                    ctx.clip(p, 'evenodd');   // 矩形＋形 の evenodd ＝ 形の外側
+                    g.clip(p, 'evenodd');   // 矩形＋形 の evenodd ＝ 形の外側
                 }
                 const p0 = new Path2D();
                 addLoop(p0, ls[0], scale, ox, oy, false);
-                ctx.fill(p0);
+                g.fill(p0);
             }
-            ctx.restore();
+            g.restore();
         }
 
         function draw() {
@@ -995,7 +996,7 @@
                     ctx.stroke();
                 }
                 ctx.fillStyle = C.ink;
-                fillShape(scale, ox, oy, stretched);
+                fillShape(ctx, scale, ox, oy, stretched, cv.width, cv.height);
             }
 
             // 掴んでいる点
@@ -1553,20 +1554,16 @@
             g.fillStyle = invert ? '#000' : '#fff';
             g.fillRect(0, 0, px, px);
             const scale = px / vb.size;
-            const p = new Path2D();
-            for (const l of loops) {
-                p.moveTo((l[0][0] - vb.x) * scale, (l[0][1] - vb.y) * scale);
-                for (let i = 1; i < l.length; i++) p.lineTo((l[i][0] - vb.x) * scale, (l[i][1] - vb.y) * scale);
-                p.closePath();
-            }
+            const ox = -vb.x * scale, oy = -vb.y * scale;
             const ink = invert ? '#fff' : '#000';
             if (outline) {
+                // LINE は輪ゴムそのもの。合成せずに1本ずつ
                 g.strokeStyle = ink;
                 g.lineWidth = px / 540 * 1.6;
-                g.stroke(p);
+                g.stroke(pathFromLoops(scale, ox, oy, null));
             } else {
                 g.fillStyle = ink;
-                g.fill(p, 'evenodd');
+                fillShape(g, scale, ox, oy, null, px, px);
             }
             c.toBlob(b => download(b, 'pegs.png'), 'image/png');
         };
