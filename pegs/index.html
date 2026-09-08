@@ -1193,9 +1193,9 @@
         // ここまで動いたら「滑らせた」。タップと引っぱりの境目で、
         // 長押しを諦める距離でもある
         const STILL = 0.20 * S;
-        // 掴む辺を選ぶときの許容差。杭に接するあたりでは直線と弧が
-        // ほとんど同じ距離に来るので、この幅に収まっていれば直線を採る
-        const TIE = 0.08 * S;
+        // 角の的の広さ。弧が短くても、杭に巻きついているところは
+        // このぶんだけ掴めるようにする
+        const CORNER = 0.20 * S;
         let dragging = false, startPos = null, dragPos = null;
         // 杭と輪ゴムが重なっている場所で押されたとき、どちらの操作か決めずに
         // 持っておく。離せば杭、動かせば輪ゴム
@@ -1256,21 +1256,33 @@
             if (!loop || !contacts || !owner.length) return false;
             // いちばん近い「線分」を探す。頂点で探すと、直線の辺には頂点が無いので
             // 隣の杭の弧の始点が選ばれ、その辺ではなく弧を掴んだ扱いになる
-            // 杭に接するあたりでは、直線の端と隣の弧がほとんど重なっていて、
-            // いちばん近いほうを採ると指の数ピクセルで掴む対象が入れ替わる。
-            // 直線と弧を別々に測って、差が僅かなら直線を採る。
-            // 直線は「その辺を杭の向こうへ押しやる」操作で、狙いどおりになりやすい
-            let n = 0, bd = Infinity, ns = -1, bs = Infinity;
+            let n = 0, bd = Infinity;
             const e = [0, 0, 0, 0];
             for (let i = 0; i < loop.length; i++) {
                 const j = (i + 1) % loop.length;
                 e[0] = loop[i][0]; e[1] = loop[i][1]; e[2] = loop[j][0]; e[3] = loop[j][1];
                 const d = segDist(x, y, e);
                 if (d < bd) { bd = d; n = i; }
-                if (owner[i] !== owner[j] && d < bs) { bs = d; ns = i; }
             }
-            if (ns >= 0 && bs <= bd + TIE) n = ns;
             const m = contacts.length;
+            // 角（杭に巻きついているところ）は、これだと弧の長さぶんしか的が無い。
+            // 杭に点で接しているような角は数ピクセルの弧しか持たず、
+            // 必ず隣の長い直線に負けて、狙っても辺を掴んでしまう。
+            // 角には弧の長さと関係なく一定の広さを持たせて、そこに入ったら角を採る。
+            // 円1本（接点ひとつ）は輪郭ぜんぶが同じ弧なので、この規則から外す
+            if (m > 1) {
+                let cn = -1, cd = CORNER * S;
+                for (let i = 0, a = 0; i < loop.length; i++) {
+                    const j = (i + 1) % loop.length;
+                    if (owner[i] === owner[j]) continue;
+                    // a..i が接点 owner[i] の弧。その真ん中を角の的にする
+                    const mid = (a + i) >> 1;
+                    const d = Math.hypot(x - loop[mid][0], y - loop[mid][1]);
+                    if (d < cd) { cd = d; cn = mid < i ? mid : a; }
+                    a = j;
+                }
+                if (cn >= 0) n = cn;
+            }
             const o = owner[n], o2 = owner[(n + 1) % loop.length];
             // 直線を掴んだなら両端の接点、弧を掴んだならその前後の接点を留める
             const ia = o === o2 ? (o - 1 + m) % m : o;
