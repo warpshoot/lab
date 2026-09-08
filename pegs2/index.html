@@ -535,6 +535,23 @@
         const key = (i, j) => i + ',' + j;
         const hasPeg = k => pegs.has(k);
         const wantOf = k => pegWant.has(k) ? pegWant.get(k) : radius;
+        // いま空いている隙間。隣の円に触れるところまでが、この杭の伸びしろ
+        function roomFor(k) {
+            const a = pegC(k);
+            let m = R_MAX;
+            for (const o of pegs) {
+                if (o === k) continue;
+                const b = pegC(o);
+                const d = Math.hypot(a[0] - b[0], a[1] - b[1]) * TOUCH - rOf(o);
+                if (d < m) m = d;
+            }
+            return Math.max(R_MIN, m);
+        }
+        // 太さを決めるのはここだけ。隙間で頭打ちにして記録する。
+        // 望みをそのまま覚えると、隣を詰めさせる力がずっと残ってしまう。
+        // 触っていない杭が痩せるのも、あとで別の杭をいじった拍子に
+        // この杭が跳ね返るのも、元をたどると同じ原因
+        const setWant = (k, r) => pegWant.set(k, Math.min(r, roomFor(k)));
         const rOf = k => pegEff.has(k) ? pegEff.get(k) : wantOf(k);
 
         // 望みの半径から、どの2つも重ならない実効半径を作る。
@@ -543,8 +560,16 @@
         // 潰れてしまうので、パスの中では率を集めるだけにして、
         // 杭ごとにいちばん厳しい率を1回だけ掛ける。
         // これなら半径が揃っている盤は1パスで「隣とちょうど接する」に収まる。
+        //
+        // ここは誰が譲るかを選ばない。太らせた杭のせいで隣が痩せるのは
+        // setWant の側で止めてあるので、ここまで来る重なりは
+        // 「既定の太さを一斉に上げた」「よそで作ったファイルを読んだ」のどちらか。
+        // どちらも全員が等しく譲るのが素直。
+        //
         // 単調に減るだけなので必ず止まり、毎回 want から作り直すので
         // 何度呼んでも同じ結果になる（前回の縮みが積み重ならない）
+        const R_FLOOR = R_MIN * 0.25;
+
         function relaxRadii() {
             const ks = [...pegs];
             const r = ks.map(wantOf);
@@ -567,7 +592,7 @@
                 for (let i = 0; i < ks.length; i++) r[i] *= f[i];
             }
             pegEff = new Map();
-            for (let i = 0; i < ks.length; i++) pegEff.set(ks[i], Math.max(R_MIN * 0.25, r[i]));
+            for (let i = 0; i < ks.length; i++) pegEff.set(ks[i], Math.max(R_FLOOR, r[i]));
         }
         const cur = () => bands[active] || null;
         const sideIn = (b, k) => b && b.sides.get(k) === IN;
@@ -1297,7 +1322,8 @@
                 ctx.lineWidth = Math.max(1, dpr);
                 ctx.setLineDash([3 * dpr, 3 * dpr]);
                 for (const k of pegs) {
-                    const w = wantOf(k);
+                    // 引いている最中は指の位置そのもの。壁に当たったのが見える
+                    const w = (sizing && sizing.k === k) ? sizing.raw : wantOf(k);
                     if (w - rOf(k) < 1e-3) continue;
                     const [i, j] = k.split(',').map(Number);
                     ctx.beginPath();
@@ -1641,7 +1667,7 @@
             if (tool === 'size') {
                 const pk = pickPeg(w.x, w.y);
                 selKey = pk;
-                sizing = pk ? { k: pk, marked: false } : null;
+                sizing = pk ? { k: pk, marked: false, raw: wantOf(pk) } : null;
                 if (pk) cv.setPointerCapture(e.pointerId);
                 refreshSize(); draw();
                 return;
@@ -1680,9 +1706,10 @@
             const w = toWorld(e);
             if (sizing) {
                 const c = pegC(sizing.k);
-                const r = Math.hypot(w.x - c[0], w.y - c[1]);
+                const r = Math.max(R_MIN, Math.min(R_MAX, Math.hypot(w.x - c[0], w.y - c[1])));
                 if (!sizing.marked) { mark(); sizing.marked = true; }
-                pegWant.set(sizing.k, Math.max(R_MIN, Math.min(R_MAX, r)));
+                sizing.raw = r;
+                setWant(sizing.k, r);
                 refreshSize(); update();
                 return;
             }
@@ -1797,7 +1824,7 @@
         }
         sizeRange.addEventListener('input', () => {
             if (!selKey || !pegs.has(selKey)) return;
-            pegWant.set(selKey, rOfT(sizeRange.value / 1000));
+            setWant(selKey, rOfT(sizeRange.value / 1000));
             refreshSize(); update();
         });
         btnSizeReset.onclick = () => {
