@@ -1270,15 +1270,32 @@
                 paper: '#000', ink: '#fff',
                 peg: '#262626', off: '#050505', offLine: '#303030',
                 solidOff: '#141414', solidOffLine: '#242424',
+                pegSet: '#3b3b3b', offSet: '#111', solidOffSet: '#242424',
                 onDot: 'rgba(0,0,0,0.3)', dot: 'rgba(255,255,255,0.28)', ring: 'rgba(255,255,255,0.4)',
                 dim: 'rgba(255,255,255,0.32)'
             } : {
                 paper: '#fff', ink: '#000',
                 peg: '#e6e6e6', off: '#fafafa', offLine: '#cfcfcf',
                 solidOff: '#efefef', solidOffLine: '#e0e0e0',
+                pegSet: '#d2d2d2', offSet: '#f1f1f1', solidOffSet: '#e1e1e1',
                 onDot: 'rgba(255,255,255,0.24)', dot: 'rgba(0,0,0,0.2)', ring: 'rgba(0,0,0,0.28)',
                 dim: 'rgba(0,0,0,0.28)'
             };
+            // 自分で太さを決めた杭の印。縁のすこし内側にヘアラインを1本。
+            // 内外は塗りと破線で見せているので、そこには触らずに済む。
+            // 塗りもひと段だけ濃くしてあるが、押しのけている杭は塗りが
+            // もともと背景に近いので、それだけでは読めない
+            const markSet = (cx, cy, r, on) => {
+                if (!on) return;
+                const ir = Math.min(r - 1.5 * dpr, r * 0.78);
+                if (ir < 2 * dpr) return;
+                ctx.strokeStyle = C.dim;
+                ctx.lineWidth = Math.max(1, dpr);
+                ctx.beginPath();
+                ctx.arc(cx, cy, ir, 0, Math.PI * 2);
+                ctx.stroke();
+            };
+
             // 杭の内外は、いま触れる輪ゴムから見たもの
             const A = cur();
             ctx.fillStyle = C.paper;
@@ -1295,15 +1312,16 @@
                 // 円を実寸で見せて、輪郭は線だけにする
                 for (const k of (preview ? [] : pegs)) {
                     const [i, j] = k.split(',').map(Number);
+                    const cx = ox + CX(i) * scale, cy = oy + CY(j) * scale, rr = rOf(k) * scale;
                     ctx.beginPath();
-                    ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale,
-                            rOf(k) * scale, 0, Math.PI * 2);
+                    ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+                    const set = pegWant.has(k);
                     if (sideIn(A, k)) {
-                        ctx.fillStyle = C.peg;
+                        ctx.fillStyle = set ? C.pegSet : C.peg;
                         ctx.fill();
                     } else {
                         // 内側から押している円は塗らずに破線で
-                        ctx.fillStyle = C.off;
+                        ctx.fillStyle = set ? C.offSet : C.off;
                         ctx.fill();
                         ctx.strokeStyle = C.offLine;
                         ctx.lineWidth = Math.max(1, dpr);
@@ -1311,6 +1329,7 @@
                         ctx.stroke();
                         ctx.setLineDash([]);
                     }
+                    markSet(cx, cy, rr, set);
                 }
                 // アクティブでない輪ゴムは薄く。どれを触っているか迷わせない
                 ctx.lineWidth = 1.6 * dpr;
@@ -1321,7 +1340,6 @@
                 }
             } else {
                 // 外側の杭は実寸で下敷きに描く。輪ゴムが当たる円が見える
-                ctx.fillStyle = C.solidOff;
                 ctx.strokeStyle = C.solidOffLine;
                 ctx.lineWidth = Math.max(1, dpr);
                 for (const k of (preview ? [] : pegs)) {
@@ -1329,8 +1347,12 @@
                     const [i, j] = k.split(',').map(Number);
                     ctx.beginPath();
                     ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, rOf(k) * scale, 0, Math.PI * 2);
+                    const set = pegWant.has(k);
+                    ctx.fillStyle = set ? C.solidOffSet : C.solidOff;
                     ctx.fill();
                     ctx.stroke();
+                    markSet(ox + CX(i) * scale, oy + CY(j) * scale, rOf(k) * scale, set);
+                    ctx.strokeStyle = C.solidOffLine;
                 }
                 ctx.fillStyle = C.ink;
                 fillShape(ctx, scale, ox, oy, stretched, cv.width, cv.height);
