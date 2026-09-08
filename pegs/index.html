@@ -1190,7 +1190,16 @@
         // 輪ゴムを掴んでドラッグ：跨いだ杭の内外が入れ替わる
         //   （＝輪ゴムをその杭の向こう側へ引っ掛ける／外す）
         const HOLD = 0.34, GRAB = 0.30;
+        // ここまで動いたら「滑らせた」。タップと引っぱりの境目で、
+        // 長押しを諦める距離でもある
+        const STILL = 0.20 * S;
+        // 角の的の広さ。弧が短くても、杭に巻きついているところは
+        // このぶんだけ掴めるようにする
+        const CORNER = 0.20 * S;
         let dragging = false, startPos = null, dragPos = null;
+        // 杭と輪ゴムが重なっている場所で押されたとき、どちらの操作か決めずに
+        // 持っておく。離せば杭、動かせば輪ゴム
+        let pendingGrab = null;
         // ドラッグ中に途中でスクロールバーが出るなどしてキャンバスの表示サイズが
         // 変わると、指の位置から世界座標への換算が掴んだ瞬間とズレて、
         // 輪ゴムが思わぬ形に化ける。ドラッグ中はこの換算を固定する
@@ -1256,6 +1265,24 @@
                 if (d < bd) { bd = d; n = i; }
             }
             const m = contacts.length;
+            // 角（杭に巻きついているところ）は、これだと弧の長さぶんしか的が無い。
+            // 杭に点で接しているような角は数ピクセルの弧しか持たず、
+            // 必ず隣の長い直線に負けて、狙っても辺を掴んでしまう。
+            // 角には弧の長さと関係なく一定の広さを持たせて、そこに入ったら角を採る。
+            // 円1本（接点ひとつ）は輪郭ぜんぶが同じ弧なので、この規則から外す
+            if (m > 1) {
+                let cn = -1, cd = CORNER * S;
+                for (let i = 0, a = 0; i < loop.length; i++) {
+                    const j = (i + 1) % loop.length;
+                    if (owner[i] === owner[j]) continue;
+                    // a..i が接点 owner[i] の弧。その真ん中を角の的にする
+                    const mid = (a + i) >> 1;
+                    const d = Math.hypot(x - loop[mid][0], y - loop[mid][1]);
+                    if (d < cd) { cd = d; cn = mid < i ? mid : a; }
+                    a = j;
+                }
+                if (cn >= 0) n = cn;
+            }
             const o = owner[n], o2 = owner[(n + 1) % loop.length];
             // 直線を掴んだなら両端の接点、弧を掴んだならその前後の接点を留める
             const ia = o === o2 ? (o - 1 + m) % m : o;
@@ -1352,6 +1379,18 @@
             return 1 + Math.max(0, Math.min(1, t));
         }
 
+        // 掴んで引っぱり始める。掴む位置は押した点で、指の現在地ではない
+        function startDrag(at, e) {
+            if (!grabAnchors(at.x, at.y)) return false;
+            mark();
+            cv.setPointerCapture(e.pointerId);
+            dragRect = cv.getBoundingClientRect(); dragVB = view();
+            dragging = true; startPos = dragPos = at;
+            origState = new Map(cur().sides);
+            draw();
+            return true;
+        }
+
         cv.addEventListener('pointerdown', e => {
             const w = toWorld(e);
             const k = pickCell(w.x, w.y);
@@ -1359,20 +1398,16 @@
             // 空セルより輪ゴムを優先しないと、直線の真ん中を掴もうとしたときに
             // その辺りのセルに杭が生えてしまう
             const db = bandDist(w.x, w.y);
-            const dk = k ? Math.hypot(w.x - CX(+k.split(',')[0]), w.y - CY(+k.split(',')[1])) : Infinity;
-            if (db < GRAB * S && db < dk && grabAnchors(w.x, w.y)) {
-                mark();
-                cv.setPointerCapture(e.pointerId);
-                dragRect = cv.getBoundingClientRect(); dragVB = view();
-                dragging = true; startPos = dragPos = w;
-                origState = new Map(cur().sides);
-                draw();
-                return;
-            }
+            const near = db < GRAB * S;
+            if (near && !k) { startDrag(w, e); return; }
             if (!k) return;
+            // 杭に接するあたりでは、輪ゴムと杭のどちらへ触ったのか位置では決まらない。
+            // 近いほうを採ると、線が杭を掠めている場所では杭のタップに吸われて
+            // 輪ゴムが掴めなくなる。ここでは決めずに、離せば杭、動かせば輪ゴムにする
             // ここでは打たない。滑らせただけで杭が入れ替わると、
             // 輪ゴムを掴み損ねたときに盤面が荒れる
             cv.setPointerCapture(e.pointerId);
+            pendingGrab = near ? w : null;
             tapKey = k; startPos = w;
             clearTimeout(holdTimer);
             holdTimer = hasPeg(k) ? setTimeout(() => { holdTimer = null; spawnBand(k); }, HOLD_MS) : null;
@@ -1385,9 +1420,25 @@
                 if (applyDrag(w)) update(); else draw();
                 return;
             }
+            const slid = startPos && Math.hypot(w.x - startPos.x, w.y - startPos.y) > STILL;
             // 指が動いたら長押しではない
-            if (holdTimer && startPos && Math.hypot(w.x - startPos.x, w.y - startPos.y) > 0.2 * S) {
-                clearTimeout(holdTimer); holdTimer = null;
+            if (holdTimer && slid) { clearTimeout(holdTimer); holdTimer = null; }
+            // 保留していた分。滑らせたので輪ゴムのほうだった
+            if (pendingGrab && slid) {
+                const at = pendingGrab;
+                pendingGrab = null;
+                if (startDrag(at, e)) {
+                    tapKey = null;
+                    dragPos = w;
+                    if (applyDrag(w)) update(); else draw();
+                }
+                return;
+            }
+            // どちらに触れているのかを、押す前に見せる
+            if (!e.buttons) {
+                const db = bandDist(w.x, w.y);
+                cv.style.cursor = db < GRAB * S ? 'grab'
+                    : pickCell(w.x, w.y) ? 'pointer' : 'default';
             }
         });
 
@@ -1396,7 +1447,7 @@
             // 輪ゴムを掴んだまま動かさなかったら、その場のタップとして扱う。
             // 輪ゴムが掛かっている杭も抜けるようにするため
             const w = toWorld(e);
-            const still = startPos && Math.hypot(w.x - startPos.x, w.y - startPos.y) < 0.2 * S;
+            const still = startPos && Math.hypot(w.x - startPos.x, w.y - startPos.y) < STILL;
             if (dragging) {
                 if (still) {
                     const k = pickCell(w.x, w.y);
@@ -1406,14 +1457,15 @@
                 mark();
                 setPeg(tapKey, !hasPeg(tapKey));
             }
-            tapKey = null; dragging = false; origState = null;
+            tapKey = null; pendingGrab = null; dragging = false; origState = null;
             origSpan = restPath = restSeq = null; dragRect = dragVB = null;
+            cv.style.cursor = 'default';
             update();
         });
         cv.addEventListener('pointercancel', () => {
             clearTimeout(holdTimer); holdTimer = null;
             if (dragging && origState && cur()) cur().sides = new Map(origState);
-            tapKey = null; dragging = false; origState = null;
+            tapKey = null; pendingGrab = null; dragging = false; origState = null;
             origSpan = restPath = restSeq = null; dragRect = dragVB = null;
             update();
         });
