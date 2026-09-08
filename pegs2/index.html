@@ -2192,7 +2192,14 @@
                 pegs.add(k);
                 if (v !== undefined) oldSide.set(k, v === OUT ? OUT : IN);
             }
-            if (Number.isFinite(s.radius)) radiusRange.value = s.radius;
+            // v1 のつまみ位置は別の曲線で刻まれていた（0.5*(0.30+0.67t)、上限は
+            // セル間隔の半分）。生の値をそのまま入れると太さが化けるので、
+            // いったん半径へ戻してから、いまの曲線のつまみ位置に置き直す
+            if (Number.isFinite(s.radius)) {
+                let t = s.radius / 1000;
+                if (!(s.v >= 2)) t = tOfR(S * 0.5 * (0.30 + 0.67 * t));
+                radiusRange.value = Math.round(Math.max(0, Math.min(1, t)) * 1000);
+            }
             for (const e of (Array.isArray(s.pegR) ? s.pegR : []))
                 if (Array.isArray(e) && pegs.has(e[0]) && Number.isFinite(e[1]))
                     pegWant.set(e[0], Math.max(R_MIN, Math.min(R_MAX, e[1])));
