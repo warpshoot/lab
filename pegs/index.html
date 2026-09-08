@@ -9,6 +9,19 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --paper: #0f0f0f;
+            --ink: #fff;
+            --line: rgba(255, 255, 255, 0.10);
+            --line-strong: rgba(255, 255, 255, 0.22);
+            --fill: rgba(255, 255, 255, 0.05);
+            --fill-hover: rgba(255, 255, 255, 0.11);
+            --label: rgba(255, 255, 255, 0.38);
+            --text: rgba(255, 255, 255, 0.78);
+            --r: 6px;
+            --h: 28px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -18,22 +31,27 @@
 
         body {
             font-family: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
-            background: #0f0f0f;
-            color: #fff;
+            background: var(--paper);
+            color: var(--ink);
             min-height: 100vh;
+            padding: 20px 16px 48px;
+        }
+
+        /* 縦1列。広い画面だけ、盤を左・操作を右に振り分ける */
+        .app {
+            width: 100%;
+            max-width: 420px;
+            margin: 0 auto;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            padding: 20px 16px 48px;
-            gap: 20px;
+            gap: 18px;
         }
 
         header {
-            width: 100%;
-            max-width: 420px;
             display: flex;
             align-items: baseline;
             justify-content: space-between;
+            gap: 12px;
         }
 
         h1 {
@@ -43,14 +61,20 @@
         }
 
         .hint {
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.32);
+            font-size: 9px;
+            line-height: 1.7;
+            color: rgba(255, 255, 255, 0.3);
             letter-spacing: 0.06em;
+            text-align: right;
+        }
+
+        .hint b {
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.55);
         }
 
         .stage {
             width: 100%;
-            max-width: 420px;
             aspect-ratio: 1 / 1;
             background: #fff;
             border-radius: 4px;
@@ -65,109 +89,188 @@
         }
 
         .panel {
-            width: 100%;
-            max-width: 420px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 18px;
+        }
+
+        /* 機能ごとのまとまり。見出し＋罫線で区切る */
+        .group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .group > h2 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 9px;
+            font-weight: 400;
+            letter-spacing: 0.18em;
+            color: rgba(255, 255, 255, 0.28);
+        }
+
+        .group > h2::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--line);
         }
 
         .row {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
+            min-height: var(--h);
         }
 
-        .row label {
-            font-size: 10px;
-            letter-spacing: 0.1em;
-            color: rgba(255, 255, 255, 0.42);
-            width: 74px;
+        .row > label {
+            font-size: 9px;
+            letter-spacing: 0.12em;
+            color: var(--label);
+            width: 52px;
             flex-shrink: 0;
+        }
+
+        .row.dim {
+            opacity: 0.38;
         }
 
         .value {
             font-size: 10px;
-            color: rgba(255, 255, 255, 0.7);
-            width: 34px;
+            color: var(--text);
+            width: 26px;
             text-align: right;
             font-variant-numeric: tabular-nums;
         }
 
+        /* --- スライダー。つまみの左側だけ塗って現在値を見せる --- */
         input[type=range] {
             -webkit-appearance: none;
             appearance: none;
             flex: 1;
-            height: 20px;
+            height: var(--h);
             background: transparent;
             cursor: pointer;
+            --t: 0.86;
         }
 
         input[type=range]::-webkit-slider-runnable-track {
-            height: 1px;
-            background: rgba(255, 255, 255, 0.22);
+            height: 2px;
+            border-radius: 2px;
+            background: linear-gradient(to right,
+                rgba(255, 255, 255, 0.75) 0 calc(var(--t) * 100%),
+                var(--line-strong) calc(var(--t) * 100%) 100%);
         }
 
         input[type=range]::-moz-range-track {
-            height: 1px;
-            background: rgba(255, 255, 255, 0.22);
+            height: 2px;
+            border-radius: 2px;
+            background: linear-gradient(to right,
+                rgba(255, 255, 255, 0.75) 0 calc(var(--t) * 100%),
+                var(--line-strong) calc(var(--t) * 100%) 100%);
         }
 
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
+            width: 13px;
+            height: 13px;
             border-radius: 50%;
             background: #fff;
-            margin-top: -6.5px;
+            margin-top: -5.5px;
+            transition: transform 0.12s;
+        }
+
+        input[type=range]:active::-webkit-slider-thumb {
+            transform: scale(1.15);
         }
 
         input[type=range]::-moz-range-thumb {
-            width: 14px;
-            height: 14px;
+            width: 13px;
+            height: 13px;
             border: none;
             border-radius: 50%;
             background: #fff;
         }
 
+        /* --- セグメント。1枚の帯として見せる --- */
         .seg {
             display: flex;
-            gap: 4px;
+            flex: 1;
+            min-height: var(--h);
+            gap: 2px;
+            padding: 2px;
+            background: var(--fill);
+            border-radius: var(--r);
+        }
+
+        .seg.tight {
+            flex: 0 1 auto;
         }
 
         .seg button {
-            width: 26px;
-            height: 26px;
-            border: 1px solid rgba(255, 255, 255, 0.16);
+            flex: 1;
+            min-width: 24px;
+            height: calc(var(--h) - 4px);
+            border: none;
             background: transparent;
             color: rgba(255, 255, 255, 0.5);
             font-family: inherit;
-            font-size: 11px;
-            border-radius: 3px;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            border-radius: calc(var(--r) - 2px);
             cursor: pointer;
             transition: 0.12s;
         }
 
-        .seg button:hover {
-            border-color: rgba(255, 255, 255, 0.4);
+        .seg button:hover:not(.on):not(:disabled) {
+            background: var(--fill-hover);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .seg button.on {
+            background: #fff;
+            color: #0f0f0f;
+        }
+
+        .seg button:disabled {
+            cursor: default;
+        }
+
+        /* 輪ゴムの番号。数が増えるので折り返す */
+        .seg.chips {
+            flex-wrap: wrap;
+        }
+
+        .seg.chips button {
+            flex: 0 0 auto;
+            width: 24px;
+            font-size: 10px;
         }
 
         select {
             appearance: none;
             -webkit-appearance: none;
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            border-radius: 3px;
-            color: #fff;
+            flex: 1;
+            height: var(--h);
+            background: var(--fill);
+            border: none;
+            border-radius: var(--r);
+            color: var(--text);
             font-family: inherit;
             font-size: 11px;
-            padding: 6px 24px 6px 10px;
+            padding: 0 22px 0 10px;
             cursor: pointer;
             background-image: linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.45) 50%),
                               linear-gradient(135deg, rgba(255, 255, 255, 0.45) 50%, transparent 50%);
-            background-position: calc(100% - 13px) 13px, calc(100% - 9px) 13px;
+            background-position: calc(100% - 13px) calc(50% - 1px), calc(100% - 9px) calc(50% - 1px);
             background-size: 4px 4px;
             background-repeat: no-repeat;
+        }
+
+        select:hover {
+            background-color: var(--fill-hover);
         }
 
         select option {
@@ -177,67 +280,65 @@
 
         .times {
             font-size: 11px;
-            color: rgba(255, 255, 255, 0.35);
+            color: var(--label);
         }
 
-        .seg button.wide {
-            width: 64px;
-            letter-spacing: 0.08em;
+        /* --- ボタン --- */
+        .btns {
+            display: flex;
+            gap: 6px;
         }
 
-        .seg button.wider {
-            width: 88px;
-            letter-spacing: 0.08em;
-        }
-
-        /* 4つ並ぶので、中身に合わせて詰める */
-        .seg button.slim {
-            width: auto;
-            padding: 0 9px;
-            letter-spacing: 0.06em;
-        }
-
-        .seg button.on {
-            background: #fff;
-            border-color: #fff;
-            color: #0f0f0f;
-        }
-
-        .actions {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-        }
-
-        .actions button {
-            padding: 11px 0;
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            background: transparent;
-            color: rgba(255, 255, 255, 0.82);
+        button.act {
+            flex: 1;
+            height: var(--h);
+            padding: 0 10px;
+            border: none;
+            background: var(--fill);
+            color: var(--text);
             font-family: inherit;
             font-size: 10px;
             letter-spacing: 0.1em;
-            border-radius: 3px;
+            border-radius: var(--r);
             cursor: pointer;
             transition: 0.12s;
         }
 
-        .actions button:hover {
-            background: rgba(255, 255, 255, 0.08);
+        button.act:hover:not(:disabled) {
+            background: var(--fill-hover);
+            color: #fff;
         }
 
-        .actions button:active {
-            background: rgba(255, 255, 255, 0.18);
+        button.act:active:not(:disabled) {
+            background: rgba(255, 255, 255, 0.2);
         }
 
-        .actions button.span2 {
-            grid-column: span 2;
-        }
-
-        .actions button:disabled {
-            opacity: 0.3;
+        button.act:disabled {
+            opacity: 0.28;
             cursor: default;
+        }
+
+        /* 主役の書き出し。ここだけ枠線を持たせて前に出す */
+        button.act.key {
+            border: 1px solid var(--line-strong);
+        }
+
+        /* 戻せない操作。触ったときだけ赤に寄せる */
+        button.act.danger:hover:not(:disabled) {
+            background: rgba(255, 90, 80, 0.16);
+            color: #ff9d95;
+        }
+
+        button.act.mini {
+            flex: 0 0 auto;
+            font-size: 9px;
+            color: var(--label);
             background: transparent;
+        }
+
+        :focus-visible {
+            outline: 1px solid rgba(255, 255, 255, 0.55);
+            outline-offset: 2px;
         }
 
         .toast {
@@ -250,7 +351,7 @@
             font-size: 10px;
             letter-spacing: 0.08em;
             padding: 8px 14px;
-            border-radius: 3px;
+            border-radius: var(--r);
             opacity: 0;
             pointer-events: none;
             transition: 0.18s;
@@ -260,59 +361,109 @@
             opacity: 1;
             transform: translateX(-50%) translateY(0);
         }
+
+        /* 盤を大きく見たいので、横幅があるときは操作を右に逃がす */
+        @media (min-width: 900px) {
+            body {
+                padding: 28px 24px 40px;
+            }
+
+            .app {
+                max-width: 940px;
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 300px;
+                grid-template-rows: auto 1fr;
+                column-gap: 28px;
+                row-gap: 16px;
+                align-items: start;
+            }
+
+            header {
+                grid-column: 1 / -1;
+            }
+
+            .panel {
+                position: sticky;
+                top: 28px;
+            }
+        }
     </style>
 </head>
 
 <body>
-    <header>
-        <h1>PEGS</h1>
-        <span class="hint">tap: peg · hold: new band · drag: shape</span>
-    </header>
+    <div class="app">
+        <header>
+            <h1>PEGS</h1>
+            <span class="hint">
+                <b>tap</b> peg &nbsp;/&nbsp; <b>hold</b> new band<br>
+                <b>drag</b> shape
+            </span>
+        </header>
 
-    <div class="stage">
-        <canvas id="cv"></canvas>
-    </div>
+        <div class="stage">
+            <canvas id="cv"></canvas>
+        </div>
 
-    <div class="panel">
-        <div class="row">
-            <label>BAND</label>
-            <div class="seg" id="bandSeg"></div>
+        <div class="panel">
+            <!-- 形を作る操作 -->
+            <section class="group">
+                <h2>SHAPE</h2>
+                <div class="row">
+                    <label>BAND</label>
+                    <div class="seg chips" id="bandSeg"></div>
+                    <button class="act mini" id="btnDelBand">DEL</button>
+                </div>
+                <div class="row">
+                    <label>RADIUS</label>
+                    <input type="range" id="radiusRange" min="0" max="1000" value="860">
+                    <span class="value" id="radiusVal">86</span>
+                </div>
+                <div class="row">
+                    <label>GRID</label>
+                    <select id="colsSel"></select>
+                    <span class="times">&times;</span>
+                    <select id="rowsSel"></select>
+                </div>
+                <div class="btns">
+                    <button class="act" id="btnUndo">UNDO</button>
+                    <button class="act" id="btnRedo">REDO</button>
+                    <button class="act danger" id="btnClear">CLEAR</button>
+                </div>
+            </section>
+
+            <!-- 見え方。形そのものは変わらない -->
+            <section class="group">
+                <h2>VIEW</h2>
+                <div class="row">
+                    <label>MODE</label>
+                    <div class="seg" id="viewSeg"></div>
+                </div>
+                <div class="row" id="combineRow">
+                    <label>COMBINE</label>
+                    <div class="seg" id="combineSeg"></div>
+                </div>
+                <div class="row">
+                    <label></label>
+                    <div class="seg" id="toggleSeg"></div>
+                </div>
+            </section>
+
+            <!-- 外へ出す／持ち込む -->
+            <section class="group">
+                <h2>OUTPUT</h2>
+                <div class="btns">
+                    <button class="act key" id="btnPng">PNG</button>
+                    <button class="act key" id="btnSvg">SVG</button>
+                    <button class="act key" id="btnCopy">COPY</button>
+                </div>
+                <div class="btns">
+                    <button class="act mini" id="btnExport" style="flex:1">SAVE .JSON</button>
+                    <button class="act mini" id="btnImport" style="flex:1">LOAD .JSON</button>
+                </div>
+            </section>
+
+            <input type="file" id="fileImport" accept=".json,application/json" hidden>
         </div>
-        <div class="row">
-            <label>VIEW</label>
-            <div class="seg" id="viewSeg"></div>
-        </div>
-        <div class="row">
-            <label>COMBINE</label>
-            <div class="seg" id="combineSeg"></div>
-        </div>
-        <div class="row">
-            <label></label>
-            <div class="seg" id="toggleSeg"></div>
-        </div>
-        <div class="row">
-            <label>RADIUS</label>
-            <input type="range" id="radiusRange" min="0" max="1000" value="860">
-            <span class="value" id="radiusVal">86</span>
-        </div>
-        <div class="row">
-            <label>GRID</label>
-            <select id="colsSel"></select>
-            <span class="times">&times;</span>
-            <select id="rowsSel"></select>
-        </div>
-        <div class="actions">
-            <button id="btnUndo">UNDO</button>
-            <button id="btnRedo">REDO</button>
-            <button id="btnDelBand">DEL BAND</button>
-            <button id="btnClear">CLEAR</button>
-            <button id="btnCopy">COPY SVG</button>
-            <button id="btnSvg">SVG</button>
-            <button id="btnPng">PNG</button>
-            <button id="btnExport">EXPORT</button>
-            <button id="btnImport" class="span2">IMPORT</button>
-        </div>
-        <input type="file" id="fileImport" accept=".json,application/json" hidden>
     </div>
 
     <div class="toast" id="toast"></div>
@@ -1278,6 +1429,7 @@
             // 杭は重ならない。半径の上限は杭間隔の半分
             radius = S * 0.5 * (EDGE_MIN + (EDGE_MAX - EDGE_MIN) * t);
             radiusVal.textContent = Math.round(t * 100);
+            radiusRange.style.setProperty('--t', t);
         }
         radiusRange.addEventListener('input', () => { readSliders(); update(); });
 
@@ -1289,7 +1441,7 @@
                 { label: 'INVERT', get: () => invert, set: v => invert = v }]) {
                 const b = document.createElement('button');
                 b.textContent = t.label;
-                b.className = 'wider' + (t.get() ? ' on' : '');
+                b.className = t.get() ? 'on' : '';
                 b.onclick = () => { t.set(!t.get()); refreshPreview(); draw(); save(); };
                 toggleSeg.appendChild(b);
             }
@@ -1301,14 +1453,15 @@
             for (const [v, label] of [[true, 'LINE'], [false, 'SOLID']]) {
                 const b = document.createElement('button');
                 b.textContent = label;
-                b.className = 'wide' + (v === outline ? ' on' : '');
-                b.onclick = () => { outline = v; refreshView(); draw(); save(); };
+                b.className = v === outline ? 'on' : '';
+                b.onclick = () => { outline = v; refreshView(); refreshCombine(); draw(); save(); };
                 viewSeg.appendChild(b);
             }
         }
 
         // ===== 輪ゴムの本数 =================================================
         const bandSeg = document.getElementById('bandSeg');
+        const btnDelBand = document.getElementById('btnDelBand');
         let bandSig = null;
         function refreshBands(force) {
             const sig = bands.length + '/' + active;
@@ -1322,6 +1475,7 @@
                 b.onclick = () => { active = n; refreshBands(true); draw(); save(); };
                 bandSeg.appendChild(b);
             }
+            btnDelBand.disabled = !bands.length;
         }
 
         // 杭を長押しで、その杭に新しい輪ゴムを巻く
@@ -1337,7 +1491,7 @@
             toast('BAND ' + bands.length);
         }
 
-        document.getElementById('btnDelBand').onclick = () => {
+        btnDelBand.onclick = () => {
             if (!bands.length) return;
             mark();
             bands.splice(active, 1);
@@ -1346,13 +1500,17 @@
         };
 
         const combineSeg = document.getElementById('combineSeg');
+        const combineRow = document.getElementById('combineRow');
         function refreshCombine() {
+            // 合成が効くのは塗りだけ。LINE のあいだは触れないことを見せる
+            combineRow.classList.toggle('dim', outline);
             combineSeg.innerHTML = '';
             for (const [v, label] of [['unite', 'UNITE'], ['minus', 'MINUS'],
                                       ['cross', 'CROSS'], ['xor', 'XOR']]) {
                 const b = document.createElement('button');
                 b.textContent = label;
-                b.className = 'slim' + (v === combine ? ' on' : '');
+                b.className = v === combine ? 'on' : '';
+                b.disabled = outline;
                 b.onclick = () => { combine = v; refreshCombine(); draw(); save(); };
                 combineSeg.appendChild(b);
             }
