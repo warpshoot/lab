@@ -568,6 +568,24 @@
         const R_FLOOR = R_MIN * 0.25;
         let radiusEff = Infinity;   // 既定の杭が実際になっている太さ
 
+        // 既定の杭が伸びられる上限。既定どうしは半分ずつ分け合い、
+        // 決めた杭には触れるところまで。つまみの値はここに頭打ちされる。
+        // 当たりの候補を篩うのにも使うので、relaxRadii と同じ式を共有する
+        function defaultRoom(eOf) {
+            const D = [], E = [];
+            for (const k of pegs) (pegWant.has(k) ? E : D).push(k);
+            const gap = (a, b) => {
+                const p = pegC(a), q = pegC(b);
+                return Math.hypot(p[0] - q[0], p[1] - q[1]) * TOUCH;
+            };
+            let m = R_MAX;
+            for (let i = 0; i < D.length; i++) {
+                for (let j = i + 1; j < D.length; j++) m = Math.min(m, gap(D[i], D[j]) / 2);
+                for (const e of E) m = Math.min(m, gap(D[i], e) - eOf(e));
+            }
+            return Math.max(R_FLOOR, m);
+        }
+
         function relaxRadii() {
             const ks = [...pegs];
             const pc = new Map(ks.map(k => [k, pegC(k)]));
@@ -598,12 +616,8 @@
             }
 
             // 2. 既定の杭ぜんぶに効く、たったひとつの太さ
-            let rho = radius;
-            for (let i = 0; i < D.length; i++) {
-                for (let j = i + 1; j < D.length; j++) rho = Math.min(rho, gap(D[i], D[j]) / 2);
-                for (const e of E) rho = Math.min(rho, gap(D[i], e) - r.get(e));
-            }
-            radiusEff = rho = Math.max(R_FLOOR, rho);
+            radiusEff = Math.min(radius, defaultRoom(k => r.get(k)));
+            const rho = radiusEff;
 
             pegEff = new Map();
             for (const k of D) pegEff.set(k, rho);
@@ -1713,7 +1727,9 @@
         //
         // n の取り方は2通りあるが、輪ゴムがどちら側を通るかは接点の並びで
         // 決まっているので、linkOf と同じ枝を選んだほうだけを採る
-        function radiusForAngle(pt, q, which, theta) {
+        // 接線を向き theta にするために必要な K = sp*rp - sq*rq。
+        // n の取り方は2通りあるが、linkOf と同じ枝になるほうだけを採る
+        function linkKForAngle(pt, q, theta) {
             const dx = q.c[0] - pt.c[0], dy = q.c[1] - pt.c[1];
             const L = Math.hypot(dx, dy);
             if (L < 1e-9) return null;
@@ -1724,17 +1740,41 @@
                 const phi = base - Math.acos(K / L);
                 // phi と na が同じ向きを指しているか（枝が合っているか）
                 if (Math.abs(Math.atan2(Math.sin(phi - na), Math.cos(phi - na))) > 1e-6) continue;
-                const r = which === 'p' ? (K + q.s * q.r) / pt.s : (pt.s * pt.r - K) / q.s;
-                if (r >= R_MIN && r <= R_MAX) return r;
+                return K;
             }
             return null;
         }
 
+        // 片方の杭の半径を解く（SIZE 用）
+        function radiusForAngle(pt, q, which, theta) {
+            const K = linkKForAngle(pt, q, theta);
+            if (K == null) return null;
+            const r = which === 'p' ? (K + q.s * q.r) / pt.s : (pt.s * pt.r - K) / q.s;
+            return (r >= R_MIN && r <= R_MAX) ? r : null;
+        }
+
+        // 既定の太さ ρ のほうを解く（RADIUS 用）。
+        // 既定の杭は rp = ρ、決めた杭は太さが動かないので
+        //     K = A*ρ + B,  A = (p が既定 ? sp : 0) - (q が既定 ? sq : 0)
+        // A が 0 になるのは「両方とも決めた杭」と「両方とも既定で同じ側」。
+        // 前者は ρ に反応しないし、後者は K が恒等的に 0（接線が中心線と平行）で、
+        // どちらも ρ をいくら動かしても向きが変わらない
+        function rhoForAngle(pt, q, theta) {
+            const dp = !pegWant.has(pt.k), dq = !pegWant.has(q.k);
+            const A = (dp ? pt.s : 0) - (dq ? q.s : 0);
+            if (!A) return null;
+            const B = (dp ? 0 : pt.s * pt.r) - (dq ? 0 : q.s * q.r);
+            const K = linkKForAngle(pt, q, theta);
+            if (K == null) return null;
+            const rho = (K - B) / A;
+            return (rho >= R_MIN && rho <= R_MAX) ? rho : null;
+        }
+
         // 指で決めた半径 raw を、近くに当たりがあればそこへ寄せる。
         // 当たりは3種類：水平・垂直・盤にある別の辺と平行
-        function snapSize(k, raw) {
-            guides = [];
-            if (!guideOn) return raw;
+        // 盤にある接線を、当たりを探す側（solve が値を返す辺）と
+        // 向きが動かない側（平行の基準に使える辺）に分ける
+        function collectEdges(solve) {
             const mine = [], others = [];
             for (const b of bands) {
                 const cs = b.contacts;
@@ -1743,31 +1783,83 @@
                     const pt = cs[i], q = cs[(i + 1) % cs.length];
                     const L = linkOf(pt, q);
                     if (!L) continue;
-                    if (pt.k === k || q.k === k) mine.push({ pt, q, which: pt.k === k ? 'p' : 'q' });
-                    else others.push({ pa: L.pa, pb: L.pb,
-                        ang: Math.atan2(L.pb[1] - L.pa[1], L.pb[0] - L.pa[0]) });
+                    const e = { pt, q, pa: L.pa, pb: L.pb,
+                        ang: Math.atan2(L.pb[1] - L.pa[1], L.pb[0] - L.pa[0]) };
+                    (solve(pt, q) ? mine : others).push(e);
                 }
             }
+            return { mine, others };
+        }
+
+        // 候補のうち raw にいちばん近いものを、当たりの範囲内なら返す
+        function nearestSnap(cand, raw) {
+            let best = null;
+            for (const c of cand)
+                if (c.v != null && (!best || Math.abs(c.v - raw) < Math.abs(best.v - raw))) best = c;
+            return (best && Math.abs(best.v - raw) <= tol(0.15, 7)) ? best : null;
+        }
+
+        // 寄せた辺と、平行の基準にした辺をガイドとして置く
+        function setGuides(edge, ref, redraw) {
+            const pt = Object.assign({}, edge.pt), q = Object.assign({}, edge.q);
+            redraw(pt, q);
+            const L = linkOf(pt, q);
+            guides = [];
+            if (L) guides.push({ a: L.pa, b: L.pb, ref: false });
+            if (ref) guides.push({ a: ref.pa, b: ref.pb, ref: true });
+        }
+
+        // RADIUS のつまみ。既定の杭ぜんぶが同時に動くので、
+        // 当たりになるのは「既定 × 決めた杭」の辺と、
+        // 「既定 × 既定で内外が逆」の辺だけ
+        function snapRadius(raw) {
+            guides = [];
+            if (!guideOn) return raw;
+            const { mine, others } = collectEdges((pt, q) =>
+                ((!pegWant.has(pt.k) ? pt.s : 0) - (!pegWant.has(q.k) ? q.s : 0)) !== 0);
+            if (!mine.length) return raw;
+            const room = defaultRoom(k => rOf(k));
+            const targets = [[0, null], [Math.PI / 2, null]];
+            for (const o of others) targets.push([o.ang, o]);
+            const cand = [];
+            for (const m of mine)
+                for (const [th, ref] of targets) {
+                    const v = rhoForAngle(m.pt, m.q, th);
+                    if (v == null || v > room) continue;
+                    cand.push({ v, m, ref });
+                }
+            const best = nearestSnap(cand, raw);
+            if (!best) return raw;
+            setGuides(best.m, best.ref, (pt, q) => {
+                if (!pegWant.has(pt.k)) pt.r = best.v;
+                if (!pegWant.has(q.k)) q.r = best.v;
+            });
+            return best.v;
+        }
+
+        function snapSize(k, raw) {
+            guides = [];
+            if (!guideOn) return raw;
+            const { mine, others } = collectEdges((pt, q) => pt.k === k || q.k === k);
             if (!mine.length) return raw;
             const room = roomFor(k);
-            const targets = [['H', 0, null], ['V', Math.PI / 2, null]];
-            for (const o of others) targets.push(['P', o.ang, o]);
-            let best = null;
-            for (const m of mine)
-                for (const [kind, th, ref] of targets) {
-                    const r = radiusForAngle(m.pt, m.q, m.which, th);
-                    if (r == null || r > room) continue;
-                    const d = Math.abs(r - raw);
-                    if (!best || d < best.d) best = { d, r, kind, m, ref };
+            const targets = [[0, null], [Math.PI / 2, null]];
+            for (const o of others) targets.push([o.ang, o]);
+            const cand = [];
+            for (const m of mine) {
+                const which = m.pt.k === k ? 'p' : 'q';
+                for (const [th, ref] of targets) {
+                    const v = radiusForAngle(m.pt, m.q, which, th);
+                    if (v == null || v > room) continue;
+                    cand.push({ v, m, which, ref });
                 }
-            if (!best || best.d > tol(0.15, 7)) return raw;
-            // 当たった辺そのものを、寄せたあとの半径で引き直してガイドにする
-            const pt = Object.assign({}, best.m.pt), q = Object.assign({}, best.m.q);
-            if (best.m.which === 'p') pt.r = best.r; else q.r = best.r;
-            const L = linkOf(pt, q);
-            if (L) guides.push({ a: L.pa, b: L.pb, ref: false });
-            if (best.ref) guides.push({ a: best.ref.pa, b: best.ref.pb, ref: true });
-            return best.r;
+            }
+            const best = nearestSnap(cand, raw);
+            if (!best) return raw;
+            setGuides(best.m, best.ref, (pt, q) => {
+                if (best.which === 'p') pt.r = best.v; else q.r = best.v;
+            });
+            return best.v;
         }
 
         // 掴んで引っぱり始める。掴む位置は押した点で、指の現在地ではない
@@ -1938,14 +2030,37 @@
         const rOfT = t => R_MIN + (R_MAX - R_MIN) * t * t;
         const tOfR = r => Math.sqrt(Math.max(0, (r - R_MIN) / (R_MAX - R_MIN)));
 
+        // つまみの刻みは 1/1000 しかない。当たりで出した値をつまみ経由で戻すと
+        // わずかにずれて、水平にしたはずの辺が 0.01 度ほど傾く。
+        // 正確な値はこちらに持って、つまみは近い目盛りに置くだけにする。
+        // つまみを掴んだ時点でピンは外れる
+        let radiusPin = null;
+
         function readSliders() {
             const t = radiusRange.value / 1000;
             // 半径はセル間隔に縛られない。隣と重なるぶんは relaxRadii が詰める
-            radius = rOfT(t);
-            radiusRange.style.setProperty('--t', t);
+            radius = radiusPin != null ? radiusPin : rOfT(t);
+            radiusRange.style.setProperty('--t', radiusPin != null ? tOfR(radiusPin) : t);
             refreshRadiusVal();
         }
-        radiusRange.addEventListener('input', () => { readSliders(); refreshSize(); update(); });
+        radiusRange.addEventListener('input', () => {
+            radiusPin = null;
+            readSliders();
+            const r = snapRadius(radius);
+            // 寄ったらつまみの位置もそこへ合わせる。
+            // 数字と絵と、つまみの居場所がずれると何を触っているのか分からなくなる
+            if (r !== radius) {
+                radiusPin = r;
+                radiusRange.value = Math.round(tOfR(r) * 1000);
+                readSliders();
+            }
+            refreshSize(); update();
+        });
+        for (const ev of ['change', 'pointerup', 'pointercancel', 'blur'])
+            radiusRange.addEventListener(ev, () => {
+                if (!guides.length) return;
+                guides = []; draw();
+            });
 
         // つまみの値ではなく、実際になっている太さを出す。
         // 盤に止められているあいだは小さい数字のまま動かなくなるので、
@@ -2344,7 +2459,8 @@
             return {
                 v: FILE_VERSION,
                 cols, rows,
-                radius: +radiusRange.value,
+                radius: +radiusRange.value,   // v1 互換。つまみの位置
+                radiusR: radius,              // 刻みに乗らない正確な値
                 outline, preview, invert, combine, tool, guide: guideOn,
                 zoom, panX, panY,
                 pegs: [...pegs],
@@ -2384,6 +2500,8 @@
                 if (!(s.v >= 2)) t = tOfR(S * 0.5 * (0.30 + 0.67 * t));
                 radiusRange.value = Math.round(Math.max(0, Math.min(1, t)) * 1000);
             }
+            radiusPin = Number.isFinite(s.radiusR)
+                ? Math.max(R_MIN, Math.min(R_MAX, s.radiusR)) : null;
             for (const e of (Array.isArray(s.pegR) ? s.pegR : []))
                 if (Array.isArray(e) && pegs.has(e[0]) && Number.isFinite(e[1]))
                     pegWant.set(e[0], Math.max(R_MIN, Math.min(R_MAX, e[1])));
