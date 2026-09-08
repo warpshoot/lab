@@ -555,44 +555,72 @@
         const rOf = k => pegEff.has(k) ? pegEff.get(k) : wantOf(k);
 
         // 望みの半径から、どの2つも重ならない実効半径を作る。
-        // 重なっているペアは、両方を同じ率 d/(ra+rb) で詰めれば和がちょうど d になる。
-        // ただし1回のパスでペアごとに掛けていくと、隣の多い杭が何度も縮んで
-        // 潰れてしまうので、パスの中では率を集めるだけにして、
-        // 杭ごとにいちばん厳しい率を1回だけ掛ける。
-        // これなら半径が揃っている盤は1パスで「隣とちょうど接する」に収まる。
+        // 杭は2種類あって、扱いが違う。
         //
-        // ここは誰が譲るかを選ばない。太らせた杭のせいで隣が痩せるのは
-        // setWant の側で止めてあるので、ここまで来る重なりは
-        // 「既定の太さを一斉に上げた」「よそで作ったファイルを読んだ」のどちらか。
-        // どちらも全員が等しく譲るのが素直。
+        //   決めた杭（pegWant にある）… SIZE で自分で太さを決めたもの。動かさない。
+        //     置いたときに setWant が隙間で頭打ちにしているので、そもそも重ならない。
+        //   既定の杭 … RADIUS のつまみに従うもの。全員がおなじ太さ。
         //
-        // 単調に減るだけなので必ず止まり、毎回 want から作り直すので
-        // 何度呼んでも同じ結果になる（前回の縮みが積み重ならない）
+        // 既定の杭は「揃っている」ことのほうが大事なので、ぶつかった杭だけを
+        // 痩せさせない。どれかひとつが隣に触れたら、そこで全員が止まる。
+        // つまり実効の太さは、つまみの値と、盤がゆるす上限の小さいほう。
+        // 決めた杭は上限を作る側であって、上限に合わせて痩せる側ではない。
         const R_FLOOR = R_MIN * 0.25;
+        let radiusEff = Infinity;   // 既定の杭が実際になっている太さ
 
         function relaxRadii() {
             const ks = [...pegs];
-            const r = ks.map(wantOf);
-            const c = ks.map(pegC);
-            const f = new Array(ks.length);
+            const pc = new Map(ks.map(k => [k, pegC(k)]));
+            const gap = (a, b) => {
+                const p = pc.get(a), q = pc.get(b);
+                return Math.hypot(p[0] - q[0], p[1] - q[1]) * TOUCH;
+            };
+            const D = ks.filter(k => !pegWant.has(k));
+            const E = ks.filter(k => pegWant.has(k));
+
+            // 1. 決めた杭どうし。setWant を通っていれば重ならないが、
+            //    よそで作ったファイルは何でもありなので、そこだけ均等に詰める
+            const r = new Map(E.map(k => [k, pegWant.get(k)]));
             for (let it = 0; it < 40; it++) {
-                f.fill(1);
+                const f = new Map(E.map(k => [k, 1]));
                 let bad = false;
-                for (let i = 0; i < ks.length; i++)
-                    for (let j = i + 1; j < ks.length; j++) {
-                        const d = Math.hypot(c[i][0] - c[j][0], c[i][1] - c[j][1]) * TOUCH;
-                        const sum = r[i] + r[j];
+                for (let i = 0; i < E.length; i++)
+                    for (let j = i + 1; j < E.length; j++) {
+                        const d = gap(E[i], E[j]), sum = r.get(E[i]) + r.get(E[j]);
                         if (sum <= d + 1e-9) continue;
                         const g = d / sum;
-                        if (g < f[i]) f[i] = g;
-                        if (g < f[j]) f[j] = g;
+                        if (g < f.get(E[i])) f.set(E[i], g);
+                        if (g < f.get(E[j])) f.set(E[j], g);
                         bad = true;
                     }
                 if (!bad) break;
-                for (let i = 0; i < ks.length; i++) r[i] *= f[i];
+                for (const k of E) r.set(k, r.get(k) * f.get(k));
             }
+
+            // 2. 既定の杭ぜんぶに効く、たったひとつの太さ
+            let rho = radius;
+            for (let i = 0; i < D.length; i++) {
+                for (let j = i + 1; j < D.length; j++) rho = Math.min(rho, gap(D[i], D[j]) / 2);
+                for (const e of E) rho = Math.min(rho, gap(D[i], e) - r.get(e));
+            }
+            radiusEff = rho = Math.max(R_FLOOR, rho);
+
             pegEff = new Map();
-            for (let i = 0; i < ks.length; i++) pegEff.set(ks[i], Math.max(R_FLOOR, r[i]));
+            for (const k of D) pegEff.set(k, rho);
+            for (const k of E) pegEff.set(k, Math.max(R_FLOOR, r.get(k)));
+
+            // 念のため。重ならないことだけは絶対に守る。
+            // 隣までの距離の半分は必ず安全なので、破れていたらそこまで落とす
+            let ok = true;
+            for (let i = 0; i < ks.length && ok; i++)
+                for (let j = i + 1; j < ks.length; j++)
+                    if (pegEff.get(ks[i]) + pegEff.get(ks[j]) > gap(ks[i], ks[j]) + 1e-9) { ok = false; break; }
+            if (!ok)
+                for (const k of ks) {
+                    let m = Infinity;
+                    for (const o of ks) if (o !== k) m = Math.min(m, gap(k, o));
+                    pegEff.set(k, Math.max(R_FLOOR, Math.min(pegEff.get(k), m / 2)));
+                }
         }
         const cur = () => bands[active] || null;
         const sideIn = (b, k) => b && b.sides.get(k) === IN;
@@ -1091,6 +1119,7 @@
             if (active >= bands.length) active = bands.length - 1;
             if (active < 0) active = 0;
             loops = bands.map(b => b.loop);
+            refreshRadiusVal();
             refreshBands();
         }
 
@@ -1805,10 +1834,19 @@
             const t = radiusRange.value / 1000;
             // 半径はセル間隔に縛られない。隣と重なるぶんは relaxRadii が詰める
             radius = rOfT(t);
-            radiusVal.textContent = Math.round(radius * 100);
             radiusRange.style.setProperty('--t', t);
+            refreshRadiusVal();
         }
         radiusRange.addEventListener('input', () => { readSliders(); refreshSize(); update(); });
+
+        // つまみの値ではなく、実際になっている太さを出す。
+        // 盤に止められているあいだは小さい数字のまま動かなくなるので、
+        // 「もう広げられない」がその場で分かる
+        function refreshRadiusVal() {
+            const on = pegs.size && radiusEff < radius - 1e-4;
+            radiusVal.textContent = Math.round((on ? radiusEff : radius) * 100);
+            radiusVal.style.opacity = on ? '0.45' : '';
+        }
 
         // 選んだ杭ぶんの太さ。何も選んでいなければ触れない
         function refreshSize() {
