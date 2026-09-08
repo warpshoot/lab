@@ -1358,6 +1358,23 @@
                 fillShape(ctx, scale, ox, oy, stretched, cv.width, cv.height);
             }
 
+            // 当たった辺を画面いっぱいに伸ばして見せる。
+            // 相手の辺（平行の基準）も一緒に出さないと、何に合ったのか分からない
+            for (const g of guides) {
+                const ux = g.b[0] - g.a[0], uy = g.b[1] - g.a[1];
+                const len = Math.hypot(ux, uy);
+                if (len < 1e-9) continue;
+                const ex = ux / len * vb.size * 2, ey = uy / len * vb.size * 2;
+                ctx.strokeStyle = g.ref ? 'rgba(220,60,60,0.34)' : 'rgba(220,60,60,0.75)';
+                ctx.lineWidth = Math.max(1, dpr);
+                ctx.setLineDash(g.ref ? [5 * dpr, 4 * dpr] : []);
+                ctx.beginPath();
+                ctx.moveTo(ox + (g.a[0] - ex) * scale, oy + (g.a[1] - ey) * scale);
+                ctx.lineTo(ox + (g.b[0] + ex) * scale, oy + (g.b[1] + ey) * scale);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
             // 掴んでいる点
             if (dragging && dragPos && !preview) {
                 ctx.fillStyle = 'rgba(220,60,60,0.9)';
@@ -1453,6 +1470,8 @@
         const HOLD_MS = 450;
         let tool = 'peg';      // 'peg'（PEGS と同じ操作）| 'size'（杭の太さ）
         let sizing = null;     // SIZE ツールで引っぱっている杭
+        let guideOn = true;    // 太さを合わせるときの当たり（水平・垂直・平行）
+        let guides = [];       // いま効いているガイド線
         // 指2本のあいだは盤に触らせない。掴みかけの操作はここで捨てる
         const pts = new Map();       // pointerId -> クライアント座標
         let gesture = null;
@@ -1635,7 +1654,7 @@
             if (dragging && origState && cur()) cur().sides = new Map(origState);
             const was = dragging || sizing;
             tapKey = null; pendingGrab = null; dragging = false; origState = null;
-            sizing = null;
+            sizing = null; guides = [];
             origSpan = restPath = restSeq = null; dragRect = dragVB = null;
             startPos = dragPos = null;
             if (was) update();
@@ -1685,6 +1704,72 @@
             return best;
         }
 
+        // ===== 太さの当たり ================================================
+        // 接線の向きは半径で決まる。n を接線と直交する単位ベクトルとすると
+        //     n・(cq - cp) = sp*rp - sq*rq
+        // なので、向きを固定してしまえば片方の半径について一次式になる。
+        // 「この辺を水平にする半径」がそのまま閉じた式で出るということ。
+        // 目で合わせるしかなかったものが、当たりとして置ける。
+        //
+        // n の取り方は2通りあるが、輪ゴムがどちら側を通るかは接点の並びで
+        // 決まっているので、linkOf と同じ枝を選んだほうだけを採る
+        function radiusForAngle(pt, q, which, theta) {
+            const dx = q.c[0] - pt.c[0], dy = q.c[1] - pt.c[1];
+            const L = Math.hypot(dx, dy);
+            if (L < 1e-9) return null;
+            const base = Math.atan2(dy, dx);
+            for (const na of [theta + Math.PI / 2, theta - Math.PI / 2]) {
+                const K = Math.cos(na) * dx + Math.sin(na) * dy;
+                if (Math.abs(K) > L) continue;
+                const phi = base - Math.acos(K / L);
+                // phi と na が同じ向きを指しているか（枝が合っているか）
+                if (Math.abs(Math.atan2(Math.sin(phi - na), Math.cos(phi - na))) > 1e-6) continue;
+                const r = which === 'p' ? (K + q.s * q.r) / pt.s : (pt.s * pt.r - K) / q.s;
+                if (r >= R_MIN && r <= R_MAX) return r;
+            }
+            return null;
+        }
+
+        // 指で決めた半径 raw を、近くに当たりがあればそこへ寄せる。
+        // 当たりは3種類：水平・垂直・盤にある別の辺と平行
+        function snapSize(k, raw) {
+            guides = [];
+            if (!guideOn) return raw;
+            const mine = [], others = [];
+            for (const b of bands) {
+                const cs = b.contacts;
+                if (!cs || cs.length < 2) continue;
+                for (let i = 0; i < cs.length; i++) {
+                    const pt = cs[i], q = cs[(i + 1) % cs.length];
+                    const L = linkOf(pt, q);
+                    if (!L) continue;
+                    if (pt.k === k || q.k === k) mine.push({ pt, q, which: pt.k === k ? 'p' : 'q' });
+                    else others.push({ pa: L.pa, pb: L.pb,
+                        ang: Math.atan2(L.pb[1] - L.pa[1], L.pb[0] - L.pa[0]) });
+                }
+            }
+            if (!mine.length) return raw;
+            const room = roomFor(k);
+            const targets = [['H', 0, null], ['V', Math.PI / 2, null]];
+            for (const o of others) targets.push(['P', o.ang, o]);
+            let best = null;
+            for (const m of mine)
+                for (const [kind, th, ref] of targets) {
+                    const r = radiusForAngle(m.pt, m.q, m.which, th);
+                    if (r == null || r > room) continue;
+                    const d = Math.abs(r - raw);
+                    if (!best || d < best.d) best = { d, r, kind, m, ref };
+                }
+            if (!best || best.d > tol(0.15, 7)) return raw;
+            // 当たった辺そのものを、寄せたあとの半径で引き直してガイドにする
+            const pt = Object.assign({}, best.m.pt), q = Object.assign({}, best.m.q);
+            if (best.m.which === 'p') pt.r = best.r; else q.r = best.r;
+            const L = linkOf(pt, q);
+            if (L) guides.push({ a: L.pa, b: L.pb, ref: false });
+            if (best.ref) guides.push({ a: best.ref.pa, b: best.ref.pb, ref: true });
+            return best.r;
+        }
+
         // 掴んで引っぱり始める。掴む位置は押した点で、指の現在地ではない
         function startDrag(at, e) {
             if (!grabAnchors(at.x, at.y)) return false;
@@ -1719,6 +1804,7 @@
                 const pk = pickPeg(w.x, w.y);
                 selKey = pk;
                 sizing = pk ? { k: pk, marked: false, raw: wantOf(pk) } : null;
+                guides = [];
                 if (pk) cv.setPointerCapture(e.pointerId);
                 refreshSize(); draw();
                 return;
@@ -1760,7 +1846,7 @@
                 const r = Math.max(R_MIN, Math.min(R_MAX, Math.hypot(w.x - c[0], w.y - c[1])));
                 if (!sizing.marked) { mark(); sizing.marked = true; }
                 sizing.raw = r;
-                setWant(sizing.k, r);
+                setWant(sizing.k, snapSize(sizing.k, r));
                 refreshSize(); update();
                 return;
             }
@@ -1800,7 +1886,7 @@
             if (gesture && pts.size < 2) gesture = null;
             if (!pts.size) hushUntilUp = false;
             if (panning) { panning = null; save(); return; }
-            if (sizing) { sizing = null; refreshSize(); update(); return; }
+            if (sizing) { sizing = null; guides = []; refreshSize(); update(); return; }
             if (tool === 'size' || hushUntilUp) return;
             clearTimeout(holdTimer); holdTimer = null;
             // 輪ゴムを掴んだまま動かさなかったら、その場のタップとして扱う。
@@ -1826,7 +1912,7 @@
             if (gesture && pts.size < 2) gesture = null;
             if (!pts.size) hushUntilUp = false;
             panning = null;
-            if (sizing) { sizing = null; refreshSize(); }
+            if (sizing) { sizing = null; guides = []; refreshSize(); }
             clearTimeout(holdTimer); holdTimer = null;
             if (dragging && origState && cur()) cur().sides = new Map(origState);
             tapKey = null; pendingGrab = null; dragging = false; origState = null;
@@ -1902,6 +1988,7 @@
                 b.onclick = () => {
                     tool = v;
                     if (v === 'peg') selKey = null;
+                    guides = [];
                     refreshTool(); refreshSize(); draw(); save();
                 };
                 toolSeg.appendChild(b);
@@ -1934,6 +2021,7 @@
         function refreshPreview() {
             toggleSeg.innerHTML = '';
             for (const t of [
+                { label: 'GUIDE', get: () => guideOn, set: v => guideOn = v },
                 { label: 'PREVIEW', get: () => preview, set: v => preview = v },
                 { label: 'INVERT', get: () => invert, set: v => invert = v }]) {
                 const b = document.createElement('button');
@@ -2248,7 +2336,7 @@
                 v: FILE_VERSION,
                 cols, rows,
                 radius: +radiusRange.value,
-                outline, preview, invert, combine, tool,
+                outline, preview, invert, combine, tool, guide: guideOn,
                 zoom, panX, panY,
                 pegs: [...pegs],
                 pegR: [...pegWant],
@@ -2296,6 +2384,7 @@
             panY = Number.isFinite(s.panY) ? s.panY : 0;
             clampPan();
             outline = !!s.outline; preview = !!s.preview; invert = !!s.invert;
+            guideOn = s.guide === undefined ? true : !!s.guide;
             combine = ['unite', 'minus', 'cross', 'xor'].includes(s.combine) ? s.combine : 'xor';
 
             const src = Array.isArray(s.bands) ? s.bands
