@@ -1968,11 +1968,20 @@
             sizeRange.style.setProperty('--t', t);
             sizeVal.textContent = on ? Math.round(rOf(selKey) * 100) : '--';
         }
+        // つまみでも当たりは効く。盤を引くのと同じ操作なので、
+        // 片方だけ当たらないと使い分けを覚えることになる
         sizeRange.addEventListener('input', () => {
             if (!selKey || !pegs.has(selKey)) return;
-            setWant(selKey, rOfT(sizeRange.value / 1000));
+            setWant(selKey, snapSize(selKey, rOfT(sizeRange.value / 1000)));
             refreshSize(); update();
         });
+        // 離したらガイドは消す。つまみは指を置きっぱなしにできるので、
+        // 消し時が pointerup では来ない
+        for (const ev of ['change', 'pointerup', 'pointercancel', 'blur'])
+            sizeRange.addEventListener(ev, () => {
+                if (!guides.length) return;
+                guides = []; draw();
+            });
         btnSizeReset.onclick = () => {
             if (!selKey || !pegWant.has(selKey)) return;
             mark(); pegWant.delete(selKey); refreshSize(); update();
