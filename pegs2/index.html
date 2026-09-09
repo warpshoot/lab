@@ -3,7 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 盤のピンチは .stage の touch-action: none で押さえてある。
+         ページ全体の拡大まで殺すと、小さい文字を読む手段が無くなる -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PEGS2</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,6 +37,11 @@
             color: var(--ink);
             min-height: 100vh;
             padding: 20px 16px 48px;
+            /* 盤を長押しすると OS の選択・コールアウトが割り込む。
+               掴んで引くのが主操作なので、文字の選択より押さえるほうを採る */
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
 
         /* 縦1列。広い画面だけ、盤を左・操作を右に振り分ける */
@@ -74,18 +81,43 @@
         }
 
         .stage {
+            position: relative;
             width: 100%;
             aspect-ratio: 1 / 1;
             background: #fff;
-            border-radius: 4px;
+            border-radius: var(--r);
             overflow: hidden;
             touch-action: none;
+        }
+
+        /* 反転すると盤が真っ黒になって、地の色と溶ける。
+           そのときだけ縁を出して、どこまでが盤か見せる */
+        .stage.inv {
+            background: #000;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
         }
 
         canvas {
             display: block;
             width: 100%;
             height: 100%;
+        }
+
+        /* 杭が1本も無いときだけ。最初のひと突きの案内 */
+        .empty {
+            position: absolute;
+            inset: auto 0 0 0;
+            top: 50%;
+            transform: translateY(-50%);
+            text-align: center;
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            color: rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+        }
+
+        .stage.inv .empty {
+            color: rgba(255, 255, 255, 0.32);
         }
 
         .panel {
@@ -137,10 +169,12 @@
             opacity: 0.38;
         }
 
+        /* セル間隔を 1 とした半径をそのまま出す。0.50 で隣の杭に触れる、が
+           盤の絵と直に結びつく。書き出しの座標はこれを 100 倍したもの */
         .value {
             font-size: 10px;
             color: var(--text);
-            width: 30px;
+            width: 36px;
             text-align: right;
             font-variant-numeric: tabular-nums;
         }
@@ -314,7 +348,7 @@
         }
 
         button.act:disabled {
-            opacity: 0.28;
+            opacity: 0.36;
             cursor: default;
         }
 
@@ -323,17 +357,22 @@
             border: 1px solid var(--line-strong);
         }
 
-        /* 戻せない操作。触ったときだけ赤に寄せる */
+        /* 消す操作。UNDO で戻せるが、押す前に色で身構えさせる */
         button.act.danger:hover:not(:disabled) {
             background: rgba(255, 90, 80, 0.16);
             color: #ff9d95;
         }
 
+        /* 脇役でも押せることは見せる。地を透明にすると、
+           文字色が薄いぶんと合わさって、ただの注記に見える */
         button.act.mini {
             flex: 0 0 auto;
-            font-size: 9px;
-            color: var(--label);
-            background: transparent;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        button.act.mini:hover:not(:disabled) {
+            color: #fff;
         }
 
         :focus-visible {
@@ -344,7 +383,7 @@
         .toast {
             position: fixed;
             left: 50%;
-            bottom: 24px;
+            bottom: calc(24px + env(safe-area-inset-bottom, 0px));
             transform: translateX(-50%) translateY(8px);
             background: #fff;
             color: #0f0f0f;
@@ -360,6 +399,21 @@
         .toast.show {
             opacity: 1;
             transform: translateX(-50%) translateY(0);
+        }
+
+        /* できなかったことは色で分ける。白い箱のままだと、
+           成功も失敗も同じ知らせに見える */
+        .toast.err {
+            background: #ff6a5e;
+            color: #1a0705;
+        }
+
+        /* まだ1列だが、盤を頭打ちにする理由もない幅。
+           420 で止めたままだと、タブレット縦や横持ちで余白が余る */
+        @media (min-width: 640px) {
+            .app {
+                max-width: 560px;
+            }
         }
 
         /* 盤を大きく見たいので、横幅があるときは操作を右に逃がす */
@@ -382,9 +436,14 @@
                 grid-column: 1 / -1;
             }
 
+            /* 貼り付けたまま画面より高くなると、下の OUTPUT に届かなくなる。
+               溢れたぶんはパネルの中で送る */
             .panel {
                 position: sticky;
                 top: 28px;
+                max-height: calc(100vh - 56px);
+                overflow-y: auto;
+                scrollbar-width: thin;
             }
         }
     </style>
@@ -394,14 +453,14 @@
     <div class="app">
         <header>
             <h1>PEGS2</h1>
-            <span class="hint">
-                <b>tap</b> peg &nbsp;/&nbsp; <b>hold</b> new band<br>
-                <b>drag</b> shape &nbsp;/&nbsp; <b>pinch</b> view
-            </span>
+            <!-- 中身は refreshTool が入れる。ツールごとに効く操作が違うので、
+                 EDIT の説明を出しっぱなしにすると SIZE では全部が嘘になる -->
+            <span class="hint" id="hint"></span>
         </header>
 
-        <div class="stage">
-            <canvas id="cv"></canvas>
+        <div class="stage" id="stage">
+            <canvas id="cv" tabindex="0" aria-label="geoboard"></canvas>
+            <div class="empty" id="empty" hidden>TAP A DOT TO PLACE A PEG</div>
         </div>
 
         <div class="panel">
@@ -415,18 +474,18 @@
                 <div class="row">
                     <label>BAND</label>
                     <div class="seg chips" id="bandSeg"></div>
-                    <button class="act mini" id="btnDelBand">DEL</button>
+                    <button class="act mini danger" id="btnDelBand" title="delete the active band">DEL</button>
                 </div>
                 <div class="row">
                     <label>BASE</label>
                     <input type="range" id="radiusRange" min="0" max="1000" value="218">
-                    <span class="value" id="radiusVal">44</span>
+                    <span class="value" id="radiusVal">0.44</span>
                 </div>
                 <div class="row" id="sizeRow">
                     <label>PEG</label>
                     <input type="range" id="sizeRange" min="0" max="1000" value="218">
                     <span class="value" id="sizeVal">--</span>
-                    <button class="act mini" id="btnSizeReset">RST</button>
+                    <button class="act mini" id="btnSizeReset" title="reset this peg back to BASE">RST</button>
                 </div>
                 <div class="row">
                     <label>GRID</label>
@@ -434,9 +493,14 @@
                     <span class="times">&times;</span>
                     <select id="rowsSel"></select>
                 </div>
+                <!-- 当たりは形を変える。VIEW（見え方だけ変わる）ではない -->
+                <div class="row">
+                    <label>SNAP</label>
+                    <div class="seg" id="guideSeg"></div>
+                </div>
                 <div class="btns">
-                    <button class="act" id="btnUndo">UNDO</button>
-                    <button class="act" id="btnRedo">REDO</button>
+                    <button class="act" id="btnUndo" title="UNDO  (Ctrl/Cmd Z)">UNDO</button>
+                    <button class="act" id="btnRedo" title="REDO  (Shift Ctrl/Cmd Z)">REDO</button>
                     <button class="act danger" id="btnClear">CLEAR</button>
                 </div>
             </section>
@@ -447,8 +511,8 @@
                 <div class="row">
                     <label>ZOOM</label>
                     <input type="range" id="zoomRange" min="0" max="1000" value="158">
-                    <span class="value" id="zoomVal">1.0</span>
-                    <button class="act mini" id="btnFit">FIT</button>
+                    <span class="value" id="zoomVal">1.0×</span>
+                    <button class="act mini" id="btnFit" title="FIT  (F)">FIT</button>
                 </div>
                 <div class="row">
                     <label>MODE</label>
@@ -459,7 +523,7 @@
                     <div class="seg" id="combineSeg"></div>
                 </div>
                 <div class="row">
-                    <label></label>
+                    <label>DISPLAY</label>
                     <div class="seg" id="toggleSeg"></div>
                 </div>
             </section>
@@ -1140,6 +1204,8 @@
         // ===== 描画 =========================================================
         const cv = document.getElementById('cv');
         const ctx = cv.getContext('2d');
+        const stageEl = document.getElementById('stage');
+        const emptyEl = document.getElementById('empty');
 
         // 書き出しの枠。グリッド外形＋余白 0.8 セル。
         // 盤がどれだけ広くても、SVG と PNG はいつもこの枠で出る
@@ -1278,6 +1344,14 @@
             const vb = view();
             const scale = cv.width / vb.size;
             const ox = -vb.x * scale, oy = -vb.y * scale;
+
+            // 反転すると盤の地が黒くなる。地の色に溶けないよう縁を出す
+            stageEl.classList.toggle('inv', invert);
+            // 最初のひと突きまでは、何をすればいいかを盤の中で言う
+            emptyEl.hidden = pegs.size > 0 || preview;
+            if (!emptyEl.hidden)
+                emptyEl.textContent = tool === 'size'
+                    ? 'SWITCH TO EDIT TO PLACE PEGS' : 'TAP A DOT TO PLACE A PEG';
 
             // 白黒反転。編集用の表示もまとめて入れ替える
             const C = invert ? {
@@ -1453,6 +1527,25 @@
                     }
                 }
             }
+
+            // 長押しの残り。押さえた杭を囲んで閉じていく。
+            // これだけは preview でも出す。押しているあいだしか映らないので
+            // 書き出しの絵は汚さないし、無いと操作が始まったのか分からない
+            if (holdViz && pegs.has(holdViz.k)) {
+                const t = Math.min(1, (performance.now() - holdViz.t0) / HOLD_MS);
+                const [i, j] = holdViz.k.split(',').map(Number);
+                const cx = ox + CX(i) * scale, cy = oy + CY(j) * scale;
+                const rr = Math.max(rOf(holdViz.k) * scale, 9 * dpr) + 5 * dpr;
+                ctx.lineWidth = 2 * dpr;
+                ctx.strokeStyle = 'rgba(220,60,60,0.26)';
+                ctx.beginPath();
+                ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.strokeStyle = 'rgba(220,60,60,0.95)';
+                ctx.beginPath();
+                ctx.arc(cx, cy, rr, -Math.PI / 2, -Math.PI / 2 + t * Math.PI * 2);
+                ctx.stroke();
+            }
         }
 
 
@@ -1485,6 +1578,9 @@
         let tapKey = null;        // 押した杭。指が動かずに離れたときだけ効く
         let holdTimer = null;     // 長押しの計測。杭を押さえたままで新しい輪ゴム
         const HOLD_MS = 450;
+        // 押さえているあいだ、盤には何も起きない。450ms のあいだ操作が
+        // 死んだように見えるので、閉じていくリングで残りを見せる
+        let holdViz = null, holdRaf = 0;
         // 'edit' … 杭を打つ・輪ゴムを引く（PEGS と同じ操作）
         // 'size' … 杭ごとの太さを決める
         let tool = 'edit';
@@ -1669,7 +1765,7 @@
 
         // 掴みかけ・掴んだ最中のものを全部たたむ。指が2本になった瞬間に呼ぶ
         function cancelTouch() {
-            clearTimeout(holdTimer); holdTimer = null;
+            clearHold();
             if (dragging && origState && cur()) cur().sides = new Map(origState);
             const was = dragging || sizing;
             tapKey = null; pendingGrab = null; dragging = false; origState = null;
@@ -1868,6 +1964,23 @@
         }
 
         // 掴んで引っぱり始める。掴む位置は押した点で、指の現在地ではない
+        function startHold(k) {
+            clearHold();
+            if (!hasPeg(k)) return;
+            holdViz = { k, t0: performance.now() };
+            holdTimer = setTimeout(() => { holdTimer = null; clearHold(); spawnBand(k); }, HOLD_MS);
+            const tick = () => { if (holdViz) { draw(); holdRaf = requestAnimationFrame(tick); } };
+            holdRaf = requestAnimationFrame(tick);
+        }
+
+        function clearHold() {
+            clearTimeout(holdTimer); holdTimer = null;
+            if (!holdViz) return;
+            holdViz = null;
+            cancelAnimationFrame(holdRaf); holdRaf = 0;
+            draw();
+        }
+
         function startDrag(at, e) {
             if (!grabAnchors(at.x, at.y)) return false;
             mark();
@@ -1922,8 +2035,7 @@
             cv.setPointerCapture(e.pointerId);
             pendingGrab = near ? w : null;
             tapKey = k; startPos = w;
-            clearTimeout(holdTimer);
-            holdTimer = hasPeg(k) ? setTimeout(() => { holdTimer = null; spawnBand(k); }, HOLD_MS) : null;
+            startHold(k);
         });
 
         cv.addEventListener('pointermove', e => {
@@ -1958,7 +2070,7 @@
             }
             const slid = startPos && Math.hypot(w.x - startPos.x, w.y - startPos.y) > STILL();
             // 指が動いたら長押しではない
-            if (holdTimer && slid) { clearTimeout(holdTimer); holdTimer = null; }
+            if (holdTimer && slid) { clearHold(); }
             // 保留していた分。滑らせたので輪ゴムのほうだった
             if (pendingGrab && slid) {
                 const at = pendingGrab;
@@ -1985,7 +2097,7 @@
             if (panning) { panning = null; save(); return; }
             if (sizing) { sizing = null; guides = []; refreshSize(); update(); return; }
             if (tool === 'size' || hushUntilUp) return;
-            clearTimeout(holdTimer); holdTimer = null;
+            clearHold();
             // 輪ゴムを掴んだまま動かさなかったら、その場のタップとして扱う。
             // 輪ゴムが掛かっている杭も抜けるようにするため
             const w = toWorld(e);
@@ -2010,11 +2122,18 @@
             if (!pts.size) hushUntilUp = false;
             panning = null;
             if (sizing) { sizing = null; guides = []; refreshSize(); }
-            clearTimeout(holdTimer); holdTimer = null;
+            clearHold();
             if (dragging && origState && cur()) cur().sides = new Map(origState);
             tapKey = null; pendingGrab = null; dragging = false; origState = null;
             origSpan = restPath = restSeq = null; dragRect = dragVB = null;
             update();
+        });
+
+        // 盤の外へ出たら、いま何を掴めるかの表示も外す。
+        // 出た先でカーソルだけ ew-resize や grab のまま残ると、
+        // 盤の当たりが外まで続いているように見える
+        cv.addEventListener('pointerleave', () => {
+            if (!dragging && !sizing && !panning) cv.style.cursor = 'default';
         });
 
         cv.addEventListener('wheel', e => {
@@ -2072,7 +2191,7 @@
         // 「もう広げられない」がその場で分かる
         function refreshRadiusVal() {
             const on = pegs.size && radiusEff < radius - 1e-4;
-            radiusVal.textContent = Math.round((on ? radiusEff : radius) * 100);
+            radiusVal.textContent = (on ? radiusEff : radius).toFixed(2);
             radiusVal.style.opacity = on ? '0.45' : '';
         }
 
@@ -2087,7 +2206,7 @@
             const t = tOfR(r);
             sizeRange.value = Math.round(t * 1000);
             sizeRange.style.setProperty('--t', t);
-            sizeVal.textContent = on ? Math.round(rOf(selKey) * 100) : '--';
+            sizeVal.textContent = on ? rOf(selKey).toFixed(2) : '--';
         }
         // つまみでも当たりは効く。盤を引くのと同じ操作なので、
         // 片方だけ当たらないと使い分けを覚えることになる
@@ -2109,18 +2228,30 @@
         };
 
         const toolSeg = document.getElementById('toolSeg');
+        const hintEl = document.getElementById('hint');
+        // ツールごとに、いま効く操作だけを出す
+        const HINTS = {
+            edit: '<b>tap</b> peg &nbsp;/&nbsp; <b>hold</b> new band<br>'
+                + '<b>drag</b> shape &nbsp;/&nbsp; <b>pinch</b> view',
+            size: '<b>drag</b> peg to resize<br>'
+                + '<b>RST</b> back to base &nbsp;/&nbsp; <b>pinch</b> view'
+        };
+        function setTool(v) {
+            if (tool === v) return;
+            tool = v;
+            if (v === 'edit') selKey = null;
+            guides = [];
+            refreshTool(); refreshSize(); draw(); save();
+        }
         function refreshTool() {
+            hintEl.innerHTML = HINTS[tool] || HINTS.edit;
             toolSeg.innerHTML = '';
             for (const [v, label] of [['edit', 'EDIT'], ['size', 'SIZE']]) {
                 const b = document.createElement('button');
                 b.textContent = label;
                 b.className = v === tool ? 'on' : '';
-                b.onclick = () => {
-                    tool = v;
-                    if (v === 'edit') selKey = null;
-                    guides = [];
-                    refreshTool(); refreshSize(); draw(); save();
-                };
+                b.title = label + '  (' + label[0] + ')';
+                b.onclick = () => setTool(v);
                 toolSeg.appendChild(b);
             }
         }
@@ -2133,7 +2264,7 @@
             const t = tOfZ(zoom);
             zoomRange.value = Math.round(t * 1000);
             zoomRange.style.setProperty('--t', t);
-            zoomVal.textContent = zoom < 10 ? zoom.toFixed(1) : Math.round(zoom);
+            zoomVal.textContent = (zoom < 10 ? zoom.toFixed(1) : Math.round(zoom)) + '\u00d7';
         }
         zoomRange.addEventListener('input', () => {
             // 画面の真ん中を軸に寄る。つまみで動かすときはそれが素直
@@ -2142,23 +2273,43 @@
                    Z_MIN * Math.pow(Z_MAX / Z_MIN, zoomRange.value / 1000));
             refreshZoom(); draw(); save();
         });
-        document.getElementById('btnFit').onclick = () => {
+        function fitView() {
             zoom = 1; panX = panY = 0;
             refreshZoom(); draw(); save();
-        };
+        }
+        document.getElementById('btnFit').onclick = fitView;
 
         const toggleSeg = document.getElementById('toggleSeg');
         function refreshPreview() {
             toggleSeg.innerHTML = '';
             for (const t of [
-                { label: 'GUIDE', get: () => guideOn, set: v => guideOn = v },
                 { label: 'PREVIEW', get: () => preview, set: v => preview = v },
                 { label: 'INVERT', get: () => invert, set: v => invert = v }]) {
                 const b = document.createElement('button');
                 b.textContent = t.label;
                 b.className = t.get() ? 'on' : '';
+                b.title = t.label + '  (' + t.label[0] + ')';
                 b.onclick = () => { t.set(!t.get()); refreshPreview(); draw(); save(); };
                 toggleSeg.appendChild(b);
+            }
+        }
+
+        // 当たり（水平・垂直・平行へ寄せる）の入切。半径が変わる＝形が変わるので
+        // SHAPE 側に置いてある。ON / OFF の2択にして、いまどちらなのかを見せる
+        const guideSeg = document.getElementById('guideSeg');
+        function refreshGuide() {
+            guideSeg.innerHTML = '';
+            for (const [v, label] of [[true, 'ON'], [false, 'OFF']]) {
+                const b = document.createElement('button');
+                b.textContent = label;
+                b.className = v === guideOn ? 'on' : '';
+                b.title = 'SNAP ' + label + '  (G)';
+                b.onclick = () => {
+                    guideOn = v;
+                    if (!v) guides = [];
+                    refreshGuide(); draw(); save();
+                };
+                guideSeg.appendChild(b);
             }
         }
 
@@ -2169,6 +2320,7 @@
                 const b = document.createElement('button');
                 b.textContent = label;
                 b.className = v === outline ? 'on' : '';
+                b.title = label + '  (M)';
                 b.onclick = () => { outline = v; refreshView(); refreshCombine(); draw(); save(); };
                 viewSeg.appendChild(b);
             }
@@ -2187,6 +2339,7 @@
                 const b = document.createElement('button');
                 b.textContent = n + 1;
                 b.className = n === active ? 'on' : '';
+                if (n < 9) b.title = 'BAND ' + (n + 1) + '  (' + (n + 1) + ')';
                 b.onclick = () => { active = n; refreshBands(true); draw(); save(); };
                 bandSeg.appendChild(b);
             }
@@ -2198,7 +2351,7 @@
             tapKey = null;   // 長押しで消費した。離しても杭は入れ替わらない
             // 同じ杭に円がもう1本あると、重なって打ち消し合って形が消える
             if (bands.some(b => b.contacts && b.contacts.length === 1 && b.contacts[0].k === k))
-                return toast('ALREADY');
+                return toast('BAND ALREADY HERE', true);
             mark();
             bands.push(newBand(k));
             active = bands.length - 1;
@@ -2318,9 +2471,34 @@
         btnUndo.onclick = undo;
         btnRedo.onclick = redo;
         window.addEventListener('keydown', e => {
-            if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return;
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) redo(); else undo();
+                return;
+            }
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            // つまみやセレクトを触っている最中は、そちらに譲る
+            const t = e.target;
+            if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+            // 1〜9 で輪ゴムを選ぶ。チップを押すのと同じ
+            if (e.key >= '1' && e.key <= '9') {
+                const n = +e.key - 1;
+                if (n >= bands.length) return;
+                e.preventDefault();
+                active = n; refreshBands(true); draw(); save();
+                return;
+            }
+            switch (e.key.toLowerCase()) {
+                case 'e': setTool('edit'); break;
+                case 's': setTool('size'); break;
+                case 'm': outline = !outline; refreshView(); refreshCombine(); draw(); save(); break;
+                case 'p': preview = !preview; refreshPreview(); draw(); save(); break;
+                case 'i': invert = !invert; refreshPreview(); draw(); save(); break;
+                case 'g': guideOn = !guideOn; guides = []; refreshGuide(); draw(); save(); break;
+                case 'f': fitView(); break;
+                default: return;
+            }
             e.preventDefault();
-            if (e.shiftKey) redo(); else undo();
         });
 
         document.getElementById('btnClear').onclick = () => {
@@ -2386,9 +2564,12 @@
                 '" clip-path="' + ref + '"/>\n</svg>\n';
         }
 
-        function toast(msg) {
+        // 知らせはぜんぶ英大文字の短文で揃える。できなかったときだけ赤に寄せて、
+        // 成功と失敗が同じ白い箱で流れないようにする
+        function toast(msg, bad) {
             const t = document.getElementById('toast');
             t.textContent = msg;
+            t.classList.toggle('err', !!bad);
             t.classList.add('show');
             clearTimeout(toast._t);
             toast._t = setTimeout(() => t.classList.remove('show'), 1400);
@@ -2403,29 +2584,33 @@
         }
 
         document.getElementById('btnSvg').onclick = () => {
-            if (!loops.length) return toast('EMPTY');
+            if (!loops.length) return toast('NOTHING TO EXPORT', true);
             download(new Blob([svgText()], { type: 'image/svg+xml' }), 'pegs2.svg');
+            toast('SVG SAVED');
         };
 
         document.getElementById('btnCopy').onclick = async () => {
-            if (!loops.length) return toast('EMPTY');
+            if (!loops.length) return toast('NOTHING TO EXPORT', true);
             const text = svgText();
             try {
                 await navigator.clipboard.writeText(text);
-                toast('COPIED');
+                toast('SVG COPIED');
             } catch (e) {
                 const ta = document.createElement('textarea');
                 ta.value = text;
+                ta.style.userSelect = 'text';   // body で止めているぶんをここだけ戻す
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
                 document.body.appendChild(ta);
                 ta.select();
                 document.execCommand('copy');
                 ta.remove();
-                toast('COPIED');
+                toast('SVG COPIED');
             }
         };
 
         document.getElementById('btnPng').onclick = () => {
-            if (!loops.length) return toast('EMPTY');
+            if (!loops.length) return toast('NOTHING TO EXPORT', true);
             const vb = frame();
             const px = 1024;
             const c = document.createElement('canvas');
@@ -2445,7 +2630,7 @@
                 g.fillStyle = ink;
                 fillShape(g, scale, ox, oy, null, px, px);
             }
-            c.toBlob(b => download(b, 'pegs2.png'), 'image/png');
+            c.toBlob(b => { download(b, 'pegs2.png'); toast('PNG SAVED'); }, 'image/png');
         };
 
         // ===== 保存 =========================================================
@@ -2557,6 +2742,7 @@
         document.getElementById('btnExport').onclick = () => {
             const text = JSON.stringify(snapshotState(), null, 2);
             download(new Blob([text], { type: 'application/json' }), 'pegs2.json');
+            toast('JSON SAVED');
         };
 
         const fileImport = document.getElementById('fileImport');
@@ -2566,16 +2752,16 @@
             fileImport.value = '';   // 同じファイルを続けて選んでも change が発火するように
             if (!file) return;
             let s = null;
-            try { s = JSON.parse(await file.text()); } catch (e) { return toast('読めない形式'); }
+            try { s = JSON.parse(await file.text()); } catch (e) { return toast('BAD FILE', true); }
             const cells = s && (Array.isArray(s.pegs) ? s.pegs : s.grid);
-            if (!Array.isArray(cells)) return toast('読めない形式');
+            if (!Array.isArray(cells)) return toast('BAD FILE', true);
             mark();
             applyState(s);
             refreshSegs(); refreshView(); refreshPreview(); refreshCombine(); readSliders();
-            refreshTool(); refreshSize(); refreshZoom();
+            refreshTool(); refreshSize(); refreshZoom(); refreshGuide();
             refreshBands(true);
             update();
-            toast('IMPORTED');
+            toast('LOADED');
         });
 
         // ===== 初期状態 =====================================================
@@ -2587,6 +2773,7 @@
         refreshView();
         refreshCombine();
         refreshPreview();
+        refreshGuide();
         refreshTool();
         readSliders();
         refreshSize();
