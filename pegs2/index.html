@@ -418,7 +418,7 @@
                     <button class="act mini" id="btnDelBand">DEL</button>
                 </div>
                 <div class="row">
-                    <label>RADIUS</label>
+                    <label>BASE</label>
                     <input type="range" id="radiusRange" min="0" max="1000" value="218">
                     <span class="value" id="radiusVal">44</span>
                 </div>
@@ -1428,7 +1428,10 @@
             const i0 = Math.max(0, Math.floor(vb.x / S)), i1 = Math.min(cols - 1, Math.ceil((vb.x + vb.size) / S));
             const j0 = Math.max(0, Math.floor(vb.y / S)), j1 = Math.min(rows - 1, Math.ceil((vb.y + vb.size) / S));
             // 目が詰まりすぎたら格子は出さない。点だらけで形が見えなくなる
-            const dense = S * scale < 6 * dpr;
+            const dense = S * scale < 5 * dpr;
+            // 印の大きさは画面基準の固定値。ズームで変わらない。
+            // 空セルはほとんどが「ただの目盛り」なので、いちばん小さくする。
+            // 杭が立っているところだけ、探せる大きさを残す
             for (let j = j0; !preview && !dense && j <= j1; j++) {
                 for (let i = i0; i <= i1; i++) {
                     const k = key(i, j);
@@ -1439,13 +1442,13 @@
                         // 輪ゴムの外に立っている杭だけリング。ひと目で区別がつく
                         ctx.strokeStyle = C.ring;
                         ctx.lineWidth = Math.max(1, dpr);
-                        ctx.arc(cx, cy, 3.5 * dpr, 0, Math.PI * 2);
+                        ctx.arc(cx, cy, 3 * dpr, 0, Math.PI * 2);
                         ctx.stroke();
                     } else {
                         ctx.fillStyle = inside
                             ? (outline ? C.ring : C.onDot)
                             : C.dot;
-                        ctx.arc(cx, cy, 2.5 * dpr, 0, Math.PI * 2);
+                        ctx.arc(cx, cy, (on ? 2.1 : 1.2) * dpr, 0, Math.PI * 2);
                         ctx.fill();
                     }
                 }
@@ -1482,7 +1485,9 @@
         let tapKey = null;        // 押した杭。指が動かずに離れたときだけ効く
         let holdTimer = null;     // 長押しの計測。杭を押さえたままで新しい輪ゴム
         const HOLD_MS = 450;
-        let tool = 'peg';      // 'peg'（PEGS と同じ操作）| 'size'（杭の太さ）
+        // 'edit' … 杭を打つ・輪ゴムを引く（PEGS と同じ操作）
+        // 'size' … 杭ごとの太さを決める
+        let tool = 'edit';
         let sizing = null;     // SIZE ツールで引っぱっている杭
         let guideOn = true;    // 太さを合わせるときの当たり（水平・垂直・平行）
         let guides = [];       // いま効いているガイド線
@@ -2071,7 +2076,8 @@
             radiusVal.style.opacity = on ? '0.45' : '';
         }
 
-        // 選んだ杭ぶんの太さ。何も選んでいなければ触れない
+        // 選んだ杭ぶんの太さ（PEG）。何も選んでいなければ触れない。
+        // BASE は個別指定していない杭ぜんぶに効く既定の太さで、こちらが優先される
         function refreshSize() {
             const on = !!(selKey && pegs.has(selKey));
             sizeRow.classList.toggle('dim', !on);
@@ -2105,13 +2111,13 @@
         const toolSeg = document.getElementById('toolSeg');
         function refreshTool() {
             toolSeg.innerHTML = '';
-            for (const [v, label] of [['peg', 'PEG'], ['size', 'SIZE']]) {
+            for (const [v, label] of [['edit', 'EDIT'], ['size', 'SIZE']]) {
                 const b = document.createElement('button');
                 b.textContent = label;
                 b.className = v === tool ? 'on' : '';
                 b.onclick = () => {
                     tool = v;
-                    if (v === 'peg') selKey = null;
+                    if (v === 'edit') selKey = null;
                     guides = [];
                     refreshTool(); refreshSize(); draw(); save();
                 };
@@ -2505,7 +2511,8 @@
             for (const e of (Array.isArray(s.pegR) ? s.pegR : []))
                 if (Array.isArray(e) && pegs.has(e[0]) && Number.isFinite(e[1]))
                     pegWant.set(e[0], Math.max(R_MIN, Math.min(R_MAX, e[1])));
-            tool = s.tool === 'size' ? 'size' : 'peg';
+            // 'peg' と書かれた古いファイルもここで 'edit' に落ちる
+            tool = s.tool === 'size' ? 'size' : 'edit';
             zoom = Number.isFinite(s.zoom) ? Math.max(Z_MIN, Math.min(Z_MAX, s.zoom)) : 1;
             panX = Number.isFinite(s.panX) ? s.panX : 0;
             panY = Number.isFinite(s.panY) ? s.panY : 0;
