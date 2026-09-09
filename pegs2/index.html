@@ -453,8 +453,7 @@
     <div class="app">
         <header>
             <h1>PEGS2</h1>
-            <!-- 中身は refreshTool が入れる。ツールごとに効く操作が違うので、
-                 EDIT の説明を出しっぱなしにすると SIZE では全部が嘘になる -->
+            <!-- 中身はスクリプトが入れる。操作の一覧はそちらに置いておく -->
             <span class="hint" id="hint"></span>
         </header>
 
@@ -467,10 +466,6 @@
             <!-- 形を作る操作 -->
             <section class="group">
                 <h2>SHAPE</h2>
-                <div class="row">
-                    <label>TOOL</label>
-                    <div class="seg" id="toolSeg"></div>
-                </div>
                 <div class="row">
                     <label>BAND</label>
                     <div class="seg chips" id="bandSeg"></div>
@@ -580,7 +575,7 @@
         let pegs = new Set();    // 杭が打たれているセル "i,j"
         let pegWant = new Map(); // 杭ごとに指定した半径。無ければ radius（既定値）
         let pegEff = new Map();  // 重なりを解いたあとの実効半径。描画も判定もこれを見る
-        let selKey = null;       // SIZE ツールで触っている杭
+        let selKey = null;       // いま選んである杭。太さのハンドルもここに付く
         // 輪ゴム1本ぶん。contacts が形の状態で、sides は各杭がその輪ゴムの
         // どちら側かの控え。ghosts は抜いた杭が掛かっていた場所
         let bands = [];
@@ -621,7 +616,7 @@
         // 望みの半径から、どの2つも重ならない実効半径を作る。
         // 杭は2種類あって、扱いが違う。
         //
-        //   決めた杭（pegWant にある）… SIZE で自分で太さを決めたもの。動かさない。
+        //   決めた杭（pegWant にある）… ハンドルやつまみで太さを決めたもの。動かさない。
         //     置いたときに setWant が隙間で頭打ちにしているので、そもそも重ならない。
         //   既定の杭 … RADIUS のつまみに従うもの。全員がおなじ太さ。
         //
@@ -1349,9 +1344,6 @@
             stageEl.classList.toggle('inv', invert);
             // 最初のひと突きまでは、何をすればいいかを盤の中で言う
             emptyEl.hidden = pegs.size > 0 || preview;
-            if (!emptyEl.hidden)
-                emptyEl.textContent = tool === 'size'
-                    ? 'SWITCH TO EDIT TO PLACE PEGS' : 'TAP A DOT TO PLACE A PEG';
 
             // 白黒反転。編集用の表示もまとめて入れ替える
             const C = invert ? {
@@ -1472,27 +1464,43 @@
             }
 
             // 望みの半径まで膨らめなかった杭は、望みのほうを点線で見せる。
-            // 縮んだのが盤のせいだと分かれば、杭をずらすか隣を細くすればいい
-            if (!preview && tool === 'size') {
-                ctx.strokeStyle = C.dim;
-                ctx.lineWidth = Math.max(1, dpr);
-                ctx.setLineDash([3 * dpr, 3 * dpr]);
-                for (const k of pegs) {
-                    // 引いている最中は指の位置そのもの。壁に当たったのが見える
-                    const w = (sizing && sizing.k === k) ? sizing.raw : wantOf(k);
-                    if (w - rOf(k) < 1e-3) continue;
-                    const [i, j] = k.split(',').map(Number);
+            // 縮んだのが盤のせいだと分かれば、杭をずらすか隣を細くすればいい。
+            // いま手を掛けている杭だけ。全部に出すと、BASE を上限まで
+            // 回しただけで盤が点線だらけになる
+            const wishFor = sizing ? sizing.k : selKey;
+            if (!preview && wishFor && pegs.has(wishFor)) {
+                // 引いている最中は指の位置そのもの。壁に当たったのが見える
+                const w = sizing ? sizing.raw : wantOf(wishFor);
+                if (w - rOf(wishFor) >= 1e-3) {
+                    const [i, j] = wishFor.split(',').map(Number);
+                    ctx.strokeStyle = C.dim;
+                    ctx.lineWidth = Math.max(1, dpr);
+                    ctx.setLineDash([3 * dpr, 3 * dpr]);
                     ctx.beginPath();
                     ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, w * scale, 0, Math.PI * 2);
                     ctx.stroke();
+                    ctx.setLineDash([]);
                 }
-                ctx.setLineDash([]);
-                if (selKey && pegs.has(selKey)) {
-                    const [i, j] = selKey.split(',').map(Number);
-                    ctx.strokeStyle = 'rgba(220,60,60,0.9)';
-                    ctx.lineWidth = 2 * dpr;
+            }
+
+            // 選んである杭。ツールは跨ぐ。引いている最中は行き先のほうが
+            // 印になるので、元の場所には出さない
+            if (!preview && !moving && selKey && pegs.has(selKey)) {
+                const [i, j] = selKey.split(',').map(Number);
+                ctx.strokeStyle = 'rgba(220,60,60,0.9)';
+                ctx.lineWidth = 2 * dpr;
+                ctx.beginPath();
+                ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, rOf(selKey) * scale, 0, Math.PI * 2);
+                ctx.stroke();
+                // 太さのハンドル。縁が本体の的から離れている杭にだけ付く
+                const h = handleAt(selKey);
+                if (h) {
+                    ctx.fillStyle = 'rgba(220,60,60,0.95)';
                     ctx.beginPath();
-                    ctx.arc(ox + CX(i) * scale, oy + CY(j) * scale, rOf(selKey) * scale, 0, Math.PI * 2);
+                    ctx.arc(ox + h[0] * scale, oy + h[1] * scale, 5.5 * dpr, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = C.paper;
+                    ctx.lineWidth = 1.5 * dpr;
                     ctx.stroke();
                 }
             }
@@ -1525,6 +1533,39 @@
                         ctx.arc(cx, cy, (on ? 2.1 : 1.2) * dpr, 0, Math.PI * 2);
                         ctx.fill();
                     }
+                }
+            }
+
+            // 引いている杭の行き先。確定していないので、元の杭はそのまま残る
+            if (moving) {
+                const rr = rOf(moving.k) * scale;
+                if (moving.to) {
+                    const [ti, tj] = moving.to.split(',').map(Number);
+                    const [oi, oj] = moving.k.split(',').map(Number);
+                    const tx = ox + CX(ti) * scale, ty = oy + CY(tj) * scale;
+                    ctx.strokeStyle = 'rgba(220,60,60,0.35)';
+                    ctx.lineWidth = Math.max(1, dpr);
+                    ctx.setLineDash([4 * dpr, 4 * dpr]);
+                    ctx.beginPath();
+                    ctx.moveTo(ox + CX(oi) * scale, oy + CY(oj) * scale);
+                    ctx.lineTo(tx, ty);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.strokeStyle = 'rgba(220,60,60,0.9)';
+                    ctx.lineWidth = 2 * dpr;
+                    ctx.beginPath();
+                    ctx.arc(tx, ty, rr, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (moving.pos) {
+                    // 置けない場所。指の下に影だけ出して、行き先が無いことを見せる
+                    ctx.strokeStyle = C.dim;
+                    ctx.lineWidth = Math.max(1, dpr);
+                    ctx.setLineDash([3 * dpr, 3 * dpr]);
+                    ctx.beginPath();
+                    ctx.arc(ox + moving.pos.x * scale, oy + moving.pos.y * scale,
+                            rr, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
                 }
             }
 
@@ -1576,15 +1617,20 @@
         let dragRect = null, dragVB = null;
         let anchorA = null, anchorB = null, anchorKeys = null, origState = null;
         let tapKey = null;        // 押した杭。指が動かずに離れたときだけ効く
+        // タップは「選ぶ」。抜くのは選んである杭をもう一度叩いたとき。
+        // 1タップ目は待たずに選べるので、遅れるのは2タップ目の判定だけ
+        let lastTap = null;
+        const DTAP_MS = 320;
+        // 選んである杭の上から始めたドラッグは、輪ゴムではなく杭を動かす。
+        // 引いているあいだは何も確定させず、離した先で
+        // removePeg（旧）+ addPeg（新）を1手として通す
+        let mayMove = false, moving = null;
         let holdTimer = null;     // 長押しの計測。杭を押さえたままで新しい輪ゴム
         const HOLD_MS = 450;
         // 押さえているあいだ、盤には何も起きない。450ms のあいだ操作が
         // 死んだように見えるので、閉じていくリングで残りを見せる
         let holdViz = null, holdRaf = 0;
-        // 'edit' … 杭を打つ・輪ゴムを引く（PEGS と同じ操作）
-        // 'size' … 杭ごとの太さを決める
-        let tool = 'edit';
-        let sizing = null;     // SIZE ツールで引っぱっている杭
+        let sizing = null;     // ハンドルを引っぱって太さを決めている杭
         let guideOn = true;    // 太さを合わせるときの当たり（水平・垂直・平行）
         let guides = [];       // いま効いているガイド線
         // 指2本のあいだは盤に触らせない。掴みかけの操作はここで捨てる
@@ -1767,8 +1813,9 @@
         function cancelTouch() {
             clearHold();
             if (dragging && origState && cur()) cur().sides = new Map(origState);
-            const was = dragging || sizing;
+            const was = dragging || sizing || moving;
             tapKey = null; pendingGrab = null; dragging = false; origState = null;
+            mayMove = false; moving = null;
             sizing = null; guides = [];
             origSpan = restPath = restSeq = null; dragRect = dragVB = null;
             startPos = dragPos = null;
@@ -1805,19 +1852,27 @@
             refreshZoom(); draw();
         }
 
-        // ===== SIZE ツール ==================================================
-        // 杭を押さえて、中心からの距離で太さを決める。
-        // 出た値はあくまで「望み」で、隣と重なるぶんは relaxRadii が詰める
-        function pickPeg(x, y) {
-            let best = null, bd = Infinity;
-            for (const k of pegs) {
-                const c = pegC(k);
-                const d = Math.hypot(x - c[0], y - c[1]);
-                if (d > rOf(k) + tol(0.5, 26) || d >= bd) continue;
-                bd = d; best = k;
-            }
-            return best;
+        // ===== 太さのハンドル ==============================================
+        // 選んである杭の縁に1つ。引いた距離がそのまま太さになる。
+        // 出た値はあくまで「望み」で、隣と重なるぶんは relaxRadii が詰める。
+        //
+        // 杭の本体はドラッグで動かす場所なので、ハンドルはそこと重ねられない。
+        // 本体の的は pickCell の HOLD で決まっているから、縁がそこから
+        // ハンドルの的ぶん離れていなければハンドルは出さない。
+        // つまり細い杭にはハンドルが無い ― そこは PEG のつまみの担当
+        const HANDLE = () => tol(0.20, 14);
+        const HANDLE_ANG = -Math.PI / 4;   // 右上。輪郭と重なりにくい向き
+        function handleAt(k) {
+            if (!k || !pegs.has(k)) return null;
+            const r = rOf(k);
+            if (r < HOLD() + HANDLE()) return null;
+            const c = pegC(k);
+            return [c[0] + Math.cos(HANDLE_ANG) * r, c[1] + Math.sin(HANDLE_ANG) * r];
         }
+        const onHandle = (x, y) => {
+            const h = handleAt(selKey);
+            return !!h && Math.hypot(x - h[0], y - h[1]) < HANDLE();
+        };
 
         // ===== 太さの当たり ================================================
         // 接線の向きは半径で決まる。n を接線と直交する単位ベクトルとすると
@@ -1981,6 +2036,23 @@
             draw();
         }
 
+        // タップ。空セルは打って選ぶ、杭は選ぶ、
+        // 選んである杭をもう一度叩いたら抜く
+        function tapPeg(k, marked) {
+            const now = performance.now();
+            const dbl = lastTap && lastTap.k === k && now - lastTap.t < DTAP_MS;
+            if (!hasPeg(k)) {
+                if (!marked) mark();
+                addPeg(k); selKey = k; lastTap = null;
+            } else if (dbl && selKey === k) {
+                if (!marked) mark();
+                removePeg(k); selKey = null; lastTap = null;
+            } else {
+                selKey = k; lastTap = { k, t: now };
+            }
+            refreshSize();
+        }
+
         function startDrag(at, e) {
             if (!grabAnchors(at.x, at.y)) return false;
             mark();
@@ -2010,12 +2082,13 @@
                 return;
             }
             const w = toWorld(e);
-            if (tool === 'size') {
-                const pk = pickPeg(w.x, w.y);
-                selKey = pk;
-                sizing = pk ? { k: pk, marked: false, raw: wantOf(pk) } : null;
+            // 選んである杭のハンドル。輪ゴムより先に見る。
+            // 選んだ物に付いている取っ手が、盤の何より優先される
+            if (onHandle(w.x, w.y)) {
+                cv.setPointerCapture(e.pointerId);
+                sizing = { k: selKey, marked: false, raw: wantOf(selKey) };
                 guides = [];
-                if (pk) cv.setPointerCapture(e.pointerId);
+                startPos = w;
                 refreshSize(); draw();
                 return;
             }
@@ -2026,14 +2099,23 @@
             const db = bandDist(w.x, w.y);
             const near = db < GRAB();
             if (near && !k) { startDrag(w, e); return; }
-            if (!k) return;
+            // 盤の何も無いところ。ここには打つものも掴むものも無いので、
+            // 選択を外す場所として使う（Escape だけだと指では外せない）
+            if (!k) {
+                if (selKey) { selKey = null; lastTap = null; refreshSize(); draw(); }
+                return;
+            }
             // 杭に接するあたりでは、輪ゴムと杭のどちらへ触ったのか位置では決まらない。
             // 近いほうを採ると、線が杭を掠めている場所では杭のタップに吸われて
             // 輪ゴムが掴めなくなる。ここでは決めずに、離せば杭、動かせば輪ゴムにする
             // ここでは打たない。滑らせただけで杭が入れ替わると、
             // 輪ゴムを掴み損ねたときに盤面が荒れる
             cv.setPointerCapture(e.pointerId);
-            pendingGrab = near ? w : null;
+            // 選んである杭の上だけは、滑らせても輪ゴムを掴まない。
+            // 選んだ物に手が掛かる、という順序を優先する。
+            // 代償として、その杭に輪ゴムが掛かっていると、そこでは辺を掴めない
+            mayMove = hasPeg(k) && k === selKey;
+            pendingGrab = (near && !mayMove) ? w : null;
             tapKey = k; startPos = w;
             startHold(k);
         });
@@ -2059,10 +2141,6 @@
                 refreshSize(); update();
                 return;
             }
-            if (tool === 'size') {
-                if (!e.buttons) cv.style.cursor = pickPeg(w.x, w.y) ? 'ew-resize' : 'default';
-                return;
-            }
             if (dragging) {
                 dragPos = w;
                 if (applyDrag(w)) update(); else draw();
@@ -2071,6 +2149,21 @@
             const slid = startPos && Math.hypot(w.x - startPos.x, w.y - startPos.y) > STILL();
             // 指が動いたら長押しではない
             if (holdTimer && slid) { clearHold(); }
+            // 選んである杭を引き始めた。ここではまだ何も動かさない
+            if (mayMove && slid && !moving) {
+                moving = { k: tapKey, to: tapKey, pos: w };
+                tapKey = null; pendingGrab = null;
+                clearHold();
+            }
+            if (moving) {
+                const c = pickCell(w.x, w.y);
+                // 行き先は空いているセルか、元の場所だけ。杭は重ならない
+                moving.to = (c && (c === moving.k || !hasPeg(c))) ? c : null;
+                moving.pos = w;
+                cv.style.cursor = moving.to ? 'grabbing' : 'not-allowed';
+                draw();
+                return;
+            }
             // 保留していた分。滑らせたので輪ゴムのほうだった
             if (pendingGrab && slid) {
                 const at = pendingGrab;
@@ -2084,9 +2177,12 @@
             }
             // どちらに触れているのかを、押す前に見せる
             if (!e.buttons) {
+                const c = pickCell(w.x, w.y);
                 const db = bandDist(w.x, w.y);
-                cv.style.cursor = db < GRAB() ? 'grab'
-                    : pickCell(w.x, w.y) ? 'pointer' : 'default';
+                cv.style.cursor = onHandle(w.x, w.y) ? 'ew-resize'
+                    : (c && hasPeg(c) && c === selKey) ? 'grab'
+                    : db < GRAB() ? 'grab'
+                    : c ? 'pointer' : 'default';
             }
         });
 
@@ -2096,22 +2192,51 @@
             if (!pts.size) hushUntilUp = false;
             if (panning) { panning = null; save(); return; }
             if (sizing) { sizing = null; guides = []; refreshSize(); update(); return; }
-            if (tool === 'size' || hushUntilUp) return;
+            if (hushUntilUp) return;
             clearHold();
             // 輪ゴムを掴んだまま動かさなかったら、その場のタップとして扱う。
             // 輪ゴムが掛かっている杭も抜けるようにするため
             const w = toWorld(e);
+            // 引いていた杭をここで確定する。1手ぶんの undo で戻る
+            if (moving) {
+                const { k, to } = moving;
+                moving = null; mayMove = false;
+                if (to && to !== k) {
+                    mark();
+                    const want = pegWant.get(k);   // 自分で決めた太さは連れていく
+                    // その杭にだけ巻かれている輪ゴム（＝円）。removePeg は
+                    // 接点が1本しかない輪ゴムからは接点を外さないので、
+                    // 抜けた杭を指したまま残って張り直しで落ちる。
+                    // 移動で輪ゴムが消えるのはさすがに事故なので、巻き直す
+                    const solo = bands.filter(bd => bd.contacts
+                        && bd.contacts.length === 1 && bd.contacts[0].k === k);
+                    removePeg(k);
+                    addPeg(to);
+                    if (want !== undefined) setWant(to, want);
+                    for (const bd of solo) {
+                        bd.contacts = [{ k: to, s: IN, c: pegC(to), r: rOf(to) }];
+                        bd.sides.set(to, IN);
+                        bd.ghosts.delete(to);
+                    }
+                    selKey = to;
+                    lastTap = null;
+                }
+                tapKey = null; pendingGrab = null; startPos = null;
+                cv.style.cursor = 'default';
+                refreshSize(); update();
+                return;
+            }
             const still = startPos && Math.hypot(w.x - startPos.x, w.y - startPos.y) < STILL();
             if (dragging) {
+                // 輪ゴムを掴んだまま動かさなかった。その場のタップとして扱う
                 if (still) {
                     const k = pickCell(w.x, w.y);
-                    if (k) setPeg(k, !hasPeg(k));
+                    if (k) tapPeg(k, true);   // startDrag がもう mark 済み
                 }
             } else if (tapKey && still && pickCell(w.x, w.y) === tapKey) {
-                mark();
-                setPeg(tapKey, !hasPeg(tapKey));
+                tapPeg(tapKey);
             }
-            tapKey = null; pendingGrab = null; dragging = false; origState = null;
+            tapKey = null; pendingGrab = null; mayMove = false; dragging = false; origState = null;
             origSpan = restPath = restSeq = null; dragRect = dragVB = null;
             cv.style.cursor = 'default';
             update();
@@ -2125,6 +2250,7 @@
             clearHold();
             if (dragging && origState && cur()) cur().sides = new Map(origState);
             tapKey = null; pendingGrab = null; dragging = false; origState = null;
+            mayMove = false; moving = null;
             origSpan = restPath = restSeq = null; dragRect = dragVB = null;
             update();
         });
@@ -2133,7 +2259,7 @@
         // 出た先でカーソルだけ ew-resize や grab のまま残ると、
         // 盤の当たりが外まで続いているように見える
         cv.addEventListener('pointerleave', () => {
-            if (!dragging && !sizing && !panning) cv.style.cursor = 'default';
+            if (!dragging && !sizing && !panning && !moving) cv.style.cursor = 'default';
         });
 
         cv.addEventListener('wheel', e => {
@@ -2227,34 +2353,9 @@
             mark(); pegWant.delete(selKey); refreshSize(); update();
         };
 
-        const toolSeg = document.getElementById('toolSeg');
-        const hintEl = document.getElementById('hint');
-        // ツールごとに、いま効く操作だけを出す
-        const HINTS = {
-            edit: '<b>tap</b> peg &nbsp;/&nbsp; <b>hold</b> new band<br>'
-                + '<b>drag</b> shape &nbsp;/&nbsp; <b>pinch</b> view',
-            size: '<b>drag</b> peg to resize<br>'
-                + '<b>RST</b> back to base &nbsp;/&nbsp; <b>pinch</b> view'
-        };
-        function setTool(v) {
-            if (tool === v) return;
-            tool = v;
-            if (v === 'edit') selKey = null;
-            guides = [];
-            refreshTool(); refreshSize(); draw(); save();
-        }
-        function refreshTool() {
-            hintEl.innerHTML = HINTS[tool] || HINTS.edit;
-            toolSeg.innerHTML = '';
-            for (const [v, label] of [['edit', 'EDIT'], ['size', 'SIZE']]) {
-                const b = document.createElement('button');
-                b.textContent = label;
-                b.className = v === tool ? 'on' : '';
-                b.title = label + '  (' + label[0] + ')';
-                b.onclick = () => setTool(v);
-                toolSeg.appendChild(b);
-            }
-        }
+        document.getElementById('hint').innerHTML =
+            '<b>tap</b> select &nbsp;/&nbsp; <b>tap\u00d72</b> remove &nbsp;/&nbsp; <b>hold</b> new band<br>'
+            + '<b>drag</b> peg, handle or shape &nbsp;/&nbsp; <b>pinch</b> view';
 
         // ===== 窓 ===========================================================
         const zoomRange = document.getElementById('zoomRange');
@@ -2489,13 +2590,20 @@
                 return;
             }
             switch (e.key.toLowerCase()) {
-                case 'e': setTool('edit'); break;
-                case 's': setTool('size'); break;
                 case 'm': outline = !outline; refreshView(); refreshCombine(); draw(); save(); break;
                 case 'p': preview = !preview; refreshPreview(); draw(); save(); break;
                 case 'i': invert = !invert; refreshPreview(); draw(); save(); break;
                 case 'g': guideOn = !guideOn; guides = []; refreshGuide(); draw(); save(); break;
                 case 'f': fitView(); break;
+                case 'escape':
+                    if (!selKey) return;
+                    selKey = null; lastTap = null; refreshSize(); draw(); save();
+                    break;
+                case 'delete': case 'backspace':
+                    if (!selKey || !pegs.has(selKey)) return;
+                    mark(); removePeg(selKey); selKey = null; lastTap = null;
+                    refreshSize(); update();
+                    break;
                 default: return;
             }
             e.preventDefault();
@@ -2652,7 +2760,7 @@
                 cols, rows,
                 radius: +radiusRange.value,   // v1 互換。つまみの位置
                 radiusR: radius,              // 刻みに乗らない正確な値
-                outline, preview, invert, combine, tool, guide: guideOn,
+                outline, preview, invert, combine, guide: guideOn,
                 zoom, panX, panY,
                 pegs: [...pegs],
                 pegR: [...pegWant],
@@ -2696,8 +2804,6 @@
             for (const e of (Array.isArray(s.pegR) ? s.pegR : []))
                 if (Array.isArray(e) && pegs.has(e[0]) && Number.isFinite(e[1]))
                     pegWant.set(e[0], Math.max(R_MIN, Math.min(R_MAX, e[1])));
-            // 'peg' と書かれた古いファイルもここで 'edit' に落ちる
-            tool = s.tool === 'size' ? 'size' : 'edit';
             zoom = Number.isFinite(s.zoom) ? Math.max(Z_MIN, Math.min(Z_MAX, s.zoom)) : 1;
             panX = Number.isFinite(s.panX) ? s.panX : 0;
             panY = Number.isFinite(s.panY) ? s.panY : 0;
@@ -2758,7 +2864,7 @@
             mark();
             applyState(s);
             refreshSegs(); refreshView(); refreshPreview(); refreshCombine(); readSliders();
-            refreshTool(); refreshSize(); refreshZoom(); refreshGuide();
+            refreshSize(); refreshZoom(); refreshGuide();
             refreshBands(true);
             update();
             toast('LOADED');
@@ -2774,7 +2880,6 @@
         refreshCombine();
         refreshPreview();
         refreshGuide();
-        refreshTool();
         readSliders();
         refreshSize();
         refreshZoom();
