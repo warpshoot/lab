@@ -2129,6 +2129,13 @@
             update();
         });
 
+        // 盤の外へ出たら、いま何を掴めるかの表示も外す。
+        // 出た先でカーソルだけ ew-resize や grab のまま残ると、
+        // 盤の当たりが外まで続いているように見える
+        cv.addEventListener('pointerleave', () => {
+            if (!dragging && !sizing && !panning) cv.style.cursor = 'default';
+        });
+
         cv.addEventListener('wheel', e => {
             e.preventDefault();
             zoomAt(toWorld(e), zoom * Math.exp(-e.deltaY * 0.0015));
