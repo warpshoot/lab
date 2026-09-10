@@ -1594,7 +1594,14 @@
         }
 
 
-        function update() { rebuild(); draw(); save(); }
+        // 実効半径を出し直すのは rebuild。数字はそのあとで書かないと、
+        // つまみを動かした直後に1手ぶん古い値が残る
+        function refreshVals() {
+            refreshRadiusVal();
+            if (selKey && pegs.has(selKey)) sizeVal.textContent = rOf(selKey).toFixed(2);
+        }
+
+        function update() { rebuild(); refreshVals(); draw(); save(); }
 
         // ===== 入力 =========================================================
         // タップ：杭を打つ／抜く。1タップ1本。指を滑らせたぶんは効かない
@@ -1914,11 +1921,19 @@
         }
 
         // 候補のうち raw にいちばん近いものを、当たりの範囲内なら返す
+        // 当たりの窓は「つまみの上での距離」で測る。
+        // 半径の絶対値で測ると、r = R_MIN + (R_MAX-R_MIN)·t² の二乗カーブのせいで
+        // つまみの上のほうほど窓が痩せる。実測で 1000 段中 18 段 ―― 指 3px しかなく、
+        // 狙っても素通りしていた。t で測れば、つまみのどこでも同じ広さになる。
+        // 半径を決める道はいまつまみだけなので、これで全部そろう
+        const SNAP_T = 0.03;   // つまみの長さの 3%。指にして 5〜7px
         function nearestSnap(cand, raw) {
+            const tr = tOfR(raw);
+            const d = v => Math.abs(tOfR(v) - tr);
             let best = null;
             for (const c of cand)
-                if (c.v != null && (!best || Math.abs(c.v - raw) < Math.abs(best.v - raw))) best = c;
-            return (best && Math.abs(best.v - raw) <= tol(0.15, 7)) ? best : null;
+                if (c.v != null && (!best || d(c.v) < d(best.v))) best = c;
+            return (best && d(best.v) <= SNAP_T) ? best : null;
         }
 
         // 寄せた辺と、平行の基準にした辺をガイドとして置く
