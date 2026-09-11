@@ -536,6 +536,7 @@
                 <div class="row" id="selRow">
                     <label>SELECTED</label>
                     <div class="btns" style="flex:1">
+                        <button class="act mini" id="btnFlipPeg" style="flex:1" title="hook the band on the other side of this peg">FLIP</button>
                         <button class="act mini" id="btnDupPeg" style="flex:1" title="copy this peg to a free cell">DUP</button>
                         <button class="act mini danger" id="btnDelPeg" style="flex:1" title="remove this peg  (Delete)">DEL</button>
                     </div>
@@ -978,6 +979,12 @@
             return d1 * d2 < 0 && d3 * d4 < 0;
         }
 
+        // 前の接点列を捨てて凸包から組み直したかどうか。形が大きく変わるので、
+        // 黙ってやると「何を触ったらこうなったのか」が画面から読み取れない。
+        // 側を裏返して収めたかどうかは、ここでは見ない ―― 頼んだ操作が
+        // 通ったかどうかは、頼んだ側だけを見比べないと分からない
+        let solveNote = null;
+
         function solveBand(band) {
             const ps = [];
             for (const k of pegs) {
@@ -1148,17 +1155,30 @@
                     cts.splice(at + 1, 0, i);
                     changed = true;
                 }
-                // 全部が後回しになったら、いちばん近い場所に押し込んで先へ進める
+                // 全部が後回しになったら、どこかに押し込んで先へ進める。
+                // 跡地（接点の杭が抜けて閉じたばかりの辺）があるなら、そこが先。
+                // 距離だけで選ぶと、抜けた杭の居場所ではなく、たまたま近い辺へ
+                // 入ってしまう。そこから形が総崩れになり、収めるために
+                // 関係のない接点が裏返る
                 if (!changed && pending.length) {
                     const i = pending[0];
-                    let at = 0, best = Infinity;
-                    for (let e = 0; e < cts.length; e++) {
+                    let at = -1;
+                    for (let e = 0; e < cts.length && at < 0; e++) {
                         const a = ctOf(cts[e]), b = ctOf(cts[(e + 1) % cts.length]);
-                        const L0 = cts.length > 1 ? linkOf(a, b) : null;
-                        if (!L0) continue;
-                        const d = segDist(ps[i].c[0], ps[i].c[1],
-                            [L0.pa[0], L0.pa[1], L0.pb[0], L0.pb[1]]);
-                        if (d < best) { best = d; at = e; }
+                        if (gaps.some(g => (g[0] === a.k && g[1] === b.k)
+                                        || (g[0] === b.k && g[1] === a.k))) at = e;
+                    }
+                    if (at < 0) {
+                        let best = Infinity;
+                        at = 0;
+                        for (let e = 0; e < cts.length; e++) {
+                            const a = ctOf(cts[e]), b = ctOf(cts[(e + 1) % cts.length]);
+                            const L0 = cts.length > 1 ? linkOf(a, b) : null;
+                            if (!L0) continue;
+                            const d = segDist(ps[i].c[0], ps[i].c[1],
+                                [L0.pa[0], L0.pa[1], L0.pb[0], L0.pb[1]]);
+                            if (d < best) { best = d; at = e; }
+                        }
                     }
                     cts.splice(at + 1, 0, i);
                     changed = true;
@@ -1220,7 +1240,7 @@
                     const sc = keeps(list) - (flip === null ? 0 : 0.5);
                     if (sc > bestScore) { bestScore = sc; best = list.slice(); bestFlip = flip; }
                 };
-                cts = hullSeed(); solve();
+                const fromHull = (cts = hullSeed(), solve(), cts.slice());
                 consider(cts, null);
                 for (const i of seed0) {
                     ps[i].s = -ps[i].s;
@@ -1231,23 +1251,31 @@
                 if (best) {
                     if (bestFlip !== null) ps[bestFlip].s = -ps[bestFlip].s;
                     cts = best;
+                    if (bestFlip === null && best.join() === fromHull.join()) solveNote = 'hull';
                 } else {
                     cts = hullSeed(); solve();
+                    solveNote = 'hull';
                 }
             }
             // それでも交差する形になったら、挿し込み無しの生の凸包まで戻す。
             // 重ならない円の凸包は必ず単純な形になるので、ここを最後の砦にして、
             // 自己交差した輪郭を絶対に画面へ出さない（OFF 杭の押し込みは諦める）
-            if (!simple(cts)) cts = hullSeed();
+            if (!simple(cts)) { cts = hullSeed(); solveNote = 'hull'; }
             return cts.map(i => ps[i]);
         }
+
+        let lastNote = null;   // この張り直しで起きたこと。update が拾って出す
+        let booted = false;    // 起動時の読み込みでは知らせない
 
         function rebuild() {
             // 形を解く前に実効半径を確定させる。ここから先は誰も want を見ない
             relaxRadii();
+            lastNote = null;
             for (let n = bands.length - 1; n >= 0; n--) {
                 const b = bands[n];
+                solveNote = null;
                 b.contacts = solveBand(b);
+                if (solveNote) lastNote = solveNote;
                 const outer = b.contacts && pathOf(b.contacts);
                 // 抱える杭がひとつも無くなった輪ゴムは、張る先が無いので消える
                 if (!outer) { bands.splice(n, 1); continue; }
@@ -1508,8 +1536,26 @@
             }
 
             // 当たった辺を画面いっぱいに伸ばして見せる。
-            // 相手の辺（平行の基準）も一緒に出さないと、何に合ったのか分からない
+            // 相手の辺（平行の基準）も一緒に出さないと、何に合ったのか分からない。
+            // 太さを揃えた相手だけは線で示せないので、その杭を赤くする。
+            // 選んである杭の実線のリングと混ざらないよう、点線と薄い塗りで分ける
             for (const g of guides) {
+                if (g.peg) {
+                    if (!pegs.has(g.peg)) continue;
+                    const [gi, gj] = g.peg.split(',').map(Number);
+                    const gx = ox + CX(gi) * scale, gy = oy + CY(gj) * scale;
+                    const gr = rOf(g.peg) * scale;
+                    ctx.beginPath();
+                    ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(220,60,60,0.16)';
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(220,60,60,0.8)';
+                    ctx.lineWidth = Math.max(1, dpr) * 1.5;
+                    ctx.setLineDash([4 * dpr, 3 * dpr]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    continue;
+                }
                 const ux = g.b[0] - g.a[0], uy = g.b[1] - g.a[1];
                 const len = Math.hypot(ux, uy);
                 if (len < 1e-9) continue;
@@ -1594,7 +1640,23 @@
         }
 
 
-        function update() { rebuild(); draw(); save(); }
+        // 実効半径を出し直すのは rebuild。数字はそのあとで書かないと、
+        // つまみを動かした直後に1手ぶん古い値が残る
+        function refreshVals() {
+            refreshRadiusVal();
+            if (selKey && pegs.has(selKey)) sizeVal.textContent = rOf(selKey).toFixed(2);
+        }
+
+        // 素直に解けなかったことを、操作の切れ目で1回だけ出す。
+        // ドラッグ中は毎フレーム解き直すので、そこでは黙っている
+        function notifySolve() {
+            const n = lastNote;
+            lastNote = null;
+            if (!n || !booted || dragging) return;
+            toast('SHAPE REBUILT', true);
+        }
+
+        function update() { rebuild(); refreshVals(); draw(); save(); notifySolve(); }
 
         // ===== 入力 =========================================================
         // タップ：杭を打つ／抜く。1タップ1本。指を滑らせたぶんは効かない
@@ -1619,6 +1681,9 @@
         // 変わると、指の位置から世界座標への換算が掴んだ瞬間とズレて、
         // 輪ゴムが思わぬ形に化ける。ドラッグ中はこの換算を固定する
         let dragRect = null, dragVB = null;
+        // 引いているあいだに「こうしたい」と決めた側。張り直しで戻されることが
+        // あるので、離したところで見比べて、戻っていたら黙らずに言う
+        let dragIntent = null;
         let anchorA = null, anchorB = null, anchorKeys = null, origState = null;
         let tapKey = null;        // 押した杭。指が動かずに離れたときだけ効く
         let guideOn = true;    // 太さを合わせるときの当たり（水平・垂直・平行）
@@ -1781,6 +1846,7 @@
             }
             swept.sort((a, b) => a.t - b.t);
             band.contacts = restSeq.concat(swept.map(x => ({ k: x.k, s: x.s, c: pegC(x.k), r: rOf(x.k) })));
+            dragIntent = next;   // 離したあと、この通りになったかを見比べる
             return true;
         }
 
@@ -1804,7 +1870,7 @@
             if (dragging && origState && cur()) cur().sides = new Map(origState);
             const was = dragging;
             tapKey = null; pendingGrab = null; dragging = false; origState = null;
-            guides = [];
+            dragIntent = null; guides = [];
             origSpan = restPath = restSeq = null; dragRect = dragVB = null;
             startPos = dragPos = null;
             if (was) update();
@@ -1914,11 +1980,19 @@
         }
 
         // 候補のうち raw にいちばん近いものを、当たりの範囲内なら返す
+        // 当たりの窓は「つまみの上での距離」で測る。
+        // 半径の絶対値で測ると、r = R_MIN + (R_MAX-R_MIN)·t² の二乗カーブのせいで
+        // つまみの上のほうほど窓が痩せる。実測で 1000 段中 18 段 ―― 指 3px しかなく、
+        // 狙っても素通りしていた。t で測れば、つまみのどこでも同じ広さになる。
+        // 半径を決める道はいまつまみだけなので、これで全部そろう
+        const SNAP_T = 0.03;   // つまみの長さの 3%。指にして 5〜7px
         function nearestSnap(cand, raw) {
+            const tr = tOfR(raw);
+            const d = v => Math.abs(tOfR(v) - tr);
             let best = null;
             for (const c of cand)
-                if (c.v != null && (!best || Math.abs(c.v - raw) < Math.abs(best.v - raw))) best = c;
-            return (best && Math.abs(best.v - raw) <= tol(0.15, 7)) ? best : null;
+                if (c.v != null && (!best || d(c.v) < d(best.v))) best = c;
+            return (best && d(best.v) <= SNAP_T) ? best : null;
         }
 
         // 寄せた辺と、平行の基準にした辺をガイドとして置く
@@ -1959,15 +2033,45 @@
             return best.v;
         }
 
+        // もうひとつの寄せ先。輪ゴムとは関係なく、杭どうしの縁を揃える。
+        // 上端・下端・左端・右端の4つ。
+        //
+        // 辺の角度を合わせる当たりは、その杭が輪ゴムの接点で、かつ輪ゴムに
+        // 辺があること（接点が2本以上）が要る。杭を1本置いて太らせたいだけの
+        // ときは候補が1つも出ない。でも「あの杭と高さを揃えたい」は
+        // 輪ゴムが掛かっていようがいまいが普通に起きる
+        function alignCands(k) {
+            const c = pegC(k), out = [];
+            for (const o of pegs) {
+                if (o === k) continue;
+                const d = pegC(o), ro = rOf(o);
+                //          揃える先の座標        その位置に来る半径      線の向き
+                out.push({ at: d[1] - ro, v: c[1] - (d[1] - ro), axis: 'h' }); // 上端
+                out.push({ at: d[1] + ro, v: (d[1] + ro) - c[1], axis: 'h' }); // 下端
+                out.push({ at: d[0] - ro, v: c[0] - (d[0] - ro), axis: 'v' }); // 左端
+                out.push({ at: d[0] + ro, v: (d[0] + ro) - c[0], axis: 'v' }); // 右端
+            }
+            return out;
+        }
+
+        // 揃えた縁を通る1本。線そのものが両方の杭の縁に接するので、
+        // 辺のときのような「相手の辺」は要らない
+        function setAlignGuide(a) {
+            guides = a.axis === 'h'
+                ? [{ a: [0, a.at], b: [1, a.at], ref: false }]
+                : [{ a: [a.at, 0], b: [a.at, 1], ref: false }];
+        }
+
         function snapSize(k, raw) {
             guides = [];
             if (!guideOn) return raw;
-            const { mine, others } = collectEdges((pt, q) => pt.k === k || q.k === k);
-            if (!mine.length) return raw;
             const room = roomFor(k);
+            const cand = [];
+
+            // 1. 輪ゴムの辺を水平・垂直・よその辺と平行にする半径
+            const { mine, others } = collectEdges((pt, q) => pt.k === k || q.k === k);
             const targets = [[0, null], [Math.PI / 2, null]];
             for (const o of others) targets.push([o.ang, o]);
-            const cand = [];
             for (const m of mine) {
                 const which = m.pt.k === k ? 'p' : 'q';
                 for (const [th, ref] of targets) {
@@ -1976,9 +2080,24 @@
                     cand.push({ v, m, which, ref });
                 }
             }
+
+            // 2. よその杭と縁を揃える半径
+            for (const a of alignCands(k))
+                if (a.v >= R_MIN && a.v <= room) cand.push(a);
+
+            // 3. よその杭と同じ太さ。揃える線が引けないぶんは、
+            //    寄せた先の杭そのものを赤くして見せる
+            for (const o of pegs) {
+                if (o === k) continue;
+                const v = rOf(o);
+                if (v >= R_MIN && v <= room) cand.push({ v, peg: o });
+            }
+
             const best = nearestSnap(cand, raw);
             if (!best) return raw;
-            setGuides(best.m, best.ref, (pt, q) => {
+            if (best.peg) guides = [{ peg: best.peg }];
+            else if (best.axis) setAlignGuide(best);
+            else setGuides(best.m, best.ref, (pt, q) => {
                 if (best.which === 'p') pt.r = best.v; else q.r = best.v;
             });
             return best.v;
@@ -1991,19 +2110,24 @@
 
         // 杭を隣のセルへ移す。removePeg（旧）+ addPeg（新）を通すだけで、
         // 接点列にもソルバにも新しい道は作らない。
-        // ただし、その杭にだけ巻かれている輪ゴム（＝円）は例外。removePeg は
-        // 接点が1本しかない輪ゴムからは接点を外さないので、抜けた杭を指したまま
-        // 残って張り直しで落ちる。移動で輪ゴムが消えるのは事故なので巻き直す
+        //
+        // ただし、輪ゴムが掛かっていた場所だけは引き継ぐ。removePeg は接点の列から
+        // 古いキーを消さずに残し、addPeg は新しいキーを列に入れない。そのままだと
+        // ソルバは「その杭のどこに掛かっていたか」を見失う。列から掛かりが1本
+        // 抜けた形になり、局所的に直せず凸包から組み直しになって、深いスリットの
+        // ような作り込んだ形がまるごと消える。杭を1つ隣へずらしただけで起きる。
+        // 古いキーを新しいキーへその場で差し替えれば、掛かりは同じ場所に残る
         function movePeg(k, to) {
             const want = pegWant.get(k);   // 自分で決めた太さは連れていく
-            const solo = bands.filter(bd => bd.contacts
-                && bd.contacts.length === 1 && bd.contacts[0].k === k);
             removePeg(k);
             addPeg(to);
             if (want !== undefined) setWant(to, want);
-            for (const bd of solo) {
-                bd.contacts = [{ k: to, s: IN, c: pegC(to), r: rOf(to) }];
-                bd.sides.set(to, IN);
+            for (const bd of bands) {
+                if (!bd.contacts) continue;
+                const i = bd.contacts.findIndex(c => c.k === k);
+                if (i < 0 || bd.contacts.some(c => c.k === to)) continue;
+                bd.contacts[i] = { k: to, s: bd.contacts[i].s, c: pegC(to), r: rOf(to) };
+                bd.sides.set(to, bd.contacts[i].s);
                 bd.ghosts.delete(to);
             }
         }
@@ -2127,10 +2251,22 @@
             } else if (tapKey && still && pickCell(w.x, w.y) === tapKey) {
                 tapPeg(tapKey);
             }
+            const intent = dragIntent;
             tapKey = null; pendingGrab = null; dragging = false; origState = null;
             origSpan = restPath = restSeq = null; dragRect = dragVB = null;
+            dragIntent = null;
             cv.style.cursor = 'default';
             update();
+            // 引っ掛けたはずの側が戻っていたら、その形は作れない。
+            // 黙って元に戻ると、狙いを外したのか無理なのかが区別できない
+            if (intent) {
+                const B = cur();
+                for (const [k, v] of intent)
+                    if (B && pegs.has(k) && (sideIn(B, k) ? IN : OUT) !== v) {
+                        toast('BAND WOULD CROSS', true);
+                        break;
+                    }
+            }
         });
         cv.addEventListener('pointercancel', e => {
             pts.delete(e.pointerId);
@@ -2140,6 +2276,7 @@
             if (dragging && origState && cur()) cur().sides = new Map(origState);
             tapKey = null; pendingGrab = null; dragging = false; origState = null;
             origSpan = restPath = restSeq = null; dragRect = dragVB = null;
+            dragIntent = null;
             update();
         });
 
@@ -2215,6 +2352,7 @@
         // 十字キーは行けない向きを落とす ― 制約を文で説明せずに済む
         const padEl = document.getElementById('pad');
         const selRow = document.getElementById('selRow');
+        const btnFlipPeg = document.getElementById('btnFlipPeg');
         const btnDupPeg = document.getElementById('btnDupPeg');
         const btnDelPeg = document.getElementById('btnDelPeg');
         const btnNewBand = document.getElementById('btnNewBand');
@@ -2223,6 +2361,7 @@
             padEl.hidden = !on || preview;
             selRow.classList.toggle('dim', !on);
             btnDupPeg.disabled = btnDelPeg.disabled = !on;
+            btnFlipPeg.disabled = !on || !bands.length;
             btnNewBand.disabled = !on;
             if (on) {
                 const [i, j] = selKey.split(',').map(Number);
@@ -2261,6 +2400,33 @@
             refreshSel(); update();
         }
 
+        // いま触れる輪ゴムを、その杭の反対側へ掛け替える。
+        // これまでは接点の弧をピンポイントで掴むしか道が無く、的は画面で10px
+        // ほどしかなかった。外しても何も起きないので、できないのか外したのかも
+        // 分からない。ボタンなら、できないときに理由を返せる
+        function flipSel() {
+            const B = cur();
+            if (!B || !selKey || !pegs.has(selKey)) return;
+            const was = sideIn(B, selKey) ? IN : OUT;
+            const snap = snapshot();
+            mark();
+            B.sides.set(selKey, was === IN ? OUT : IN);
+            const ct = B.contacts && B.contacts.find(c => c.k === selKey);
+            if (ct) ct.s = was === IN ? OUT : IN;
+            update();
+            // 解いた結果が元に戻っていたら、その形は作れない。
+            // 輪ゴムが自分と交差するので、ソルバが側を裏返して収めている
+            const now = cur();
+            if (now && (sideIn(now, selKey) ? IN : OUT) !== was) return;   // 通った
+            {
+                undoStack.pop();
+                applySnapshot(snap);
+                refreshUndo();
+                lastNote = null;
+                toast('BAND WOULD CROSS', true);
+            }
+        }
+
         function delSel() {
             if (!selKey || !pegs.has(selKey)) return;
             mark();
@@ -2271,6 +2437,7 @@
 
         for (const b of padEl.children)
             b.onclick = () => moveSel(+b.dataset.di, +b.dataset.dj);
+        btnFlipPeg.onclick = flipSel;
         btnDupPeg.onclick = dupSel;
         btnDelPeg.onclick = delSel;
         btnNewBand.onclick = () => { if (selKey && pegs.has(selKey)) spawnBand(selKey); };
@@ -2844,6 +3011,7 @@
         refreshSel();
         refreshZoom();
         update();
+        booted = true;   // ここから先の張り直しだけ知らせる
         window.addEventListener('resize', draw);
         window.addEventListener('pagehide', save);
         document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
