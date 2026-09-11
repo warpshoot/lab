@@ -2097,19 +2097,24 @@
 
         // 杭を隣のセルへ移す。removePeg（旧）+ addPeg（新）を通すだけで、
         // 接点列にもソルバにも新しい道は作らない。
-        // ただし、その杭にだけ巻かれている輪ゴム（＝円）は例外。removePeg は
-        // 接点が1本しかない輪ゴムからは接点を外さないので、抜けた杭を指したまま
-        // 残って張り直しで落ちる。移動で輪ゴムが消えるのは事故なので巻き直す
+        //
+        // ただし、輪ゴムが掛かっていた場所だけは引き継ぐ。removePeg は接点の列から
+        // 古いキーを消さずに残し、addPeg は新しいキーを列に入れない。そのままだと
+        // ソルバは「その杭のどこに掛かっていたか」を見失う。列から掛かりが1本
+        // 抜けた形になり、局所的に直せず凸包から組み直しになって、深いスリットの
+        // ような作り込んだ形がまるごと消える。杭を1つ隣へずらしただけで起きる。
+        // 古いキーを新しいキーへその場で差し替えれば、掛かりは同じ場所に残る
         function movePeg(k, to) {
             const want = pegWant.get(k);   // 自分で決めた太さは連れていく
-            const solo = bands.filter(bd => bd.contacts
-                && bd.contacts.length === 1 && bd.contacts[0].k === k);
             removePeg(k);
             addPeg(to);
             if (want !== undefined) setWant(to, want);
-            for (const bd of solo) {
-                bd.contacts = [{ k: to, s: IN, c: pegC(to), r: rOf(to) }];
-                bd.sides.set(to, IN);
+            for (const bd of bands) {
+                if (!bd.contacts) continue;
+                const i = bd.contacts.findIndex(c => c.k === k);
+                if (i < 0 || bd.contacts.some(c => c.k === to)) continue;
+                bd.contacts[i] = { k: to, s: bd.contacts[i].s, c: pegC(to), r: rOf(to) };
+                bd.sides.set(to, bd.contacts[i].s);
                 bd.ghosts.delete(to);
             }
         }
