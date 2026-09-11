@@ -602,6 +602,7 @@
                     <button class="act key" id="btnCopy">COPY</button>
                 </div>
                 <div class="btns">
+                    <button class="act mini" id="btnLink" style="flex:1" title="copy a link that opens this board">LINK</button>
                     <button class="act mini" id="btnExport" style="flex:1">SAVE .JSON</button>
                     <button class="act mini" id="btnImport" style="flex:1">LOAD .JSON</button>
                 </div>
@@ -2668,6 +2669,13 @@
 
         // 操作を始める前に呼ぶ。ドラッグ1回＝1手なので、掴んだ時点で1枚
         function mark() {
+            // リンクで開いた盤に手が入った。ここからはこの人のものなので、
+            // 保存を始めて、URL のハッシュも外す（画面と食い違わせない）
+            if (fromLink) {
+                fromLink = false;
+                try { history.replaceState(null, '', location.href.replace(/#.*$/, '')); }
+                catch (e) { /* 通らない置き場所もある。外せなくても実害は無い */ }
+            }
             undoStack.push(snapshot());
             if (undoStack.length > UNDO_MAX) undoStack.shift();
             redoStack.length = 0;
@@ -2824,24 +2832,31 @@
             toast('SVG SAVED');
         };
 
+        // クリップボードへ。使えない場所（file:// など）では控えの手で通す
+        async function toClipboard(text) {
+            try { await navigator.clipboard.writeText(text); return; }
+            catch (e) { /* 控えの手へ */ }
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.userSelect = 'text';   // body で止めているぶんをここだけ戻す
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+        }
+
         document.getElementById('btnCopy').onclick = async () => {
             if (!loops.length) return toast('NOTHING TO EXPORT', true);
-            const text = svgText();
-            try {
-                await navigator.clipboard.writeText(text);
-                toast('SVG COPIED');
-            } catch (e) {
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                ta.style.userSelect = 'text';   // body で止めているぶんをここだけ戻す
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                ta.remove();
-                toast('SVG COPIED');
-            }
+            await toClipboard(svgText());
+            toast('SVG COPIED');
+        };
+
+        document.getElementById('btnLink').onclick = async () => {
+            const url = await boardLink();
+            await toClipboard(url);
+            toast('LINK COPIED');
         };
 
         document.getElementById('btnPng').onclick = () => {
@@ -2959,7 +2974,7 @@
         }
 
         function save() {
-            if (restoring) return;
+            if (restoring || fromLink) return;   // 見ているだけの間は相手の盤に触らない
             try { localStorage.setItem(STORE, JSON.stringify(snapshotState())); }
             catch (e) { /* 保存できなくても編集は続けられる */ }
         }
@@ -2968,6 +2983,84 @@
             let s = null;
             try { s = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { }
             return applyState(s);
+        }
+
+        // ===== 盤をリンクにする ===========================================
+        // 状態を URL のハッシュに載せる。ハッシュはサーバへ飛ばないので、
+        // 置き場所がどこでも（file:// でも）そのまま動く。
+        //
+        // 載せる前に削れるだけ削る。sd（各杭の側）で要るのは
+        // 「接点でない杭のうち IN のもの」だけ。接点ぶんは c が上書きするし、
+        // 残りは applyState が既定で OUT に落とす。杭10本の盤で 10件 → 1件になる
+        const LINK_TAG = 'p2', LINK_TAG_RAW = 'p2r';
+        const b64u = b => btoa(String.fromCharCode(...b))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        const unb64u = t => Uint8Array.from(
+            atob(t.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+
+        function slimState() {
+            const s = snapshotState();
+            const q = (v, n) => Math.round(v * 10 ** n) / 10 ** n;
+            s.radiusR = q(s.radiusR, 6);
+            s.zoom = q(s.zoom, 3); s.panX = q(s.panX, 3); s.panY = q(s.panY, 3);
+            s.pegR = s.pegR.map(([k, r]) => [k, q(r, 6)]);
+            s.bands = s.bands.map(b => {
+                const on = new Set(b.c.map(c => c.k));
+                return { c: b.c, sd: b.sd.filter(([k, v]) => !on.has(k) && v === IN) };
+            });
+            return s;
+        }
+
+        async function squeeze(text) {
+            if (!window.CompressionStream) return null;
+            try {
+                const cs = new CompressionStream('deflate-raw');
+                const w = cs.writable.getWriter();
+                w.write(new TextEncoder().encode(text)); w.close();
+                return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+            } catch (e) { return null; }
+        }
+
+        async function unsqueeze(bytes) {
+            const ds = new DecompressionStream('deflate-raw');
+            const w = ds.writable.getWriter();
+            // 書き込み側の約束を放っておくと、壊れたリンクのときに
+            // 誰も拾わない例外になってコンソールへ出る。読み出し側で
+            // 同じ失敗を受け取るので、こちらは黙らせる
+            w.write(bytes).catch(() => {});
+            w.close().catch(() => {});
+            return new Response(ds.readable).text();
+        }
+
+        async function boardLink() {
+            const text = JSON.stringify(slimState());
+            const packed = await squeeze(text);
+            const tag = packed ? LINK_TAG : LINK_TAG_RAW;
+            const body = packed ? b64u(packed) : b64u(new TextEncoder().encode(text));
+            // origin + pathname で組むと file:// で origin が "null" になる。
+            // いま開いている URL からハッシュだけ落とすのが確実
+            return location.href.replace(/#.*$/, '') + '#' + tag + '.' + body;
+        }
+
+        // ハッシュに盤が載っていれば、それを開く。
+        // 開いた人の作りかけを黙って潰さないよう、最初の編集まで保存しない
+        let fromLink = false;
+        async function loadLink() {
+            const h = location.hash.replace(/^#/, '');
+            const i = h.indexOf('.');
+            if (i < 0) return false;
+            const tag = h.slice(0, i), body = h.slice(i + 1);
+            if (tag !== LINK_TAG && tag !== LINK_TAG_RAW) return false;
+            let text = null;
+            try {
+                const bytes = unb64u(body);
+                text = tag === LINK_TAG ? await unsqueeze(bytes) : new TextDecoder().decode(bytes);
+            } catch (e) { return false; }
+            let st = null;
+            try { st = JSON.parse(text); } catch (e) { return false; }
+            if (!applyState(st)) return false;
+            fromLink = true;
+            return true;
         }
 
         // 盤面をファイルへ書き出し／ファイルから読み込む。バグ報告用にも、
@@ -2998,20 +3091,40 @@
         });
 
         // ===== 初期状態 =====================================================
-        // 前回の続きがあれば拾う。無ければ空の盤面から始める
-        load();
+        // ハッシュに盤が載っていれば、そちらを開く。無ければ前回の続き。
+        // 読むのは非同期なので、その間も fromLink を立てておく。
+        // 立てないと、届く前の空の盤が相手の localStorage を上書きしてしまう
+        const LINK_RE = /^#p2r?\./;
+        const hasLink = LINK_RE.test(location.hash);
+        if (hasLink) fromLink = true; else load();
 
-        refreshSegs();
-        refreshUndo();
-        refreshView();
-        refreshCombine();
-        refreshPreview();
-        refreshGuide();
-        readSliders();
-        refreshSel();
-        refreshZoom();
+        const refreshAll = () => {
+            refreshSegs(); refreshView(); refreshCombine(); refreshPreview();
+            refreshGuide(); readSliders(); refreshSel(); refreshZoom();
+            refreshBands(true); refreshUndo();
+        };
+        refreshAll();
         update();
-        booted = true;   // ここから先の張り直しだけ知らせる
+        if (!hasLink) booted = true;   // ここから先の張り直しだけ知らせる
+        else (async () => {
+            const ok = await loadLink();
+            if (!ok) { fromLink = false; load(); }
+            refreshAll();
+            update();
+            booted = true;
+            toast(ok ? 'SHARED BOARD' : 'BAD LINK', !ok);
+        })();
+        // 開いたままのページのアドレス欄にリンクを貼られることがある。
+        // ハッシュだけの移動ではスクリプトが走り直さないので、ここで拾う
+        window.addEventListener('hashchange', async () => {
+            if (!LINK_RE.test(location.hash)) return;
+            fromLink = true;
+            const ok = await loadLink();
+            if (!ok) fromLink = false;
+            refreshAll();
+            update();
+            toast(ok ? 'SHARED BOARD' : 'BAD LINK', !ok);
+        });
         window.addEventListener('resize', draw);
         window.addEventListener('pagehide', save);
         document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
