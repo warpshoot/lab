@@ -432,8 +432,53 @@
             outline-offset: 2px;
         }
 
+        /* 置き換えていいかを聞く。聞いているあいだ、盤にはその人自身の
+           作りかけが映っている ― 何を失うのかが見えないと選べない */
+        .ask {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            background: rgba(0, 0, 0, 0.62);
+            padding: 24px;
+            z-index: 10;
+        }
+
+        /* display を持つ指定はブラウザ既定の [hidden] に勝ってしまう。
+           隠すほうも同じ強さで書いておかないと、出っぱなしになる */
+        .ask[hidden] {
+            display: none;
+        }
+
+        .ask-box {
+            width: 100%;
+            max-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 20px;
+            background: #171717;
+            border: 1px solid var(--line-strong);
+            border-radius: var(--r);
+        }
+
+        .ask-box h3 {
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.14em;
+            color: #fff;
+        }
+
+        .ask-box p {
+            font-size: 10px;
+            line-height: 1.8;
+            letter-spacing: 0.06em;
+            color: var(--label);
+        }
+
         .toast {
             position: fixed;
+            z-index: 11;
             left: 50%;
             bottom: calc(24px + env(safe-area-inset-bottom, 0px));
             transform: translateX(-50%) translateY(8px);
@@ -609,6 +654,17 @@
             </section>
 
             <input type="file" id="fileImport" accept=".json,application/json" hidden>
+        </div>
+    </div>
+
+    <div class="ask" id="ask" hidden>
+        <div class="ask-box">
+            <h3>SHARED BOARD</h3>
+            <p>Opening it replaces the board you have here.<br>Your board is not saved anywhere else.</p>
+            <div class="btns">
+                <button class="act" id="askKeep">KEEP MINE</button>
+                <button class="act key" id="askOpen">OPEN</button>
+            </div>
         </div>
     </div>
 
@@ -2671,11 +2727,7 @@
         function mark() {
             // リンクで開いた盤に手が入った。ここからはこの人のものなので、
             // 保存を始めて、URL のハッシュも外す（画面と食い違わせない）
-            if (fromLink) {
-                fromLink = false;
-                try { history.replaceState(null, '', location.href.replace(/#.*$/, '')); }
-                catch (e) { /* 通らない置き場所もある。外せなくても実害は無い */ }
-            }
+            if (fromLink) { fromLink = false; dropHash(); }
             undoStack.push(snapshot());
             if (undoStack.length > UNDO_MAX) undoStack.shift();
             redoStack.length = 0;
@@ -2699,6 +2751,12 @@
         btnUndo.onclick = undo;
         btnRedo.onclick = redo;
         window.addEventListener('keydown', e => {
+            // 置き換えていいかを聞いている最中。盤のキーは効かせない。
+            // Escape だけは「開かない」として拾う
+            if (asking) {
+                if (e.key === 'Escape' && askEnd) { e.preventDefault(); askEnd(false); }
+                return;
+            }
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
                 if (e.shiftKey) redo(); else undo();
@@ -3042,25 +3100,74 @@
             return location.href.replace(/#.*$/, '') + '#' + tag + '.' + body;
         }
 
-        // ハッシュに盤が載っていれば、それを開く。
-        // 開いた人の作りかけを黙って潰さないよう、最初の編集まで保存しない
+        // ハッシュに載っている盤を読む。ここでは当てない。
+        // 当てていいかを聞くかどうかは、読めてから決める
         let fromLink = false;
-        async function loadLink() {
+        async function readLink() {
             const h = location.hash.replace(/^#/, '');
             const i = h.indexOf('.');
-            if (i < 0) return false;
+            if (i < 0) return null;
             const tag = h.slice(0, i), body = h.slice(i + 1);
-            if (tag !== LINK_TAG && tag !== LINK_TAG_RAW) return false;
+            if (tag !== LINK_TAG && tag !== LINK_TAG_RAW) return null;
             let text = null;
             try {
                 const bytes = unb64u(body);
                 text = tag === LINK_TAG ? await unsqueeze(bytes) : new TextDecoder().decode(bytes);
+            } catch (e) { return null; }
+            try {
+                const st = JSON.parse(text);
+                return (st && Array.isArray(st.pegs)) ? st : null;
+            } catch (e) { return null; }
+        }
+
+        // 置き換わるものがあるときだけ聞く。空の盤なら黙って開く
+        function hasOwnBoard() {
+            try {
+                const s = JSON.parse(localStorage.getItem(STORE) || 'null');
+                return !!(s && Array.isArray(s.pegs) && s.pegs.length);
             } catch (e) { return false; }
-            let st = null;
-            try { st = JSON.parse(text); } catch (e) { return false; }
-            if (!applyState(st)) return false;
-            fromLink = true;
-            return true;
+        }
+
+        const askEl = document.getElementById('ask');
+        const askYes = document.getElementById('askOpen');
+        const askNo = document.getElementById('askKeep');
+        let asking = false, askEnd = null;
+        function askOpen() {
+            asking = true;
+            askEl.hidden = false;
+            askYes.focus();
+            return new Promise(done => {
+                askEnd = v => {
+                    asking = false; askEnd = null;
+                    askEl.hidden = true;
+                    askYes.onclick = askNo.onclick = null;
+                    done(v);
+                };
+                askYes.onclick = () => askEnd(true);
+                askNo.onclick = () => askEnd(false);
+            });
+        }
+
+        const dropHash = () => {
+            try { history.replaceState(null, '', location.href.replace(/#.*$/, '')); }
+            catch (e) { /* 通らない置き場所もある。外せなくても実害は無い */ }
+        };
+
+        // リンクを開く一連。起動時と、開いたままのページに貼られたときの両方が通る
+        async function openLink() {
+            fromLink = true;             // 当たるまでのあいだ、相手の保存に触らない
+            const st = await readLink();
+            if (!st) { fromLink = false; toast('BAD LINK', true); return; }
+            if (hasOwnBoard() && !await askOpen()) {
+                fromLink = false;
+                dropHash();
+                toast('KEPT YOUR BOARD');
+                return;
+            }
+            if (!applyState(st)) { fromLink = false; toast('BAD LINK', true); return; }
+            refreshAll();
+            update();
+            toast('SHARED BOARD');
         }
 
         // 盤面をファイルへ書き出し／ファイルから読み込む。バグ報告用にも、
@@ -3096,7 +3203,10 @@
         // 立てないと、届く前の空の盤が相手の localStorage を上書きしてしまう
         const LINK_RE = /^#p2r?\./;
         const hasLink = LINK_RE.test(location.hash);
-        if (hasLink) fromLink = true; else load();
+        // 聞くあいだも自分の盤を映しておきたいので、先に前回の続きを拾う。
+        // fromLink のあいだは保存しないので、拾っても相手の記録は動かない
+        if (hasLink) fromLink = true;
+        load();
 
         const refreshAll = () => {
             refreshSegs(); refreshView(); refreshCombine(); refreshPreview();
@@ -3106,24 +3216,11 @@
         refreshAll();
         update();
         if (!hasLink) booted = true;   // ここから先の張り直しだけ知らせる
-        else (async () => {
-            const ok = await loadLink();
-            if (!ok) { fromLink = false; load(); }
-            refreshAll();
-            update();
-            booted = true;
-            toast(ok ? 'SHARED BOARD' : 'BAD LINK', !ok);
-        })();
+        else (async () => { await openLink(); booted = true; })();
         // 開いたままのページのアドレス欄にリンクを貼られることがある。
         // ハッシュだけの移動ではスクリプトが走り直さないので、ここで拾う
-        window.addEventListener('hashchange', async () => {
-            if (!LINK_RE.test(location.hash)) return;
-            fromLink = true;
-            const ok = await loadLink();
-            if (!ok) fromLink = false;
-            refreshAll();
-            update();
-            toast(ok ? 'SHARED BOARD' : 'BAD LINK', !ok);
+        window.addEventListener('hashchange', () => {
+            if (LINK_RE.test(location.hash)) openLink();
         });
         window.addEventListener('resize', draw);
         window.addEventListener('pagehide', save);
