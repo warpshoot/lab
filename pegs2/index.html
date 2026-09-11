@@ -1974,15 +1974,45 @@
             return best.v;
         }
 
+        // もうひとつの寄せ先。輪ゴムとは関係なく、杭どうしの縁を揃える。
+        // 上端・下端・左端・右端の4つ。
+        //
+        // 辺の角度を合わせる当たりは、その杭が輪ゴムの接点で、かつ輪ゴムに
+        // 辺があること（接点が2本以上）が要る。杭を1本置いて太らせたいだけの
+        // ときは候補が1つも出ない。でも「あの杭と高さを揃えたい」は
+        // 輪ゴムが掛かっていようがいまいが普通に起きる
+        function alignCands(k) {
+            const c = pegC(k), out = [];
+            for (const o of pegs) {
+                if (o === k) continue;
+                const d = pegC(o), ro = rOf(o);
+                //          揃える先の座標        その位置に来る半径      線の向き
+                out.push({ at: d[1] - ro, v: c[1] - (d[1] - ro), axis: 'h' }); // 上端
+                out.push({ at: d[1] + ro, v: (d[1] + ro) - c[1], axis: 'h' }); // 下端
+                out.push({ at: d[0] - ro, v: c[0] - (d[0] - ro), axis: 'v' }); // 左端
+                out.push({ at: d[0] + ro, v: (d[0] + ro) - c[0], axis: 'v' }); // 右端
+            }
+            return out;
+        }
+
+        // 揃えた縁を通る1本。線そのものが両方の杭の縁に接するので、
+        // 辺のときのような「相手の辺」は要らない
+        function setAlignGuide(a) {
+            guides = a.axis === 'h'
+                ? [{ a: [0, a.at], b: [1, a.at], ref: false }]
+                : [{ a: [a.at, 0], b: [a.at, 1], ref: false }];
+        }
+
         function snapSize(k, raw) {
             guides = [];
             if (!guideOn) return raw;
-            const { mine, others } = collectEdges((pt, q) => pt.k === k || q.k === k);
-            if (!mine.length) return raw;
             const room = roomFor(k);
+            const cand = [];
+
+            // 1. 輪ゴムの辺を水平・垂直・よその辺と平行にする半径
+            const { mine, others } = collectEdges((pt, q) => pt.k === k || q.k === k);
             const targets = [[0, null], [Math.PI / 2, null]];
             for (const o of others) targets.push([o.ang, o]);
-            const cand = [];
             for (const m of mine) {
                 const which = m.pt.k === k ? 'p' : 'q';
                 for (const [th, ref] of targets) {
@@ -1991,9 +2021,15 @@
                     cand.push({ v, m, which, ref });
                 }
             }
+
+            // 2. よその杭と縁を揃える半径
+            for (const a of alignCands(k))
+                if (a.v >= R_MIN && a.v <= room) cand.push(a);
+
             const best = nearestSnap(cand, raw);
             if (!best) return raw;
-            setGuides(best.m, best.ref, (pt, q) => {
+            if (best.axis) setAlignGuide(best);
+            else setGuides(best.m, best.ref, (pt, q) => {
                 if (best.which === 'p') pt.r = best.v; else q.r = best.v;
             });
             return best.v;
