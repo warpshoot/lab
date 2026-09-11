@@ -1155,17 +1155,30 @@
                     cts.splice(at + 1, 0, i);
                     changed = true;
                 }
-                // 全部が後回しになったら、いちばん近い場所に押し込んで先へ進める
+                // 全部が後回しになったら、どこかに押し込んで先へ進める。
+                // 跡地（接点の杭が抜けて閉じたばかりの辺）があるなら、そこが先。
+                // 距離だけで選ぶと、抜けた杭の居場所ではなく、たまたま近い辺へ
+                // 入ってしまう。そこから形が総崩れになり、収めるために
+                // 関係のない接点が裏返る
                 if (!changed && pending.length) {
                     const i = pending[0];
-                    let at = 0, best = Infinity;
-                    for (let e = 0; e < cts.length; e++) {
+                    let at = -1;
+                    for (let e = 0; e < cts.length && at < 0; e++) {
                         const a = ctOf(cts[e]), b = ctOf(cts[(e + 1) % cts.length]);
-                        const L0 = cts.length > 1 ? linkOf(a, b) : null;
-                        if (!L0) continue;
-                        const d = segDist(ps[i].c[0], ps[i].c[1],
-                            [L0.pa[0], L0.pa[1], L0.pb[0], L0.pb[1]]);
-                        if (d < best) { best = d; at = e; }
+                        if (gaps.some(g => (g[0] === a.k && g[1] === b.k)
+                                        || (g[0] === b.k && g[1] === a.k))) at = e;
+                    }
+                    if (at < 0) {
+                        let best = Infinity;
+                        at = 0;
+                        for (let e = 0; e < cts.length; e++) {
+                            const a = ctOf(cts[e]), b = ctOf(cts[(e + 1) % cts.length]);
+                            const L0 = cts.length > 1 ? linkOf(a, b) : null;
+                            if (!L0) continue;
+                            const d = segDist(ps[i].c[0], ps[i].c[1],
+                                [L0.pa[0], L0.pa[1], L0.pb[0], L0.pb[1]]);
+                            if (d < best) { best = d; at = e; }
+                        }
                     }
                     cts.splice(at + 1, 0, i);
                     changed = true;
