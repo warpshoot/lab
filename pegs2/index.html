@@ -536,6 +536,7 @@
                 <div class="row" id="selRow">
                     <label>SELECTED</label>
                     <div class="btns" style="flex:1">
+                        <button class="act mini" id="btnFlipPeg" style="flex:1" title="hook the band on the other side of this peg">FLIP</button>
                         <button class="act mini" id="btnDupPeg" style="flex:1" title="copy this peg to a free cell">DUP</button>
                         <button class="act mini danger" id="btnDelPeg" style="flex:1" title="remove this peg  (Delete)">DEL</button>
                     </div>
@@ -978,6 +979,12 @@
             return d1 * d2 < 0 && d3 * d4 < 0;
         }
 
+        // 前の接点列を捨てて凸包から組み直したかどうか。形が大きく変わるので、
+        // 黙ってやると「何を触ったらこうなったのか」が画面から読み取れない。
+        // 側を裏返して収めたかどうかは、ここでは見ない ―― 頼んだ操作が
+        // 通ったかどうかは、頼んだ側だけを見比べないと分からない
+        let solveNote = null;
+
         function solveBand(band) {
             const ps = [];
             for (const k of pegs) {
@@ -1220,7 +1227,7 @@
                     const sc = keeps(list) - (flip === null ? 0 : 0.5);
                     if (sc > bestScore) { bestScore = sc; best = list.slice(); bestFlip = flip; }
                 };
-                cts = hullSeed(); solve();
+                const fromHull = (cts = hullSeed(), solve(), cts.slice());
                 consider(cts, null);
                 for (const i of seed0) {
                     ps[i].s = -ps[i].s;
@@ -1231,23 +1238,31 @@
                 if (best) {
                     if (bestFlip !== null) ps[bestFlip].s = -ps[bestFlip].s;
                     cts = best;
+                    if (bestFlip === null && best.join() === fromHull.join()) solveNote = 'hull';
                 } else {
                     cts = hullSeed(); solve();
+                    solveNote = 'hull';
                 }
             }
             // それでも交差する形になったら、挿し込み無しの生の凸包まで戻す。
             // 重ならない円の凸包は必ず単純な形になるので、ここを最後の砦にして、
             // 自己交差した輪郭を絶対に画面へ出さない（OFF 杭の押し込みは諦める）
-            if (!simple(cts)) cts = hullSeed();
+            if (!simple(cts)) { cts = hullSeed(); solveNote = 'hull'; }
             return cts.map(i => ps[i]);
         }
+
+        let lastNote = null;   // この張り直しで起きたこと。update が拾って出す
+        let booted = false;    // 起動時の読み込みでは知らせない
 
         function rebuild() {
             // 形を解く前に実効半径を確定させる。ここから先は誰も want を見ない
             relaxRadii();
+            lastNote = null;
             for (let n = bands.length - 1; n >= 0; n--) {
                 const b = bands[n];
+                solveNote = null;
                 b.contacts = solveBand(b);
+                if (solveNote) lastNote = solveNote;
                 const outer = b.contacts && pathOf(b.contacts);
                 // 抱える杭がひとつも無くなった輪ゴムは、張る先が無いので消える
                 if (!outer) { bands.splice(n, 1); continue; }
@@ -1619,7 +1634,16 @@
             if (selKey && pegs.has(selKey)) sizeVal.textContent = rOf(selKey).toFixed(2);
         }
 
-        function update() { rebuild(); refreshVals(); draw(); save(); }
+        // 素直に解けなかったことを、操作の切れ目で1回だけ出す。
+        // ドラッグ中は毎フレーム解き直すので、そこでは黙っている
+        function notifySolve() {
+            const n = lastNote;
+            lastNote = null;
+            if (!n || !booted || dragging) return;
+            toast('SHAPE REBUILT', true);
+        }
+
+        function update() { rebuild(); refreshVals(); draw(); save(); notifySolve(); }
 
         // ===== 入力 =========================================================
         // タップ：杭を打つ／抜く。1タップ1本。指を滑らせたぶんは効かない
@@ -1644,6 +1668,9 @@
         // 変わると、指の位置から世界座標への換算が掴んだ瞬間とズレて、
         // 輪ゴムが思わぬ形に化ける。ドラッグ中はこの換算を固定する
         let dragRect = null, dragVB = null;
+        // 引いているあいだに「こうしたい」と決めた側。張り直しで戻されることが
+        // あるので、離したところで見比べて、戻っていたら黙らずに言う
+        let dragIntent = null;
         let anchorA = null, anchorB = null, anchorKeys = null, origState = null;
         let tapKey = null;        // 押した杭。指が動かずに離れたときだけ効く
         let guideOn = true;    // 太さを合わせるときの当たり（水平・垂直・平行）
@@ -1806,6 +1833,7 @@
             }
             swept.sort((a, b) => a.t - b.t);
             band.contacts = restSeq.concat(swept.map(x => ({ k: x.k, s: x.s, c: pegC(x.k), r: rOf(x.k) })));
+            dragIntent = next;   // 離したあと、この通りになったかを見比べる
             return true;
         }
 
@@ -1829,7 +1857,7 @@
             if (dragging && origState && cur()) cur().sides = new Map(origState);
             const was = dragging;
             tapKey = null; pendingGrab = null; dragging = false; origState = null;
-            guides = [];
+            dragIntent = null; guides = [];
             origSpan = restPath = restSeq = null; dragRect = dragVB = null;
             startPos = dragPos = null;
             if (was) update();
@@ -2205,10 +2233,22 @@
             } else if (tapKey && still && pickCell(w.x, w.y) === tapKey) {
                 tapPeg(tapKey);
             }
+            const intent = dragIntent;
             tapKey = null; pendingGrab = null; dragging = false; origState = null;
             origSpan = restPath = restSeq = null; dragRect = dragVB = null;
+            dragIntent = null;
             cv.style.cursor = 'default';
             update();
+            // 引っ掛けたはずの側が戻っていたら、その形は作れない。
+            // 黙って元に戻ると、狙いを外したのか無理なのかが区別できない
+            if (intent) {
+                const B = cur();
+                for (const [k, v] of intent)
+                    if (B && pegs.has(k) && (sideIn(B, k) ? IN : OUT) !== v) {
+                        toast('BAND WOULD CROSS', true);
+                        break;
+                    }
+            }
         });
         cv.addEventListener('pointercancel', e => {
             pts.delete(e.pointerId);
@@ -2218,6 +2258,7 @@
             if (dragging && origState && cur()) cur().sides = new Map(origState);
             tapKey = null; pendingGrab = null; dragging = false; origState = null;
             origSpan = restPath = restSeq = null; dragRect = dragVB = null;
+            dragIntent = null;
             update();
         });
 
@@ -2293,6 +2334,7 @@
         // 十字キーは行けない向きを落とす ― 制約を文で説明せずに済む
         const padEl = document.getElementById('pad');
         const selRow = document.getElementById('selRow');
+        const btnFlipPeg = document.getElementById('btnFlipPeg');
         const btnDupPeg = document.getElementById('btnDupPeg');
         const btnDelPeg = document.getElementById('btnDelPeg');
         const btnNewBand = document.getElementById('btnNewBand');
@@ -2301,6 +2343,7 @@
             padEl.hidden = !on || preview;
             selRow.classList.toggle('dim', !on);
             btnDupPeg.disabled = btnDelPeg.disabled = !on;
+            btnFlipPeg.disabled = !on || !bands.length;
             btnNewBand.disabled = !on;
             if (on) {
                 const [i, j] = selKey.split(',').map(Number);
@@ -2339,6 +2382,33 @@
             refreshSel(); update();
         }
 
+        // いま触れる輪ゴムを、その杭の反対側へ掛け替える。
+        // これまでは接点の弧をピンポイントで掴むしか道が無く、的は画面で10px
+        // ほどしかなかった。外しても何も起きないので、できないのか外したのかも
+        // 分からない。ボタンなら、できないときに理由を返せる
+        function flipSel() {
+            const B = cur();
+            if (!B || !selKey || !pegs.has(selKey)) return;
+            const was = sideIn(B, selKey) ? IN : OUT;
+            const snap = snapshot();
+            mark();
+            B.sides.set(selKey, was === IN ? OUT : IN);
+            const ct = B.contacts && B.contacts.find(c => c.k === selKey);
+            if (ct) ct.s = was === IN ? OUT : IN;
+            update();
+            // 解いた結果が元に戻っていたら、その形は作れない。
+            // 輪ゴムが自分と交差するので、ソルバが側を裏返して収めている
+            const now = cur();
+            if (now && (sideIn(now, selKey) ? IN : OUT) !== was) return;   // 通った
+            {
+                undoStack.pop();
+                applySnapshot(snap);
+                refreshUndo();
+                lastNote = null;
+                toast('BAND WOULD CROSS', true);
+            }
+        }
+
         function delSel() {
             if (!selKey || !pegs.has(selKey)) return;
             mark();
@@ -2349,6 +2419,7 @@
 
         for (const b of padEl.children)
             b.onclick = () => moveSel(+b.dataset.di, +b.dataset.dj);
+        btnFlipPeg.onclick = flipSel;
         btnDupPeg.onclick = dupSel;
         btnDelPeg.onclick = delSel;
         btnNewBand.onclick = () => { if (selKey && pegs.has(selKey)) spawnBand(selKey); };
@@ -2922,6 +2993,7 @@
         refreshSel();
         refreshZoom();
         update();
+        booted = true;   // ここから先の張り直しだけ知らせる
         window.addEventListener('resize', draw);
         window.addEventListener('pagehide', save);
         document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
