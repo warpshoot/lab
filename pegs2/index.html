@@ -1763,7 +1763,23 @@
             return { x: (ev.clientX - rect.left) / scale + vb.x, y: (ev.clientY - rect.top) / scale + vb.y };
         }
 
+        // 押した先のセル。
+        //
+        // 立っている杭は、描かれている円まるごとが的。杭どうしは絶対に重ならない
+        // （relaxRadii が保証している）ので、円で拾っても取り合いにならない。
+        // 格子点からの距離だけで測ると、引いて見ているときに HOLD がセル基準で
+        // 頭打ちになり、見えている円よりずっと小さい的しか残らない。
+        // 20x20 の盤を 0.82 倍で見ると、半径 34px に描かれた杭の的が 8px になる。
+        //
+        // 空のセルには円が無いので、そちらは従来どおり格子点からの距離で測る
         function pickCell(x, y) {
+            let best = null, bd = Infinity;
+            for (const k of pegs) {
+                const c = pegC(k);
+                const d = Math.hypot(x - c[0], y - c[1]);
+                if (d <= Math.max(rOf(k), HOLD()) && d < bd) { bd = d; best = k; }
+            }
+            if (best) return best;
             const i = Math.round(x / S), j = Math.round(y / S);
             if (i < 0 || j < 0 || i >= cols || j >= rows) return null;
             if (Math.hypot(x - CX(i), y - CY(j)) > HOLD()) return null;
