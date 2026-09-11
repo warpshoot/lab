@@ -16,11 +16,6 @@
       "description": "杭に輪ゴムを張る要領で文字の輪郭を作り、SVG で書き出す"
     },
     {
-      "path": "./pegs2/",
-      "title": "PEGS2",
-      "description": "PEGS を広い盤へ。杭ごとに太さを変えられて、ズームとパンで大きなロゴも作れる"
-    },
-    {
       "path": "./board-game-timer/",
       "title": "Board Game Timer",
       "description": "Turn-based countdown timer for board games"
