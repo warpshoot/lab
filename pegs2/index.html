@@ -1508,8 +1508,26 @@
             }
 
             // 当たった辺を画面いっぱいに伸ばして見せる。
-            // 相手の辺（平行の基準）も一緒に出さないと、何に合ったのか分からない
+            // 相手の辺（平行の基準）も一緒に出さないと、何に合ったのか分からない。
+            // 太さを揃えた相手だけは線で示せないので、その杭を赤くする。
+            // 選んである杭の実線のリングと混ざらないよう、点線と薄い塗りで分ける
             for (const g of guides) {
+                if (g.peg) {
+                    if (!pegs.has(g.peg)) continue;
+                    const [gi, gj] = g.peg.split(',').map(Number);
+                    const gx = ox + CX(gi) * scale, gy = oy + CY(gj) * scale;
+                    const gr = rOf(g.peg) * scale;
+                    ctx.beginPath();
+                    ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(220,60,60,0.16)';
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(220,60,60,0.8)';
+                    ctx.lineWidth = Math.max(1, dpr) * 1.5;
+                    ctx.setLineDash([4 * dpr, 3 * dpr]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    continue;
+                }
                 const ux = g.b[0] - g.a[0], uy = g.b[1] - g.a[1];
                 const len = Math.hypot(ux, uy);
                 if (len < 1e-9) continue;
@@ -2026,9 +2044,18 @@
             for (const a of alignCands(k))
                 if (a.v >= R_MIN && a.v <= room) cand.push(a);
 
+            // 3. よその杭と同じ太さ。揃える線が引けないぶんは、
+            //    寄せた先の杭そのものを赤くして見せる
+            for (const o of pegs) {
+                if (o === k) continue;
+                const v = rOf(o);
+                if (v >= R_MIN && v <= room) cand.push({ v, peg: o });
+            }
+
             const best = nearestSnap(cand, raw);
             if (!best) return raw;
-            if (best.axis) setAlignGuide(best);
+            if (best.peg) guides = [{ peg: best.peg }];
+            else if (best.axis) setAlignGuide(best);
             else setGuides(best.m, best.ref, (pt, q) => {
                 if (best.which === 'p') pt.r = best.v; else q.r = best.v;
             });
