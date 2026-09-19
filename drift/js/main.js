@@ -13,6 +13,7 @@ const live = new Map();   // id -> Voice
 const drifts = new Map(); // id -> ゆらぎのパラメータ組
 let started = false;
 let noticeTimer = null;
+let lastVoiceId = null;
 
 const DRIFT_RANGE = 0.15;
 
@@ -52,10 +53,19 @@ const app = {
     return { x: clamp01(v.x + offset(d.x, t)), y: clamp01(v.y + offset(d.y, t)) };
   },
 
+  hasVoices: () => state.patch.voices.length > 0,
+
   select(id) {
     state.selectedId = id;
+    if (id) lastVoiceId = id;
     field.render();
     panel.render();
+  },
+
+  // タブから音色パネルに戻るとき、直前に見ていた点を開く
+  focusVoice() {
+    const v = findVoice(lastVoiceId) || state.patch.voices[0];
+    if (v) this.select(v.id);
   },
 
   add(type, x, y) {
@@ -63,7 +73,24 @@ const app = {
     const data = newVoiceData(type, clamp01(x), clamp01(y));
     state.patch.voices.push(data);
     if (started) spawn(data);
-    state.selectedId = data.id;
+    state.selectedId = lastVoiceId = data.id;
+    field.render();
+    panel.render();
+    save();
+  },
+
+  duplicate(id) {
+    const src = findVoice(id);
+    if (!src) return;
+    if (!this.canAdd()) return this.notice('点は8つまで');
+    const data = newVoiceData(src.type, clamp01(src.x + 0.07), clamp01(src.y - 0.07));
+    data.level = src.level;
+    data.drift = src.drift;
+    data.common = Object.assign({}, src.common);
+    data.params = Object.assign({}, src.params);
+    state.patch.voices.push(data);
+    if (started) spawn(data);
+    state.selectedId = lastVoiceId = data.id;
     field.render();
     panel.render();
     save();

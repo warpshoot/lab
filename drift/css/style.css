@@ -117,6 +117,34 @@ body {
   padding: 12px 14px 28px;
 }
 
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 9px;
+}
+
+.tabs .tab {
+  flex: 1 1 0;
+  background: transparent;
+  border: 0;
+  color: var(--dim);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding: 8px 4px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.tabs .tab.on {
+  background: rgba(255, 255, 255, 0.13);
+  color: var(--text);
+}
+
+.tabs .tab:disabled { opacity: 0.32; cursor: default; }
+
 .panel-head {
   display: flex;
   align-items: center;
