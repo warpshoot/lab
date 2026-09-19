@@ -184,6 +184,11 @@
       "path": "./voicesynth/",
       "title": "Voice Synth",
       "description": "Voice synthesizer with pitch, formant, and effects"
+    },
+    {
+      "path": "./drift/",
+      "title": "DRIFT",
+      "description": "盤面に音源の点を置いて放置するだけで鳴り続けるアンビエント生成ツール"
     }
   ]
 }
