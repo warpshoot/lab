@@ -8,7 +8,7 @@ export class GrainVoice extends Voice {
   static color = '#f0c674';
   static defaults = {
     interval: 1.2, jitter: 40, grainLen: 300,
-    center: 700, spread: 600, wave: 'sine'
+    center: 700, spread: 600, wave: 'sine', width: 0.7
   };
   static params = [
     { key: 'interval', label: '間隔', min: 0.05, max: 5, scale: 'log', unit: 's' },
@@ -16,6 +16,7 @@ export class GrainVoice extends Voice {
     { key: 'grainLen', label: '粒の長さ', min: 20, max: 2000, scale: 'log', unit: 'ms' },
     { key: 'center', label: '音程中心', min: 100, max: 4000, scale: 'log', unit: 'Hz' },
     { key: 'spread', label: '音程幅', min: 0, max: 2400, scale: 'lin', unit: 'cent' },
+    { key: 'width', label: '定位のばらつき', min: 0, max: 1, scale: 'lin' },
     { key: 'wave', label: '波形', type: 'select', options: ['sine', 'triangle', 'noise'] }
   ];
 
@@ -64,7 +65,11 @@ export class GrainVoice extends Voice {
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(1, t + Math.min(len * 0.3, 0.05));
     g.gain.linearRampToValueAtTime(0, t + len);
-    g.connect(this.mix);
+    // 粒ごとに定位を振る。全部同じ場所に落ちると線にしか聞こえない。
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = (Math.random() * 2 - 1) * this.params.width;
+    g.connect(pan);
+    pan.connect(this.mix);
 
     let src;
     if (this.params.wave === 'noise') {
@@ -79,7 +84,7 @@ export class GrainVoice extends Voice {
       bp.connect(g);
       src.start(t, Math.random() * Math.max(0, buf.duration - len - 0.01));
       src.stop(t + len + 0.02);
-      src.onended = () => { try { src.disconnect(); bp.disconnect(); g.disconnect(); } catch (e) { /* noop */ } };
+      src.onended = () => { try { src.disconnect(); bp.disconnect(); g.disconnect(); pan.disconnect(); } catch (e) { /* noop */ } };
     } else {
       src = ctx.createOscillator();
       src.type = this.params.wave;
@@ -87,7 +92,7 @@ export class GrainVoice extends Voice {
       src.connect(g);
       src.start(t);
       src.stop(t + len + 0.02);
-      src.onended = () => { try { src.disconnect(); g.disconnect(); } catch (e) { /* noop */ } };
+      src.onended = () => { try { src.disconnect(); g.disconnect(); pan.disconnect(); } catch (e) { /* noop */ } };
     }
   }
 }
