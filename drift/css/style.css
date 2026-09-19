@@ -39,14 +39,29 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
+/* 一点透視の箱。奥行きの向きを絵で示す。 */
+#field .box {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  fill: none;
+}
+
+#field .box-far { stroke: rgba(255, 255, 255, 0.13); stroke-width: 1; }
+#field .box-mid { stroke: rgba(255, 255, 255, 0.06); stroke-width: 1; }
+#field .box-edge { stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; }
+#field .box-cross { stroke: rgba(255, 255, 255, 0.05); stroke-width: 1; }
+
 #field::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    linear-gradient(90deg, transparent 49.8%, rgba(255, 255, 255, 0.05) 50%, transparent 50.2%),
-    linear-gradient(0deg, transparent 49.8%, rgba(255, 255, 255, 0.04) 50%, transparent 50.2%);
+  z-index: 1;
+  background: radial-gradient(70% 55% at 50% 50%, rgba(0, 0, 0, 0.45), transparent 75%);
 }
 
 .dot {
@@ -59,7 +74,7 @@ body {
   touch-action: none;
   display: grid;
   place-items: center;
-  transition: transform 0.12s linear, width 0.12s linear, height 0.12s linear, opacity 0.12s linear;
+  transition: transform 0.12s linear, width 0.12s linear, height 0.12s linear, opacity 0.12s linear, filter 0.12s linear;
   cursor: grab;
 }
 
