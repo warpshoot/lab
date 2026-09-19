@@ -33,9 +33,14 @@ export function createField(el, app) {
     picker._y = y;
     picker._shownAt = performance.now();
     picker.classList.remove('hidden');
+    // 実寸を測ってから寄せる。決め打ちの余白だと盤面の端で種別が切れる。
     const r = el.getBoundingClientRect();
-    const px = Math.min(Math.max(x * r.width, 70), r.width - 70);
-    const py = Math.min(Math.max((1 - y) * r.height, 30), r.height - 40);
+    const pw = picker.offsetWidth;
+    const ph = picker.offsetHeight;
+    const mx = pw / 2 + 6;
+    const my = ph / 2 + 6;
+    const px = Math.min(Math.max(x * r.width, mx), Math.max(mx, r.width - mx));
+    const py = Math.min(Math.max((1 - y) * r.height - ph * 0.9, my), Math.max(my, r.height - my));
     picker.style.left = px + 'px';
     picker.style.top = py + 'px';
   }
@@ -78,6 +83,7 @@ export function createField(el, app) {
       const r = dotRadius(v.level);
       mode = dist > r - 13 ? 'resize' : 'move';
       moved = false;
+      dot.classList.add('grabbing'); // 掴んでいる間は補間を切る。指から遅れる。
       startX = e.clientX;
       startY = e.clientY;
       app.select(id);
@@ -113,6 +119,7 @@ export function createField(el, app) {
     });
 
     const finish = (e) => {
+      dot.classList.remove('grabbing');
       clearTimeout(longTimer);
       longTimer = null;
       if (!mode) return;

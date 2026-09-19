@@ -46,11 +46,16 @@ const app = {
   selected: () => (state.selectedId ? findVoice(state.selectedId) : null),
   canAdd: () => state.patch.voices.length < MAX_VOICES,
 
-  effectivePos(v) {
-    if (!v.drift) return { x: v.x, y: v.y };
+  driftOffset(v) {
+    if (!v.drift) return { x: 0, y: 0 };
     const d = driftFor(v.id);
     const t = engine.ctx ? engine.ctx.currentTime : 0;
-    return { x: clamp01(v.x + offset(d.x, t)), y: clamp01(v.y + offset(d.y, t)) };
+    return { x: offset(d.x, t), y: offset(d.y, t) };
+  },
+
+  effectivePos(v) {
+    const o = this.driftOffset(v);
+    return { x: clamp01(v.x + o.x), y: clamp01(v.y + o.y) };
   },
 
   hasVoices: () => state.patch.voices.length > 0,
@@ -112,11 +117,13 @@ const app = {
     save();
   },
 
+  // 受け取るのは指のいる位置。ゆらぎの分を引いて基準座標にしないと点が指から逃げる。
   moveTo(id, x, y) {
     const v = findVoice(id);
     if (!v) return;
-    v.x = clamp01(x);
-    v.y = clamp01(y);
+    const o = this.driftOffset(v);
+    v.x = clamp01(x - o.x);
+    v.y = clamp01(y - o.y);
     applyPos(v);
     field.layout();
   },
