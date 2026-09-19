@@ -89,16 +89,36 @@ function section(title) {
   return s;
 }
 
+// 音色とマスターの切り替えは常設のタブが持つ。点への操作とは並べない。
+function buildTabs(app, onVoice) {
+  const tabs = document.createElement('div');
+  tabs.className = 'tabs';
+  const voiceTab = document.createElement('button');
+  voiceTab.className = 'tab' + (onVoice ? ' on' : '');
+  voiceTab.textContent = '音色';
+  voiceTab.disabled = !onVoice && !app.hasVoices();
+  voiceTab.addEventListener('click', () => app.focusVoice());
+  const masterTab = document.createElement('button');
+  masterTab.className = 'tab' + (onVoice ? '' : ' on');
+  masterTab.textContent = 'マスター';
+  masterTab.addEventListener('click', () => app.select(null));
+  tabs.appendChild(voiceTab);
+  tabs.appendChild(masterTab);
+  return tabs;
+}
+
 export function createPanel(el, app) {
   function render() {
     el.innerHTML = '';
     const v = app.selected();
+    el.appendChild(buildTabs(app, !!v));
     if (!v) {
       renderMaster(el, app, { section, buildControl });
       return;
     }
     const V = app.typeOf(v);
 
+    // ヘッダはこの点への操作だけ。画面の切り替えはタブが持つ。
     const head = document.createElement('div');
     head.className = 'panel-head';
     const name = document.createElement('span');
@@ -107,11 +127,11 @@ export function createPanel(el, app) {
     name.style.setProperty('--c', V.color);
     head.appendChild(name);
 
-    const master = document.createElement('button');
-    master.className = 'chip';
-    master.textContent = 'マスター';
-    master.addEventListener('click', () => app.select(null));
-    head.appendChild(master);
+    const dup = document.createElement('button');
+    dup.className = 'chip';
+    dup.textContent = '複製';
+    dup.addEventListener('click', () => app.duplicate(v.id));
+    head.appendChild(dup);
 
     const del = document.createElement('button');
     del.className = 'chip danger';

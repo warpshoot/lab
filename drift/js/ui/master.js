@@ -10,7 +10,7 @@ export function renderMaster(el, app, ui) {
   head.appendChild(name);
   const hint = document.createElement('span');
   hint.className = 'panel-hint';
-  hint.textContent = '点をタップすると音色パネル';
+  hint.textContent = '盤面の点をタップすると音色';
   head.appendChild(hint);
   el.appendChild(head);
 
