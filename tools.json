@@ -186,9 +186,9 @@
       "description": "Voice synthesizer with pitch, formant, and effects"
     },
     {
-      "path": "./drift/",
-      "title": "DRIFT",
-      "description": "盤面に音源の点を置いて放置するだけで鳴り続けるアンビエント生成ツール"
+      "path": "./satellites/",
+      "title": "SATELLITES",
+      "description": "盤面を星空に見立てて音源の星を置く。錨になる星を中心に周回させて放置するアンビエント生成ツール"
     }
   ]
 }

@@ -1,6 +1,6 @@
-import { engine, MAX_VOICES } from './audio/engine.js';
-import { createVoice, voiceClass } from './audio/voices/registry.js';
-import { state, loadPatch, save, newVoiceData, findVoice } from './state.js';
+import { engine } from './audio/engine.js';
+import { createVoice, voiceClass, VOICE_TYPES } from './audio/voices/registry.js';
+import { state, loadPatch, save, newVoiceData, findVoice, canAddType, dropBadAnchors } from './state.js';
 import { createField } from './ui/field.js';
 import { createPanel } from './ui/panel.js';
 
@@ -46,6 +46,40 @@ function wander(a, t) {
   return 0.6 * Math.sin((TAU * t) / a.T1 + a.p1) + 0.4 * Math.sin((TAU * t) / a.T2 + a.p2);
 }
 
+function anchorOf(v) {
+  return v.anchor ? findVoice(v.anchor) : null;
+}
+
+// 錨を持つ星は、錨の現在位置を基準に置き直す。
+// 周回の半径はノブではなく「置いた距離」で決まる。遠くに置けば大きい軌道になる。
+function resolve(v, t, depth) {
+  const d = driftVector(v, t);
+  const a = depth < 6 ? anchorOf(v) : null;
+  if (!a) {
+    return { x: clamp01(v.x + d.x), y: clamp01(v.y + d.y), z: clamp01(v.z + d.z) };
+  }
+  const ap = resolve(a, t, depth + 1);
+  if (v.drift && v.driftShape === 'orbit') {
+    const dx = v.x - a.x;
+    const dy = v.y - a.y;
+    const r = Math.hypot(dx, dy);
+    const dd = driftFor(v.id);
+    const sp = v.driftSpeed != null ? v.driftSpeed : 1;
+    const ang = Math.atan2(dy, dx) + ((TAU * t * sp) / dd.orbitT) * dd.dir;
+    return {
+      x: clamp01(ap.x + r * Math.cos(ang)),
+      y: clamp01(ap.y + r * Math.sin(ang)),
+      z: clamp01(v.z + d.z)
+    };
+  }
+  // 周回以外は、錨が動いたぶんだけ付いていく
+  return {
+    x: clamp01(v.x + (ap.x - a.x) + d.x),
+    y: clamp01(v.y + (ap.y - a.y) + d.y),
+    z: clamp01(v.z + d.z)
+  };
+}
+
 function driftVector(v, t) {
   const d = driftFor(v.id);
   const r = v.driftRange != null ? v.driftRange : 0.15;
@@ -74,20 +108,38 @@ const app = {
   typeOf: (v) => voiceClass(v.type),
   selectedId: () => state.selectedId,
   selected: () => (state.selectedId ? findVoice(state.selectedId) : null),
-  canAdd: () => state.patch.voices.length < MAX_VOICES,
+  canAdd: (type) => canAddType(state.patch.voices, type || 'drone'),
+  canAddAny: () => VOICE_TYPES.some((V) => canAddType(state.patch.voices, V.type)),
 
-  driftOffset(v) {
-    if (!v.drift) return { x: 0, y: 0, z: 0 };
-    return driftVector(v, engine.ctx ? engine.ctx.currentTime : 0);
+  resolved(v) {
+    return resolve(v, engine.ctx ? engine.ctx.currentTime : 0, 0);
   },
 
   effectivePos(v) {
-    const o = this.driftOffset(v);
-    return { x: clamp01(v.x + o.x), y: clamp01(v.y + o.y) };
+    return this.resolved(v);
   },
 
   effectiveZ(v) {
-    return clamp01(v.z + this.driftOffset(v).z);
+    return this.resolved(v).z;
+  },
+
+  anchorOf: (v) => anchorOf(v),
+
+  // 輪になる指定は受け付けない
+  setAnchor(id, anchorId) {
+    const v = findVoice(id);
+    if (!v) return;
+    const before = v.anchor;
+    v.anchor = anchorId || null;
+    dropBadAnchors(state.patch.voices);
+    if (anchorId && v.anchor !== anchorId) {
+      v.anchor = before;
+      return this.notice('その指定は輪になる');
+    }
+    applyPos(v);
+    field.render();
+    panel.render();
+    save();
   },
 
   hasVoices: () => state.patch.voices.length > 0,
@@ -133,7 +185,7 @@ const app = {
   },
 
   add(type, x, y) {
-    if (!this.canAdd()) return this.notice('点は8つまで');
+    if (!this.canAdd(type)) return this.notice('鳴る星は8つまで');
     const data = newVoiceData(type, clamp01(x), clamp01(y));
     state.patch.voices.push(data);
     if (started) spawn(data);
@@ -146,13 +198,14 @@ const app = {
   duplicate(id) {
     const src = findVoice(id);
     if (!src) return;
-    if (!this.canAdd()) return this.notice('点は8つまで');
+    if (!this.canAdd(src.type)) return this.notice('鳴る星は8つまで');
     const data = newVoiceData(src.type, clamp01(src.x + 0.07), clamp01(src.y - 0.07));
     data.z = src.z;
     data.drift = src.drift;
     data.driftShape = src.driftShape;
     data.driftSpeed = src.driftSpeed;
     data.driftRange = src.driftRange;
+    data.anchor = src.anchor;
     data.common = Object.assign({}, src.common);
     data.params = Object.assign({}, src.params);
     state.patch.voices.push(data);
@@ -167,6 +220,9 @@ const app = {
     const i = state.patch.voices.findIndex((v) => v.id === id);
     if (i < 0) return;
     state.patch.voices.splice(i, 1);
+    for (const other of state.patch.voices) {
+      if (other.anchor === id) other.anchor = null; // 錨が消えたら自立させる
+    }
     const voice = live.get(id);
     if (voice) {
       live.delete(id);
@@ -182,13 +238,13 @@ const app = {
     save();
   },
 
-  // 受け取るのは指のいる位置。ゆらぎの分を引いて基準座標にしないと点が指から逃げる。
+  // 受け取るのは指のいる位置。ゆらぎと錨のぶんを引いて基準座標にする。
   moveTo(id, x, y) {
     const v = findVoice(id);
     if (!v) return;
-    const o = this.driftOffset(v);
-    v.x = clamp01(x - o.x);
-    v.y = clamp01(y - o.y);
+    const cur = this.resolved(v);
+    v.x = clamp01(x - (cur.x - v.x));
+    v.y = clamp01(y - (cur.y - v.y));
     applyPos(v);
     field.layout();
   },
@@ -206,7 +262,7 @@ const app = {
   setZFromView(id, z) {
     const v = findVoice(id);
     if (!v) return;
-    this.setZ(id, z - this.driftOffset(v).z);
+    this.setZ(id, z - (this.resolved(v).z - v.z));
   },
 
   setParam(id, key, value) {
@@ -298,13 +354,11 @@ panel.render();
 
 // ゆらぎは 10Hz で十分。毎フレームは回さない。
 setInterval(() => {
-  let any = false;
-  for (const v of state.patch.voices) {
-    if (!v.drift) continue;
-    any = true;
-    applyPos(v);
-  }
-  if (any) field.layout();
+  // 誰かが漂っていれば全員を計算し直す。ゆらぎOFFの星でも、
+  // 錨が動けば付いていく必要がある。
+  if (!state.patch.voices.some((v) => v.drift)) return;
+  for (const v of state.patch.voices) applyPos(v);
+  field.layout();
 }, 100);
 
 // 出音に合わせた膨らみ。見た目だけなので毎フレームでいい。
@@ -331,7 +385,7 @@ function running() {
 
 function showGate(mode) {
   if (mode === 'resume') {
-    gateTitle.textContent = 'DRIFT';
+    gateTitle.textContent = 'SATELLITES';
     gateText.innerHTML = '音が止まっている<br>バックグラウンドに回ると止まる';
     gateCta.textContent = 'タップして再開';
   }
