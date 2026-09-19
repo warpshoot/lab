@@ -127,6 +127,18 @@ export function createPanel(el, app) {
     name.style.setProperty('--c', V.color);
     head.appendChild(name);
 
+    const solo = document.createElement('button');
+    solo.className = 'chip' + (app.isSoloed(v.id) ? ' solo' : '');
+    solo.textContent = 'ソロ';
+    solo.addEventListener('click', () => app.toggleSolo(v.id));
+    head.appendChild(solo);
+
+    const mute = document.createElement('button');
+    mute.className = 'chip' + (app.isMuted(v.id) ? ' mute' : '');
+    mute.textContent = 'ミュート';
+    mute.addEventListener('click', () => app.toggleMute(v.id));
+    head.appendChild(mute);
+
     const dup = document.createElement('button');
     dup.className = 'chip';
     dup.textContent = '複製';

@@ -59,6 +59,17 @@ export function createField(el, app) {
   gizmo.appendChild(readout);
   el.appendChild(gizmo);
 
+  // ソロ中は全体が黙って見えるので、解除の出口を常に見せておく
+  const soloBar = document.createElement('button');
+  soloBar.className = 'solo-bar hidden';
+  soloBar.type = 'button';
+  soloBar.textContent = 'ソロ中 · すべて解除';
+  soloBar.addEventListener('click', (e) => {
+    e.stopPropagation();
+    app.clearSolo();
+  });
+  el.appendChild(soloBar);
+
   bindHandle();
 
   function bindHandle() {
@@ -273,8 +284,11 @@ export function createField(el, app) {
       d.el.style.setProperty('--c', V.color);
       d.el.classList.toggle('selected', app.selectedId() === v.id);
       d.el.classList.toggle('drifting', !!v.drift);
+      d.el.classList.toggle('muted', !app.audible(v.id));
+      d.el.classList.toggle('soloed', app.isSoloed(v.id));
       d.label.textContent = V.label;
     }
+    soloBar.classList.toggle('hidden', !app.soloActive());
     layout();
   }
 
