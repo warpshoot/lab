@@ -2,6 +2,7 @@ import { voiceClass } from './audio/voices/registry.js';
 import { COMMON_DEFAULTS } from './audio/voices/base.js';
 
 const KEY = 'drift.patch.v1';
+const VERSION = 2;
 
 export const MASTER_DEFAULTS = {
   gain: 0.8,
@@ -36,7 +37,8 @@ export function newVoiceData(type, x, y) {
     id: 'v' + (++seq) + '-' + Math.random().toString(36).slice(2, 7),
     type: V.type,
     x, y,
-    level: 0.6,
+    z: 0.6, // 近さ。0 = 遠い / 1 = 手前
+
     drift: false,
     common: Object.assign({}, COMMON_DEFAULTS),
     params: Object.assign({}, V.defaults)
@@ -45,7 +47,7 @@ export function newVoiceData(type, x, y) {
 
 function emptyPatch() {
   return {
-    version: 1,
+    version: VERSION,
     voices: [],
     master: JSON.parse(JSON.stringify(MASTER_DEFAULTS))
   };
@@ -53,7 +55,7 @@ function emptyPatch() {
 
 function sanitize(raw) {
   const patch = emptyPatch();
-  if (!raw || raw.version !== 1) return patch;
+  if (!raw || (raw.version !== 1 && raw.version !== 2)) return patch;
   patch.master = {
     gain: num(raw.master && raw.master.gain, MASTER_DEFAULTS.gain),
     reverb: {
@@ -74,7 +76,8 @@ function sanitize(raw) {
       type: v.type,
       x: clamp01(num(v.x, 0.5)),
       y: clamp01(num(v.y, 0.5)),
-      level: clamp01(num(v.level, 0.6)),
+      // v1 は音量を持っていた。そのまま近さとして読み替える。
+      z: clamp01(num(v.z != null ? v.z : v.level, 0.6)),
       drift: !!v.drift,
       common: Object.assign({}, COMMON_DEFAULTS, v.common || {}),
       params: Object.assign({}, V.defaults, v.params || {})

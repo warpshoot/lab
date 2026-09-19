@@ -21,6 +21,19 @@ export function cutoffFromY(y) {
   return TONE_MIN * Math.pow(TONE_MAX / TONE_MIN, Math.min(1, Math.max(0, y)));
 }
 
+// z は近さ（0 = 遠い / 1 = 手前）。距離から音量・リバーブ・空気の減衰が決まる。
+export function gainFromZ(z) {
+  return 0.1 + 0.9 * Math.pow(Math.min(1, Math.max(0, z)), 1.5);
+}
+
+export function distanceSend(z) {
+  return 0.55 * (1 - Math.min(1, Math.max(0, z)));
+}
+
+export function airFactor(z) {
+  return 0.45 + 0.55 * Math.min(1, Math.max(0, z));
+}
+
 export class Voice {
   constructor(engine, data) {
     this.engine = engine;
@@ -29,7 +42,7 @@ export class Voice {
     this.type = data.type;
     this.common = Object.assign({}, COMMON_DEFAULTS, data.common || {});
     this.params = Object.assign({}, this.constructor.defaults, data.params || {});
-    this.level = data.level != null ? data.level : 0.6;
+    this.z = data.z != null ? data.z : 0.6;
     this.disposed = false;
 
     const ctx = this.ctx;
@@ -37,7 +50,7 @@ export class Voice {
     this.envGain.gain.value = 0;
 
     this.levelGain = ctx.createGain();
-    this.levelGain.gain.value = this.level;
+    this.levelGain.gain.value = gainFromZ(this.z);
 
     this.toneFilter = ctx.createBiquadFilter();
     this.toneFilter.type = 'lowpass';
@@ -51,7 +64,7 @@ export class Voice {
     this.dryGain = ctx.createGain();
     this.dryGain.gain.value = 1.0; // dry は常に 1.0 固定。send はパラレル送り。
     this.reverbSend = ctx.createGain();
-    this.reverbSend.gain.value = this.common.reverbSend;
+    this.reverbSend.gain.value = Math.min(1, this.common.reverbSend + distanceSend(this.z));
     this.delaySend = ctx.createGain();
     this.delaySend.gain.value = this.common.delaySend;
 
@@ -122,14 +135,24 @@ export class Voice {
     }, 60);
   }
 
-  setLevel(v) {
-    this.level = v;
-    this.engine.ramp(this.levelGain.gain, v);
+  // 奥行き。音量・リバーブ・高域の落ち方がまとめて決まる。
+  setDistance(z) {
+    this.z = z;
+    this.engine.ramp(this.levelGain.gain, gainFromZ(z));
+    this.applySend();
+    this.setPosition(this._x, this._y);
+  }
+
+  applySend() {
+    this.engine.ramp(this.reverbSend.gain, Math.min(1, this.common.reverbSend + distanceSend(this.z)));
   }
 
   setPosition(x, y) {
+    if (x == null || y == null) return;
+    this._x = x;
+    this._y = y;
     if (this.panner) this.engine.ramp(this.panner.pan, x * 2 - 1);
-    this.applyTone(cutoffFromY(y));
+    this.applyTone(cutoffFromY(y) * airFactor(this.z));
   }
 
   applyTone(hz) {
@@ -138,7 +161,7 @@ export class Voice {
 
   setCommon(key, value) {
     this.common[key] = value;
-    if (key === 'reverbSend') this.engine.ramp(this.reverbSend.gain, value);
+    if (key === 'reverbSend') this.applySend();
     if (key === 'delaySend') this.engine.ramp(this.delaySend.gain, value);
   }
 

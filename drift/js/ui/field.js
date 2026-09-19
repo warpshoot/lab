@@ -1,14 +1,91 @@
 import { VOICE_TYPES } from '../audio/voices/registry.js';
 
-export const DOT_MIN = 15;
-export const DOT_MAX = 62;
+export const DOT_MIN = 12;
+export const DOT_MAX = 58;
+const HANDLE_GAP = 16;
 
-export function dotRadius(level) {
-  return DOT_MIN + level * (DOT_MAX - DOT_MIN);
+// 点の大きさは音量ではなく距離。遠いほど小さく、淡く、奥に描く。
+export function dotRadius(z) {
+  return DOT_MIN + z * (DOT_MAX - DOT_MIN);
+}
+
+export function zFromRadius(r) {
+  return Math.min(1, Math.max(0, (r - DOT_MIN) / (DOT_MAX - DOT_MIN)));
 }
 
 export function createField(el, app) {
   const dots = new Map();
+
+  // 選択中の点にだけ出る奥行きのハンドル。小さい点でも必ず掴める位置に立つ。
+  const gizmo = document.createElement('div');
+  gizmo.className = 'gizmo hidden';
+  const ring = document.createElement('div');
+  ring.className = 'gizmo-ring';
+  const handle = document.createElement('div');
+  handle.className = 'gizmo-handle';
+  const readout = document.createElement('div');
+  readout.className = 'gizmo-readout';
+  gizmo.appendChild(ring);
+  gizmo.appendChild(handle);
+  gizmo.appendChild(readout);
+  el.appendChild(gizmo);
+
+  bindHandle();
+
+  function bindHandle() {
+    let active = false;
+    handle.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      const v = app.selected();
+      if (!v) return;
+      active = true;
+      handle.setPointerCapture(e.pointerId);
+      gizmo.classList.add('active');
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!active) return;
+      const v = app.selected();
+      if (!v) return;
+      const rect = el.getBoundingClientRect();
+      const pos = app.effectivePos(v);
+      const cx = rect.left + pos.x * rect.width;
+      const cy = rect.top + (1 - pos.y) * rect.height;
+      const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+      app.setZFromView(v.id, zFromRadius(dist - HANDLE_GAP));
+    });
+    const end = () => {
+      if (!active) return;
+      active = false;
+      gizmo.classList.remove('active');
+      app.commit();
+      app.refreshPanel(); // パネルの近さスライダを追従させる
+    };
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+  }
+
+  function layoutGizmo() {
+    const v = app.selected();
+    if (!v) {
+      gizmo.classList.add('hidden');
+      return;
+    }
+    gizmo.classList.remove('hidden');
+    const rect = el.getBoundingClientRect();
+    const pos = app.effectivePos(v);
+    const ez = app.effectiveZ(v);
+    const d = dotRadius(ez) + HANDLE_GAP;
+    const cx = pos.x * rect.width;
+    const cy = (1 - pos.y) * rect.height;
+    gizmo.style.transform = 'translate(' + cx + 'px,' + cy + 'px)';
+    ring.style.width = ring.style.height = d * 2 + 'px';
+    ring.style.marginLeft = ring.style.marginTop = -d + 'px';
+    const a = -Math.PI / 4;
+    handle.style.transform =
+      'translate(' + (Math.cos(a) * d - 13) + 'px,' + (Math.sin(a) * d - 13) + 'px)';
+    readout.textContent = '近さ ' + Math.round(ez * 100) + '%';
+    readout.style.transform = 'translate(-50%,' + (-d - 26) + 'px)';
+  }
   const picker = document.createElement('div');
   picker.className = 'picker hidden';
   el.appendChild(picker);
@@ -75,13 +152,7 @@ export function createField(el, app) {
       const v = app.find(id);
       if (!v) return;
       dot.setPointerCapture(e.pointerId);
-      const rect = el.getBoundingClientRect();
-      const pos = app.effectivePos(v);
-      const cx = rect.left + pos.x * rect.width;
-      const cy = rect.top + (1 - pos.y) * rect.height;
-      const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
-      const r = dotRadius(v.level);
-      mode = dist > r - 13 ? 'resize' : 'move';
+      mode = 'move'; // 縁ドラッグは廃止。奥行きはギズモが持つ。
       moved = false;
       dot.classList.add('grabbing'); // 掴んでいる間は補間を切る。指から遅れる。
       startX = e.clientX;
@@ -103,19 +174,9 @@ export function createField(el, app) {
       }
       if (!moved) return;
       const rect = el.getBoundingClientRect();
-      if (mode === 'move') {
-        const x = (e.clientX - rect.left) / rect.width;
-        const y = 1 - (e.clientY - rect.top) / rect.height;
-        app.moveTo(id, x, y);
-      } else {
-        const v = app.find(id);
-        const pos = app.effectivePos(v);
-        const cx = rect.left + pos.x * rect.width;
-        const cy = rect.top + (1 - pos.y) * rect.height;
-        const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
-        const level = (dist - DOT_MIN) / (DOT_MAX - DOT_MIN);
-        app.setLevel(id, Math.min(1, Math.max(0, level)));
-      }
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = 1 - (e.clientY - rect.top) / rect.height;
+      app.moveTo(id, x, y);
     });
 
     const finish = (e) => {
@@ -123,13 +184,12 @@ export function createField(el, app) {
       clearTimeout(longTimer);
       longTimer = null;
       if (!mode) return;
-      const wasMove = mode === 'move';
       mode = null;
       const rect = el.getBoundingClientRect();
       const out =
         e.clientX < rect.left - 4 || e.clientX > rect.right + 4 ||
         e.clientY < rect.top - 4 || e.clientY > rect.bottom + 4;
-      if (wasMove && moved && out) {
+      if (moved && out) {
         app.remove(id); // 盤面外に投げたら削除
         return;
       }
@@ -195,12 +255,17 @@ export function createField(el, app) {
       const d = dots.get(v.id);
       if (!d) continue;
       const pos = app.effectivePos(v);
-      const r = dotRadius(v.level);
+      const z = app.effectiveZ(v);
+      const r = dotRadius(z);
       d.el.style.width = r * 2 + 'px';
       d.el.style.height = r * 2 + 'px';
+      d.el.style.opacity = (0.3 + 0.62 * z).toFixed(3);
+      d.el.style.zIndex = String(2 + Math.round(z * 100));
+      d.el.style.setProperty('--glow', (10 + z * 28).toFixed(1) + 'px');
       d.el.style.transform =
         'translate(' + (pos.x * rect.width - r) + 'px,' + ((1 - pos.y) * rect.height - r) + 'px)';
     }
+    layoutGizmo();
   }
 
   return { render, layout, hidePicker };

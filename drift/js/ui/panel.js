@@ -156,9 +156,9 @@ export function createPanel(el, app) {
     );
     common.appendChild(
       buildControl(
-        { key: 'level', label: '音量', min: 0, max: 1, scale: 'lin' },
-        v.level,
-        (val) => { app.setLevel(v.id, val); },
+        { key: 'z', label: '近さ（奥ほど静かで深い）', min: 0, max: 1, scale: 'lin' },
+        v.z,
+        (val) => { app.setZ(v.id, val); },
         () => app.commit()
       )
     );
