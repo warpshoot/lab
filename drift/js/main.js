@@ -10,6 +10,8 @@ const gateEl = document.getElementById('gate');
 const noticeEl = document.getElementById('notice');
 
 const live = new Map();   // id -> Voice
+const muted = new Set();  // 保存しない。次に開いて無音だと壊れたように見える。
+const soloed = new Set();
 const drifts = new Map(); // id -> ゆらぎのパラメータ組
 let started = false;
 let noticeTimer = null;
@@ -64,6 +66,33 @@ const app = {
   },
 
   hasVoices: () => state.patch.voices.length > 0,
+  isMuted: (id) => muted.has(id),
+  isSoloed: (id) => soloed.has(id),
+  soloActive: () => soloed.size > 0,
+
+  // ソロが1つでも立っていれば、それ以外は黙る
+  audible(id) {
+    if (muted.has(id)) return false;
+    return soloed.size === 0 || soloed.has(id);
+  },
+
+  toggleMute(id) {
+    if (muted.has(id)) muted.delete(id);
+    else muted.add(id);
+    applyAudible();
+  },
+
+  toggleSolo(id) {
+    if (soloed.has(id)) soloed.delete(id);
+    else soloed.add(id);
+    applyAudible();
+  },
+
+  clearSolo() {
+    soloed.clear();
+    applyAudible();
+  },
+
 
   select(id) {
     state.selectedId = id;
@@ -116,6 +145,9 @@ const app = {
       voice.stop(); // release をかけてから切る
     }
     drifts.delete(id);
+    muted.delete(id);
+    soloed.delete(id);
+    applyAudible();
     if (state.selectedId === id) state.selectedId = null;
     field.render();
     panel.render();
@@ -189,6 +221,16 @@ const app = {
   }
 };
 
+// ソロは全体に効くので、1つ変わったら全ボイスに掛け直す
+function applyAudible() {
+  for (const v of state.patch.voices) {
+    const voice = live.get(v.id);
+    if (voice) voice.setMuted(!app.audible(v.id));
+  }
+  field.render();
+  panel.render();
+}
+
 function applyPos(v) {
   const voice = live.get(v.id);
   if (!voice) return;
@@ -204,6 +246,7 @@ function spawn(data) {
   const p = app.effectivePos(data);
   voice.setDistance(app.effectiveZ(data));
   voice.setPosition(p.x, p.y);
+  voice.setMuted(!app.audible(data.id));
   voice.start();
   return voice;
 }

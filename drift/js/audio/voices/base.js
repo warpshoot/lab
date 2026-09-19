@@ -49,6 +49,10 @@ export class Voice {
     this.envGain = ctx.createGain();
     this.envGain.gain.value = 0;
 
+    // ソロ・ミュート用。音量とは別の段にしておかないと値を奪い合う。
+    this.muteGain = ctx.createGain();
+    this.muteGain.gain.value = 1;
+
     this.levelGain = ctx.createGain();
     this.levelGain.gain.value = gainFromZ(this.z);
 
@@ -68,7 +72,8 @@ export class Voice {
     this.delaySend = ctx.createGain();
     this.delaySend.gain.value = this.common.delaySend;
 
-    this.envGain.connect(this.levelGain);
+    this.envGain.connect(this.muteGain);
+    this.muteGain.connect(this.levelGain);
     this.levelGain.connect(this.toneFilter);
     const tail = this.panner || this.toneFilter;
     if (this.panner) this.toneFilter.connect(this.panner);
@@ -135,6 +140,10 @@ export class Voice {
     }, 60);
   }
 
+  setMuted(muted) {
+    this.engine.ramp(this.muteGain.gain, muted ? 0 : 1, 0.04);
+  }
+
   // 奥行き。音量・リバーブ・高域の落ち方がまとめて決まる。
   setDistance(z) {
     this.z = z;
@@ -179,6 +188,7 @@ export class Voice {
     this.teardown();
     try {
       this.envGain.disconnect();
+      this.muteGain.disconnect();
       this.levelGain.disconnect();
       this.toneFilter.disconnect();
       if (this.panner) this.panner.disconnect();
