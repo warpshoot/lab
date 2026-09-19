@@ -70,6 +70,53 @@ export function createField(el, app) {
   });
   el.appendChild(soloBar);
 
+  // 削除の確認。confirm() はシステムダイアログで、iOS だと音声を持っていかれる。
+  const ask = document.createElement('div');
+  ask.className = 'ask hidden';
+  const askText = document.createElement('span');
+  askText.textContent = '削除する？';
+  const askYes = document.createElement('button');
+  askYes.type = 'button';
+  askYes.className = 'ask-yes';
+  askYes.textContent = '削除';
+  const askNo = document.createElement('button');
+  askNo.type = 'button';
+  askNo.className = 'ask-no';
+  askNo.textContent = 'やめる';
+  ask.appendChild(askText);
+  ask.appendChild(askNo);
+  ask.appendChild(askYes);
+  el.appendChild(ask);
+  askYes.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const id = ask._id;
+    hideAsk();
+    if (id) app.remove(id);
+  });
+  askNo.addEventListener('click', (e) => {
+    e.stopPropagation();
+    hideAsk();
+  });
+
+  function askDelete(id) {
+    const v = app.find(id);
+    if (!v) return;
+    ask._id = id;
+    ask.classList.remove('hidden');
+    const rect = el.getBoundingClientRect();
+    const pt = project(app.effectivePos(v).x, app.effectivePos(v).y, app.effectiveZ(v), rect.width, rect.height);
+    const aw = ask.offsetWidth;
+    const ah = ask.offsetHeight;
+    const mx = aw / 2 + 6;
+    ask.style.left = Math.min(Math.max(pt.sx, mx), Math.max(mx, rect.width - mx)) + 'px';
+    ask.style.top = Math.min(Math.max(pt.sy - dotRadius(app.effectiveZ(v)) - ah, 6), Math.max(6, rect.height - ah - 6)) + 'px';
+  }
+
+  function hideAsk() {
+    ask._id = null;
+    ask.classList.add('hidden');
+  }
+
   bindHandle();
 
   function bindHandle() {
@@ -192,6 +239,7 @@ export function createField(el, app) {
     dot.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       hidePicker();
+      hideAsk();
       const v = app.find(id);
       if (!v) return;
       dot.setPointerCapture(e.pointerId);
@@ -204,7 +252,7 @@ export function createField(el, app) {
       longTimer = setTimeout(() => {
         longTimer = null;
         mode = null;
-        if (confirm('この点を削除する？')) app.remove(id);
+        askDelete(id);
       }, 620);
     });
 
@@ -253,6 +301,10 @@ export function createField(el, app) {
 
   el.addEventListener('pointerup', (e) => {
     if (e.target !== el) return;
+    if (!ask.classList.contains('hidden')) {
+      hideAsk();
+      return;
+    }
     if (!picker.classList.contains('hidden')) {
       hidePicker();
       return;
@@ -291,6 +343,7 @@ export function createField(el, app) {
       d.el.classList.toggle('soloed', app.isSoloed(v.id));
       d.label.textContent = V.label;
     }
+    if (ask._id && !app.find(ask._id)) hideAsk();
     soloBar.classList.toggle('hidden', !app.soloActive());
     layout();
   }
@@ -323,5 +376,5 @@ export function createField(el, app) {
     d.body.style.setProperty('--lift', (1 + level * 0.22).toFixed(3));
   }
 
-  return { render, layout, hidePicker, setPulse };
+  return { render, layout, hidePicker, setPulse, askDelete };
 }

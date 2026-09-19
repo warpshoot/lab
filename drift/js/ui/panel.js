@@ -148,9 +148,7 @@ export function createPanel(el, app) {
     const del = document.createElement('button');
     del.className = 'chip danger';
     del.textContent = '削除';
-    del.addEventListener('click', () => {
-      if (confirm('この点を削除する？')) app.remove(v.id);
-    });
+    del.addEventListener('click', () => app.requestDelete(v.id));
     head.appendChild(del);
     el.appendChild(head);
 

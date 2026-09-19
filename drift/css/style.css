@@ -203,6 +203,36 @@ body {
   cursor: pointer;
 }
 
+.ask {
+  position: absolute;
+  transform: translate(-50%, 0);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 12px;
+  background: rgba(14, 16, 21, 0.96);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+  z-index: 220;
+}
+
+.ask.hidden { display: none; }
+
+.ask button {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--dim);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.ask .ask-yes { color: #e0776f; border-color: rgba(224, 119, 111, 0.5); }
+
 /* ---- パネル ---- */
 #panel {
   flex: 1 1 auto;

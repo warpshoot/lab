@@ -213,6 +213,8 @@ const app = {
 
   refreshPanel() { panel.render(); },
 
+  requestDelete(id) { field.askDelete(id); },
+
   notice(text) {
     noticeEl.textContent = text;
     noticeEl.classList.add('show');
@@ -280,23 +282,73 @@ requestAnimationFrame(meterLoop);
 window.addEventListener('resize', () => field.layout());
 
 // iOS Safari はロックやバックグラウンドで suspend される
+// ---- 中断と復帰 -------------------------------------------------------
+// iOS はバックグラウンドやシステムダイアログで AudioContext を止める。
+// resume() はユーザー操作の中でしか通らないので、必ず出口を出しておく。
+const gateTitle = gateEl.querySelector('h1');
+const gateText = gateEl.querySelector('p');
+const gateCta = gateEl.querySelector('.gate-cta');
+
+function running() {
+  return !!engine.ctx && engine.ctx.state === 'running';
+}
+
+function showGate(mode) {
+  if (mode === 'resume') {
+    gateTitle.textContent = 'DRIFT';
+    gateText.innerHTML = '音が止まっている<br>バックグラウンドに回ると止まる';
+    gateCta.textContent = 'タップして再開';
+  }
+  gateEl.classList.remove('gone');
+}
+
+function hideGate() {
+  gateEl.classList.add('gone');
+}
+
+async function ensureRunning() {
+  if (!started) return;
+  try {
+    await engine.resume();
+  } catch (e) {
+    /* ジェスチャの外からは弾かれる。ゲートを出して待つ。 */
+  }
+  if (running()) {
+    engine.resetSchedulers(); // 過去時刻に予約して暴発させない
+    hideGate();
+  } else {
+    showGate('resume');
+  }
+}
+
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible' || !started) return;
-  engine.resume().then(() => engine.resetSchedulers());
+  if (document.visibilityState !== 'visible') return;
+  ensureRunning();
 });
 
+// ジェスチャの中でもう一度試す。ゲートを踏み損ねても復帰できるように。
+document.addEventListener('pointerdown', () => {
+  if (started && !running()) ensureRunning();
+}, true);
+
 async function begin() {
-  if (started) return;
+  if (started) {
+    ensureRunning();
+    return;
+  }
   started = true;
   engine.init();
+  engine.ctx.addEventListener('statechange', () => {
+    if (!started) return;
+    if (running()) hideGate();
+    else showGate('resume');
+  });
   await engine.resume();
   app.applyMaster(true);
   for (const data of state.patch.voices) spawn(data); // 復帰した点は一斉にフェードイン
-  gateEl.classList.add('gone');
-  setTimeout(() => gateEl.remove(), 500);
+  hideGate();
   field.render();
   panel.render();
 }
 
-gateEl.addEventListener('pointerup', begin);
 gateEl.addEventListener('click', begin);
