@@ -53,6 +53,13 @@ export class Voice {
     this.muteGain = ctx.createGain();
     this.muteGain.gain.value = 1;
 
+    // 実測用。距離で音量が変わる前の、このボイス自身の出音を見る。
+    this.meter = ctx.createAnalyser();
+    this.meter.fftSize = 256;
+    this.meter.smoothingTimeConstant = 0;
+    this._meterBuf = new Float32Array(this.meter.fftSize);
+    this._lvl = 0;
+
     this.levelGain = ctx.createGain();
     this.levelGain.gain.value = gainFromZ(this.z);
 
@@ -74,6 +81,7 @@ export class Voice {
 
     this.envGain.connect(this.muteGain);
     this.muteGain.connect(this.levelGain);
+    this.muteGain.connect(this.meter);
     this.levelGain.connect(this.toneFilter);
     const tail = this.panner || this.toneFilter;
     if (this.panner) this.toneFilter.connect(this.panner);
@@ -140,6 +148,19 @@ export class Voice {
     }, 60);
   }
 
+  // 立ち上がりは即、減衰はゆっくり。目で追える速さにする。
+  getLevel() {
+    if (!this.meter || this.disposed) return 0;
+    this.meter.getFloatTimeDomainData(this._meterBuf);
+    let peak = 0;
+    for (let i = 0; i < this._meterBuf.length; i++) {
+      const a = Math.abs(this._meterBuf[i]);
+      if (a > peak) peak = a;
+    }
+    this._lvl = Math.max(peak, this._lvl * 0.88);
+    return Math.min(1, this._lvl);
+  }
+
   setMuted(muted) {
     this.engine.ramp(this.muteGain.gain, muted ? 0 : 1, 0.04);
   }
@@ -189,6 +210,7 @@ export class Voice {
     try {
       this.envGain.disconnect();
       this.muteGain.disconnect();
+      this.meter.disconnect();
       this.levelGain.disconnect();
       this.toneFilter.disconnect();
       if (this.panner) this.panner.disconnect();
