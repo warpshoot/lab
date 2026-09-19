@@ -269,6 +269,14 @@ setInterval(() => {
   if (any) field.layout();
 }, 100);
 
+// 出音に合わせた膨らみ。見た目だけなので毎フレームでいい。
+function meterLoop() {
+  requestAnimationFrame(meterLoop);
+  if (!started || !engine.ctx || engine.ctx.state !== 'running') return;
+  for (const [id, voice] of live) field.setPulse(id, voice.getLevel());
+}
+requestAnimationFrame(meterLoop);
+
 window.addEventListener('resize', () => field.layout());
 
 // iOS Safari はロックやバックグラウンドで suspend される

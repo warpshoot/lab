@@ -69,13 +69,22 @@ body {
   top: 0;
   left: 0;
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 34%, color-mix(in srgb, var(--c) 85%, #fff), var(--c) 62%, color-mix(in srgb, var(--c) 45%, #000));
-  box-shadow: 0 0 var(--glow, 22px) color-mix(in srgb, var(--c) 45%, transparent);
   touch-action: none;
   display: grid;
   place-items: center;
   transition: transform 0.12s linear, width 0.12s linear, height 0.12s linear, opacity 0.12s linear, filter 0.12s linear;
   cursor: grab;
+}
+
+/* 見えている丸。位置は外側が持ち、ここは出音で膨らむだけ。 */
+.dot-body {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, color-mix(in srgb, var(--c) 85%, #fff), var(--c) 62%, color-mix(in srgb, var(--c) 45%, #000));
+  box-shadow: 0 0 var(--glow, 22px) color-mix(in srgb, var(--c) 45%, transparent);
+  transform: scale(var(--pulse, 1));
+  filter: brightness(var(--lift, 1));
 }
 
 .dot.grabbing { transition: none; }
@@ -150,15 +159,17 @@ body {
   filter: saturate(0.1) !important;
 }
 
-.dot.soloed {
+.dot.soloed .dot-body {
   box-shadow: 0 0 0 2px rgba(255, 224, 130, 0.9), 0 0 var(--glow, 22px) color-mix(in srgb, var(--c) 45%, transparent);
 }
 
-.dot.drifting {
+.dot.drifting .dot-body {
   border: 2px dashed rgba(255, 255, 255, 0.55);
 }
 
 .dot-label {
+  position: relative;
+  z-index: 1;
   font-size: 9px;
   letter-spacing: 0.08em;
   color: rgba(0, 0, 0, 0.6);

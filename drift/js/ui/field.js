@@ -169,12 +169,15 @@ export function createField(el, app) {
     const dot = document.createElement('div');
     dot.className = 'dot';
     dot.dataset.id = v.id;
+    const body = document.createElement('span');
+    body.className = 'dot-body';
+    dot.appendChild(body);
     const label = document.createElement('span');
     label.className = 'dot-label';
     dot.appendChild(label);
     bindDot(dot, v.id);
     el.appendChild(dot);
-    return { el: dot, label };
+    return { el: dot, body, label };
   }
 
   function bindDot(dot, id) {
@@ -312,5 +315,13 @@ export function createField(el, app) {
     layoutGizmo();
   }
 
-  return { render, layout, hidePicker };
+  // 出音の実測から丸を膨らませる
+  function setPulse(id, level) {
+    const d = dots.get(id);
+    if (!d) return;
+    d.body.style.setProperty('--pulse', (1 + level * 0.3).toFixed(3));
+    d.body.style.setProperty('--lift', (1 + level * 0.22).toFixed(3));
+  }
+
+  return { render, layout, hidePicker, setPulse };
 }
