@@ -25,7 +25,8 @@ function driftFor(id) {
       p1: Math.random() * Math.PI * 2,
       p2: Math.random() * Math.PI * 2
     });
-    drifts.set(id, { x: axis(), y: axis() });
+    // 奥行きも漂う。放置すると音量とリバーブが勝手に呼吸する。
+    drifts.set(id, { x: axis(), y: axis(), z: axis() });
   }
   return drifts.get(id);
 }
@@ -47,15 +48,19 @@ const app = {
   canAdd: () => state.patch.voices.length < MAX_VOICES,
 
   driftOffset(v) {
-    if (!v.drift) return { x: 0, y: 0 };
+    if (!v.drift) return { x: 0, y: 0, z: 0 };
     const d = driftFor(v.id);
     const t = engine.ctx ? engine.ctx.currentTime : 0;
-    return { x: offset(d.x, t), y: offset(d.y, t) };
+    return { x: offset(d.x, t), y: offset(d.y, t), z: offset(d.z, t) };
   },
 
   effectivePos(v) {
     const o = this.driftOffset(v);
     return { x: clamp01(v.x + o.x), y: clamp01(v.y + o.y) };
+  },
+
+  effectiveZ(v) {
+    return clamp01(v.z + this.driftOffset(v).z);
   },
 
   hasVoices: () => state.patch.voices.length > 0,
@@ -89,7 +94,7 @@ const app = {
     if (!src) return;
     if (!this.canAdd()) return this.notice('点は8つまで');
     const data = newVoiceData(src.type, clamp01(src.x + 0.07), clamp01(src.y - 0.07));
-    data.level = src.level;
+    data.z = src.z;
     data.drift = src.drift;
     data.common = Object.assign({}, src.common);
     data.params = Object.assign({}, src.params);
@@ -128,13 +133,20 @@ const app = {
     field.layout();
   },
 
-  setLevel(id, level) {
+  // パネルのスライダは基準値をそのまま動かす
+  setZ(id, z) {
     const v = findVoice(id);
     if (!v) return;
-    v.level = level;
-    const voice = live.get(id);
-    if (voice) voice.setLevel(level);
+    v.z = clamp01(z);
+    applyPos(v);
     field.layout();
+  },
+
+  // ギズモは画面に見えている位置を動かすので、ゆらぎの分を引く
+  setZFromView(id, z) {
+    const v = findVoice(id);
+    if (!v) return;
+    this.setZ(id, z - this.driftOffset(v).z);
   },
 
   setParam(id, key, value) {
@@ -167,6 +179,8 @@ const app = {
 
   commit() { save(); },
 
+  refreshPanel() { panel.render(); },
+
   notice(text) {
     noticeEl.textContent = text;
     noticeEl.classList.add('show');
@@ -179,6 +193,7 @@ function applyPos(v) {
   const voice = live.get(v.id);
   if (!voice) return;
   const p = app.effectivePos(v);
+  voice.setDistance(app.effectiveZ(v));
   voice.setPosition(p.x, p.y);
 }
 
@@ -187,8 +202,8 @@ function spawn(data) {
   engine.addVoice(voice);
   live.set(data.id, voice);
   const p = app.effectivePos(data);
+  voice.setDistance(app.effectiveZ(data));
   voice.setPosition(p.x, p.y);
-  voice.setLevel(data.level);
   voice.start();
   return voice;
 }
