@@ -107,15 +107,6 @@ export function createPanel(el, app) {
     name.style.setProperty('--c', V.color);
     head.appendChild(name);
 
-    const drift = document.createElement('button');
-    drift.className = 'chip' + (v.drift ? ' on' : '');
-    drift.textContent = 'ゆらぎ';
-    drift.addEventListener('click', () => {
-      app.toggleDrift(v.id);
-      render();
-    });
-    head.appendChild(drift);
-
     const master = document.createElement('button');
     master.className = 'chip';
     master.textContent = 'マスター';
@@ -132,6 +123,17 @@ export function createPanel(el, app) {
     el.appendChild(head);
 
     const common = section('共通');
+    // ゆらぎは2値。ナビゲーションの並びに置くと「設定画面が開く」に見えるので
+    // 他のパラメータと同じ顔をした選択行にしてある。
+    common.appendChild(
+      buildControl(
+        { key: 'drift', label: 'ゆらぎ（自動で漂う）', type: 'select', options: ['OFF', 'ON'] },
+        v.drift ? 'ON' : 'OFF',
+        (val) => {
+          if ((val === 'ON') !== !!v.drift) app.toggleDrift(v.id);
+        }
+      )
+    );
     common.appendChild(
       buildControl(
         { key: 'level', label: '音量', min: 0, max: 1, scale: 'lin' },
