@@ -360,6 +360,7 @@ export function createField(el, app) {
 
   function layout() {
     const rect = el.getBoundingClientRect();
+    app.setAspect(rect.width / rect.height);
     for (const v of app.voices()) {
       const d = dots.get(v.id);
       if (!d) continue;
@@ -385,27 +386,32 @@ export function createField(el, app) {
     links.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
     const parts = [];
     for (const v of app.voices()) {
+      const sel = app.selectedId() === v.id ? ' on' : '';
+      const orbit = app.orbitInfo(v);
+      if (orbit) {
+        // 軌道は中心と同じ奥行きの面に描く。半径は横幅を 1 とした長さ。
+        const c = orbit.center;
+        const k = perspective(c.z);
+        const cpt = project(c.x, c.y, c.z, rect.width, rect.height);
+        const rx = orbit.rho * rect.width * k;
+        const ry = rx * Math.sqrt(1 - orbit.ecc * orbit.ecc);
+        parts.push(
+          '<ellipse class="orbit' + sel + '" cx="' + cpt.sx + '" cy="' + cpt.sy +
+          '" rx="' + rx + '" ry="' + ry +
+          '" transform="rotate(' + (-orbit.angle) + ' ' + cpt.sx + ' ' + cpt.sy + ')"/>'
+        );
+        continue;
+      }
       const a = app.anchorOf(v);
       if (!a) continue;
-      const az = app.effectiveZ(a);
       const ap = app.effectivePos(a);
-      const apt = project(ap.x, ap.y, az, rect.width, rect.height);
-      if (v.drift && v.driftShape === 'orbit') {
-        // 軌道は錨と同じ奥行きの面に描く。盤面が正方形でないので楕円になる。
-        const k = perspective(az);
-        const r = Math.hypot(v.x - a.x, v.y - a.y);
-        parts.push(
-          '<ellipse class="orbit" cx="' + apt.sx + '" cy="' + apt.sy +
-          '" rx="' + (r * rect.width * k) + '" ry="' + (r * rect.height * k) + '"/>'
-        );
-      } else {
-        const vp = app.effectivePos(v);
-        const vpt = project(vp.x, vp.y, app.effectiveZ(v), rect.width, rect.height);
-        parts.push(
-          '<line class="tether" x1="' + apt.sx + '" y1="' + apt.sy +
-          '" x2="' + vpt.sx + '" y2="' + vpt.sy + '"/>'
-        );
-      }
+      const apt = project(ap.x, ap.y, app.effectiveZ(a), rect.width, rect.height);
+      const vp = app.effectivePos(v);
+      const vpt = project(vp.x, vp.y, app.effectiveZ(v), rect.width, rect.height);
+      parts.push(
+        '<line class="tether' + sel + '" x1="' + apt.sx + '" y1="' + apt.sy +
+        '" x2="' + vpt.sx + '" y2="' + vpt.sy + '"/>'
+      );
     }
     links.innerHTML = parts.join('');
   }

@@ -8,6 +8,12 @@ const VERSION = 2;
 export const DRIFT_SHAPES = ['wander', 'orbit', 'swing', 'breath'];
 export const DRIFT_LABELS = { wander: 'ふらつき', orbit: '円', swing: '振り子', breath: '呼吸' };
 
+// 周回のときだけ意味を持つ
+export const ORBIT_PARAMS = [
+  { key: 'orbitEcc', label: 'つぶれ具合（0 = 正円）', min: 0, max: 0.9, scale: 'lin' },
+  { key: 'orbitAngle', label: '軌道の傾き', min: 0, max: 360, scale: 'lin', unit: '°' }
+];
+
 export const DRIFT_PARAMS = [
   { key: 'driftShape', label: '軌道', type: 'select', options: DRIFT_SHAPES, labels: DRIFT_LABELS },
   { key: 'driftSpeed', label: 'ゆらぎの速さ', min: 0.1, max: 5, scale: 'log', unit: '倍' },
@@ -52,6 +58,8 @@ export function newVoiceData(type, x, y) {
     driftShape: 'wander',
     driftSpeed: 1,
     driftRange: 0.15,
+    orbitEcc: 0,      // 0 = 正円
+    orbitAngle: 0,    // 楕円の傾き（度）
 
     drift: false,
     common: Object.assign({}, COMMON_DEFAULTS),
@@ -97,6 +105,8 @@ function sanitize(raw) {
       driftShape: DRIFT_SHAPES.includes(v.driftShape) ? v.driftShape : 'wander',
       driftSpeed: Math.min(5, Math.max(0.1, num(v.driftSpeed, 1))),
       driftRange: Math.min(0.4, Math.max(0, num(v.driftRange, 0.15))),
+      orbitEcc: Math.min(0.9, Math.max(0, num(v.orbitEcc, 0))),
+      orbitAngle: ((num(v.orbitAngle, 0) % 360) + 360) % 360,
       common: Object.assign({}, COMMON_DEFAULTS, v.common || {}),
       params: Object.assign({}, V.defaults, v.params || {})
     });

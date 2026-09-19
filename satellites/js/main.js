@@ -22,6 +22,35 @@ let pauseTimer = null;
 
 const TAU = Math.PI * 2;
 
+// 盤面は正方形ではないので、正円に「見える」軌道を描くには縦横比が要る。
+let aspect = 1;
+export function setAspect(a) {
+  if (a > 0) aspect = a;
+}
+
+// 離心率と傾きを掛けた軌道上の一点を、正規化座標の差分として返す。
+// 半径 rho は画面の横幅を 1 とした長さ。
+function ellipsePoint(rho, ecc, angleDeg, theta) {
+  const a = rho;
+  const b = rho * Math.sqrt(1 - ecc * ecc);
+  const ph = (angleDeg * Math.PI) / 180;
+  const ct = Math.cos(theta);
+  const st = Math.sin(theta);
+  const u = a * ct * Math.cos(ph) - b * st * Math.sin(ph);
+  const w = a * ct * Math.sin(ph) + b * st * Math.cos(ph);
+  return { x: u, y: w * aspect };
+}
+
+// 置いた位置から、半径と開始角を逆算する
+function orbitSeed(dx, dy, angleDeg) {
+  const u = dx;
+  const w = dy / aspect;
+  const ph = (angleDeg * Math.PI) / 180;
+  const ur = u * Math.cos(ph) + w * Math.sin(ph);
+  const wr = -u * Math.sin(ph) + w * Math.cos(ph);
+  return { rho: Math.hypot(ur, wr), theta: Math.atan2(wr, ur) };
+}
+
 // 周期と位相は点ごとに固定。保存はしない（同じ動きを再現する意味がない）。
 function driftFor(id) {
   if (!drifts.has(id)) {
@@ -60,17 +89,8 @@ function resolve(v, t, depth) {
   }
   const ap = resolve(a, t, depth + 1);
   if (v.drift && v.driftShape === 'orbit') {
-    const dx = v.x - a.x;
-    const dy = v.y - a.y;
-    const r = Math.hypot(dx, dy);
-    const dd = driftFor(v.id);
-    const sp = v.driftSpeed != null ? v.driftSpeed : 1;
-    const ang = Math.atan2(dy, dx) + ((TAU * t * sp) / dd.orbitT) * dd.dir;
-    return {
-      x: clamp01(ap.x + r * Math.cos(ang)),
-      y: clamp01(ap.y + r * Math.sin(ang)),
-      z: clamp01(v.z + d.z)
-    };
+    const o = orbitState(v, t, v.x - a.x, v.y - a.y);
+    return { x: clamp01(ap.x + o.x), y: clamp01(ap.y + o.y), z: clamp01(v.z + d.z) };
   }
   // 周回以外は、錨が動いたぶんだけ付いていく
   return {
@@ -80,14 +100,27 @@ function resolve(v, t, depth) {
   };
 }
 
+// 錨があれば置いた距離、なければ「ゆらぎの幅」が半径になる
+export function orbitState(v, t, dx, dy) {
+  const d = driftFor(v.id);
+  const sp = v.driftSpeed != null ? v.driftSpeed : 1;
+  const ang = v.orbitAngle || 0;
+  const seed = dx == null
+    ? { rho: v.driftRange != null ? v.driftRange : 0.15, theta: d.orbitP }
+    : orbitSeed(dx, dy, ang);
+  const theta = seed.theta + ((TAU * t * sp) / d.orbitT) * d.dir;
+  const p = ellipsePoint(seed.rho, v.orbitEcc || 0, ang, theta);
+  return { x: p.x, y: p.y, rho: seed.rho };
+}
+
 function driftVector(v, t) {
   const d = driftFor(v.id);
   const r = v.driftRange != null ? v.driftRange : 0.15;
   const tt = t * (v.driftSpeed != null ? v.driftSpeed : 1);
   switch (v.driftShape) {
     case 'orbit': {
-      const ph = (TAU * tt) / d.orbitT * d.dir + d.orbitP;
-      return { x: r * Math.cos(ph), y: r * Math.sin(ph), z: 0 };
+      const o = orbitState(v, t, null, null);
+      return { x: o.x, y: o.y, z: 0 };
     }
     case 'swing':
       return { x: r * Math.sin((TAU * tt) / d.x.T1 + d.x.p1), y: 0, z: 0 };
@@ -124,6 +157,17 @@ const app = {
   },
 
   anchorOf: (v) => anchorOf(v),
+  setAspect: (a) => setAspect(a),
+
+  // 軌道を描くための半径・離心率・傾き。錨がなければ自分の位置が中心。
+  orbitInfo(v) {
+    if (!v.drift || v.driftShape !== 'orbit') return null;
+    const a = anchorOf(v);
+    const t = engine.ctx ? engine.ctx.currentTime : 0;
+    const o = a ? orbitState(v, t, v.x - a.x, v.y - a.y) : orbitState(v, t, null, null);
+    const center = a ? this.resolved(a) : { x: v.x, y: v.y, z: v.z };
+    return { center, rho: o.rho, ecc: v.orbitEcc || 0, angle: v.orbitAngle || 0 };
+  },
 
   // 輪になる指定は受け付けない
   setAnchor(id, anchorId) {
@@ -206,6 +250,8 @@ const app = {
     data.driftSpeed = src.driftSpeed;
     data.driftRange = src.driftRange;
     data.anchor = src.anchor;
+    data.orbitEcc = src.orbitEcc;
+    data.orbitAngle = src.orbitAngle;
     data.common = Object.assign({}, src.common);
     data.params = Object.assign({}, src.params);
     state.patch.voices.push(data);

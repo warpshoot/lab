@@ -1,5 +1,5 @@
 import { COMMON_PARAMS } from '../audio/voices/base.js';
-import { DRIFT_PARAMS } from '../state.js';
+import { DRIFT_PARAMS, ORBIT_PARAMS } from '../state.js';
 import { renderMaster } from './master.js';
 
 export function toNorm(p, value) {
@@ -200,7 +200,10 @@ export function createPanel(el, app) {
       )
     );
     if (v.drift) {
-      DRIFT_PARAMS.forEach((p) => {
+      const rows = v.driftShape === 'orbit'
+        ? DRIFT_PARAMS.filter((p) => p.key !== 'driftRange' || !v.anchor).concat(ORBIT_PARAMS)
+        : DRIFT_PARAMS;
+      rows.forEach((p) => {
         common.appendChild(
           buildControl(p, v[p.key], (val) => app.setDriftParam(v.id, p.key, val), () => app.commit())
         );
