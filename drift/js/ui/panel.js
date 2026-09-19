@@ -1,4 +1,5 @@
 import { COMMON_PARAMS } from '../audio/voices/base.js';
+import { DRIFT_PARAMS } from '../state.js';
 import { renderMaster } from './master.js';
 
 export function toNorm(p, value) {
@@ -45,7 +46,7 @@ export function buildControl(p, value, onInput, onCommit) {
     group.className = 'seg';
     p.options.forEach((opt) => {
       const b = document.createElement('button');
-      b.textContent = opt;
+      b.textContent = p.labels ? p.labels[opt] : opt;
       b.className = opt === value ? 'on' : '';
       b.addEventListener('click', () => {
         group.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
@@ -164,6 +165,13 @@ export function createPanel(el, app) {
         }
       )
     );
+    if (v.drift) {
+      DRIFT_PARAMS.forEach((p) => {
+        common.appendChild(
+          buildControl(p, v[p.key], (val) => app.setDriftParam(v.id, p.key, val), () => app.commit())
+        );
+      });
+    }
     common.appendChild(
       buildControl(
         { key: 'z', label: '近さ（奥ほど静かで深い）', min: 0, max: 1, scale: 'lin' },

@@ -20,25 +20,49 @@ let lastVoiceId = null;
 let paused = false;   // 意図的な停止。自動復帰の対象外にする。
 let pauseTimer = null;
 
-const DRIFT_RANGE = 0.15;
+const TAU = Math.PI * 2;
 
+// 周期と位相は点ごとに固定。保存はしない（同じ動きを再現する意味がない）。
 function driftFor(id) {
   if (!drifts.has(id)) {
     const axis = () => ({
       T1: 20 + Math.random() * 160,
       T2: 20 + Math.random() * 160,
-      p1: Math.random() * Math.PI * 2,
-      p2: Math.random() * Math.PI * 2
+      p1: Math.random() * TAU,
+      p2: Math.random() * TAU
     });
-    // 奥行きも漂う。放置すると音量とリバーブが勝手に呼吸する。
-    drifts.set(id, { x: axis(), y: axis(), z: axis() });
+    drifts.set(id, {
+      x: axis(), y: axis(), z: axis(),
+      orbitT: 30 + Math.random() * 120,
+      orbitP: Math.random() * TAU,
+      dir: Math.random() < 0.5 ? -1 : 1
+    });
   }
   return drifts.get(id);
 }
 
-function offset(a, t) {
-  return DRIFT_RANGE * (0.6 * Math.sin((2 * Math.PI * t) / a.T1 + a.p1) +
-                        0.4 * Math.sin((2 * Math.PI * t) / a.T2 + a.p2));
+// 2つの低速サインの合成。周期が噛み合わないので戻ってこない。
+function wander(a, t) {
+  return 0.6 * Math.sin((TAU * t) / a.T1 + a.p1) + 0.4 * Math.sin((TAU * t) / a.T2 + a.p2);
+}
+
+function driftVector(v, t) {
+  const d = driftFor(v.id);
+  const r = v.driftRange != null ? v.driftRange : 0.15;
+  const tt = t * (v.driftSpeed != null ? v.driftSpeed : 1);
+  switch (v.driftShape) {
+    case 'orbit': {
+      const ph = (TAU * tt) / d.orbitT * d.dir + d.orbitP;
+      return { x: r * Math.cos(ph), y: r * Math.sin(ph), z: 0 };
+    }
+    case 'swing':
+      return { x: r * Math.sin((TAU * tt) / d.x.T1 + d.x.p1), y: 0, z: 0 };
+    case 'breath':
+      // 位置は動かさず、奥行きだけ出入りさせる。音量とリバーブだけが呼吸する。
+      return { x: 0, y: 0, z: r * 1.8 * wander(d.z, tt) };
+    default:
+      return { x: r * wander(d.x, tt), y: r * wander(d.y, tt), z: r * wander(d.z, tt) };
+  }
 }
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
@@ -54,9 +78,7 @@ const app = {
 
   driftOffset(v) {
     if (!v.drift) return { x: 0, y: 0, z: 0 };
-    const d = driftFor(v.id);
-    const t = engine.ctx ? engine.ctx.currentTime : 0;
-    return { x: offset(d.x, t), y: offset(d.y, t), z: offset(d.z, t) };
+    return driftVector(v, engine.ctx ? engine.ctx.currentTime : 0);
   },
 
   effectivePos(v) {
@@ -128,6 +150,9 @@ const app = {
     const data = newVoiceData(src.type, clamp01(src.x + 0.07), clamp01(src.y - 0.07));
     data.z = src.z;
     data.drift = src.drift;
+    data.driftShape = src.driftShape;
+    data.driftSpeed = src.driftSpeed;
+    data.driftRange = src.driftRange;
     data.common = Object.assign({}, src.common);
     data.params = Object.assign({}, src.params);
     state.patch.voices.push(data);
@@ -191,6 +216,14 @@ const app = {
     else v.params[key] = value;
     const voice = live.get(id);
     if (voice) voice.setParam(key, value);
+  },
+
+  setDriftParam(id, key, value) {
+    const v = findVoice(id);
+    if (!v) return;
+    v[key] = value;
+    applyPos(v);
+    field.layout();
   },
 
   toggleDrift(id) {
