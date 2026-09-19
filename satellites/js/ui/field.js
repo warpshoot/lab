@@ -45,6 +45,11 @@ export function createField(el, app) {
   const dots = new Map();
   el.insertAdjacentHTML('afterbegin', BOX_SVG);
 
+  // 周回の軌道と、錨への結び。関係が見えないと群れに見えない。
+  const links = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  links.setAttribute('class', 'links');
+  el.appendChild(links);
+
   // 選択中の点にだけ出る奥行きのハンドル。小さい点でも必ず掴める位置に立つ。
   const gizmo = document.createElement('div');
   gizmo.className = 'gizmo hidden';
@@ -171,6 +176,7 @@ export function createField(el, app) {
     readout.textContent = '近さ ' + Math.round(ez * 100) + '%';
     readout.style.transform = 'translate(-50%,' + (-d - 26) + 'px)';
   }
+  const pickerBtns = [];
   const picker = document.createElement('div');
   picker.className = 'picker hidden';
   el.appendChild(picker);
@@ -184,16 +190,19 @@ export function createField(el, app) {
     b.addEventListener('pointerup', (e) => {
       e.stopPropagation();
       if (performance.now() - picker._shownAt < 220) return; // 同じタップの pointerup を拾わない
+      if (b.disabled) return;
       hidePicker();
       app.add(V.type, picker._x, picker._y);
     });
     picker.appendChild(b);
+    pickerBtns.push({ type: V.type, el: b });
   });
 
   function showPicker(x, y) {
     picker._x = x;
     picker._y = y;
     picker._shownAt = performance.now();
+    for (const p of pickerBtns) p.el.disabled = !app.canAdd(p.type);
     picker.classList.remove('hidden');
     // 実寸を測ってから寄せる。決め打ちの余白だと盤面の端で種別が切れる。
     const r = el.getBoundingClientRect();
@@ -314,8 +323,8 @@ export function createField(el, app) {
     const x = Math.min(1, Math.max(0, u.x));
     const y = Math.min(1, Math.max(0, u.y));
     app.select(null);
-    if (!app.canAdd()) {
-      app.notice('点は8つまで');
+    if (!app.canAddAny()) {
+      app.notice('これ以上は置けない');
       return;
     }
     showPicker(x, y);
@@ -340,7 +349,8 @@ export function createField(el, app) {
       d.el.classList.toggle('selected', app.selectedId() === v.id);
       d.el.classList.toggle('drifting', !!v.drift);
       d.el.classList.toggle('muted', !app.audible(v.id));
-      d.el.classList.toggle('soloed', app.isSoloed(v.id));
+      d.el.classList.toggle('soloed', !V.silent && app.isSoloed(v.id));
+      d.el.classList.toggle('star', !!V.silent);
       d.label.textContent = V.label;
     }
     if (ask._id && !app.find(ask._id)) hideAsk();
@@ -366,6 +376,38 @@ export function createField(el, app) {
       d.el.style.transform = 'translate(' + (pt.sx - r) + 'px,' + (pt.sy - r) + 'px)';
     }
     layoutGizmo();
+    layoutLinks();
+  }
+
+  // 錨を持つ星の軌道（周回なら円、それ以外は結びの線）を描く
+  function layoutLinks() {
+    const rect = el.getBoundingClientRect();
+    links.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
+    const parts = [];
+    for (const v of app.voices()) {
+      const a = app.anchorOf(v);
+      if (!a) continue;
+      const az = app.effectiveZ(a);
+      const ap = app.effectivePos(a);
+      const apt = project(ap.x, ap.y, az, rect.width, rect.height);
+      if (v.drift && v.driftShape === 'orbit') {
+        // 軌道は錨と同じ奥行きの面に描く。盤面が正方形でないので楕円になる。
+        const k = perspective(az);
+        const r = Math.hypot(v.x - a.x, v.y - a.y);
+        parts.push(
+          '<ellipse class="orbit" cx="' + apt.sx + '" cy="' + apt.sy +
+          '" rx="' + (r * rect.width * k) + '" ry="' + (r * rect.height * k) + '"/>'
+        );
+      } else {
+        const vp = app.effectivePos(v);
+        const vpt = project(vp.x, vp.y, app.effectiveZ(v), rect.width, rect.height);
+        parts.push(
+          '<line class="tether" x1="' + apt.sx + '" y1="' + apt.sy +
+          '" x2="' + vpt.sx + '" y2="' + vpt.sy + '"/>'
+        );
+      }
+    }
+    links.innerHTML = parts.join('');
   }
 
   // 出音の実測から丸を膨らませる
