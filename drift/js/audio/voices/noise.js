@@ -2,6 +2,12 @@ import { Voice } from './base.js';
 import { getNoiseBuffer } from '../noiseBuffer.js';
 
 // 白色ノイズをバンドパスで削る。風、雨、ヒスなどの質感担当。
+// バンドパスは帯域外を捨てるので、Q を上げるほど痩せる（実測で RMS はほぼ 1/√Q）。
+// √Q で持ち上げると、Q を振っても音量が動かない。
+function makeup(q) {
+  return 2.2 * Math.sqrt(Math.max(0.1, q));
+}
+
 export class NoiseVoice extends Voice {
   static type = 'noise';
   static label = 'NOISE';
@@ -25,6 +31,9 @@ export class NoiseVoice extends Voice {
     this.band.frequency.value = this.params.center;
     this.band.Q.value = this.params.q;
 
+    this.makeup = ctx.createGain();
+    this.makeup.gain.value = makeup(this.params.q);
+
     // うねりは振幅への LFO 変調（JS でループは回さない）
     this.trem = ctx.createGain();
     this.trem.gain.value = 1 - this.params.swellDepth * 0.5;
@@ -37,7 +46,8 @@ export class NoiseVoice extends Voice {
     this.lfoGain.connect(this.trem.gain);
 
     this.src.connect(this.band);
-    this.band.connect(this.trem);
+    this.band.connect(this.makeup);
+    this.makeup.connect(this.trem);
     this.trem.connect(this.envGain);
     this.src.start();
     this.lfo.start();
@@ -47,16 +57,19 @@ export class NoiseVoice extends Voice {
     for (const n of [this.src, this.lfo]) {
       if (n) { try { n.stop(); n.disconnect(); } catch (e) { /* noop */ } }
     }
-    for (const n of [this.band, this.trem, this.lfoGain]) {
+    for (const n of [this.band, this.makeup, this.trem, this.lfoGain]) {
       if (n) { try { n.disconnect(); } catch (e) { /* noop */ } }
     }
-    this.src = this.lfo = this.band = this.trem = this.lfoGain = null;
+    this.src = this.lfo = this.band = this.makeup = this.trem = this.lfoGain = null;
   }
 
   applyParam(key) {
     if (!this.band) return;
     if (key === 'center') this.engine.ramp(this.band.frequency, this.params.center, 0.05);
-    if (key === 'q') this.engine.ramp(this.band.Q, this.params.q, 0.05);
+    if (key === 'q') {
+      this.engine.ramp(this.band.Q, this.params.q, 0.05);
+      this.engine.ramp(this.makeup.gain, makeup(this.params.q), 0.05);
+    }
     if (key === 'swellRate') this.engine.ramp(this.lfo.frequency, this.params.swellRate, 0.05);
     if (key === 'swellDepth') {
       this.engine.ramp(this.trem.gain, 1 - this.params.swellDepth * 0.5, 0.05);
