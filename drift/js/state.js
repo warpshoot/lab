@@ -4,6 +4,15 @@ import { COMMON_DEFAULTS } from './audio/voices/base.js';
 const KEY = 'drift.patch.v1';
 const VERSION = 2;
 
+export const DRIFT_SHAPES = ['wander', 'orbit', 'swing', 'breath'];
+export const DRIFT_LABELS = { wander: 'ふらつき', orbit: '円', swing: '振り子', breath: '呼吸' };
+
+export const DRIFT_PARAMS = [
+  { key: 'driftShape', label: '軌道', type: 'select', options: DRIFT_SHAPES, labels: DRIFT_LABELS },
+  { key: 'driftSpeed', label: 'ゆらぎの速さ', min: 0.1, max: 5, scale: 'log', unit: '倍' },
+  { key: 'driftRange', label: 'ゆらぎの幅', min: 0, max: 0.4, scale: 'lin' }
+];
+
 export const MASTER_DEFAULTS = {
   gain: 0.8,
   reverb: { length: 3.0, decay: 2.5 },
@@ -38,6 +47,9 @@ export function newVoiceData(type, x, y) {
     type: V.type,
     x, y,
     z: 0.6, // 近さ。0 = 遠い / 1 = 手前
+    driftShape: 'wander',
+    driftSpeed: 1,
+    driftRange: 0.15,
 
     drift: false,
     common: Object.assign({}, COMMON_DEFAULTS),
@@ -79,6 +91,9 @@ function sanitize(raw) {
       // v1 は音量を持っていた。そのまま近さとして読み替える。
       z: clamp01(num(v.z != null ? v.z : v.level, 0.6)),
       drift: !!v.drift,
+      driftShape: DRIFT_SHAPES.includes(v.driftShape) ? v.driftShape : 'wander',
+      driftSpeed: Math.min(5, Math.max(0.1, num(v.driftSpeed, 1))),
+      driftRange: Math.min(0.4, Math.max(0, num(v.driftRange, 0.15))),
       common: Object.assign({}, COMMON_DEFAULTS, v.common || {}),
       params: Object.assign({}, V.defaults, v.params || {})
     });
