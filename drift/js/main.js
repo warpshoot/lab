@@ -8,6 +8,7 @@ const fieldEl = document.getElementById('field');
 const panelEl = document.getElementById('panel');
 const gateEl = document.getElementById('gate');
 const noticeEl = document.getElementById('notice');
+const transportEl = document.getElementById('transport');
 
 const live = new Map();   // id -> Voice
 const muted = new Set();  // 保存しない。次に開いて無音だと壊れたように見える。
@@ -16,6 +17,8 @@ const drifts = new Map(); // id -> ゆらぎのパラメータ組
 let started = false;
 let noticeTimer = null;
 let lastVoiceId = null;
+let paused = false;   // 意図的な停止。自動復帰の対象外にする。
+let pauseTimer = null;
 
 const DRIFT_RANGE = 0.15;
 
@@ -203,7 +206,7 @@ const app = {
   applyMaster(withIR) {
     if (!engine.ready) return;
     const m = state.patch.master;
-    engine.setMasterGain(m.gain);
+    if (!paused) engine.setMasterGain(m.gain); // 停止中に音量を触っても鳴り出さない
     engine.setDelayTime(m.delay.time);
     engine.setDelayFeedback(m.delay.feedback);
     if (withIR) engine.setReverbIR(m.reverb.length, m.reverb.decay);
@@ -307,7 +310,7 @@ function hideGate() {
 }
 
 async function ensureRunning() {
-  if (!started) return;
+  if (!started || paused) return; // 自分で止めたものを勝手に鳴らし直さない
   try {
     await engine.resume();
   } catch (e) {
@@ -339,7 +342,7 @@ async function begin() {
   started = true;
   engine.init();
   engine.ctx.addEventListener('statechange', () => {
-    if (!started) return;
+    if (!started || paused) return;
     if (running()) hideGate();
     else showGate('resume');
   });
@@ -347,8 +350,47 @@ async function begin() {
   app.applyMaster(true);
   for (const data of state.patch.voices) spawn(data); // 復帰した点は一斉にフェードイン
   hideGate();
+  setTransport();
   field.render();
   panel.render();
 }
+
+// ---- 停止／再生 -------------------------------------------------------
+// suspend をそのまま割り当てるとブツッと切れる。フェードを挟む。
+function setTransport() {
+  transportEl.classList.toggle('playing', started && !paused);
+  transportEl.classList.toggle('visible', started);
+}
+
+async function togglePlay() {
+  if (!started) return;
+  clearTimeout(pauseTimer);
+  if (paused) {
+    paused = false;
+    setTransport();
+    try {
+      await engine.resume();
+    } catch (e) { /* noop */ }
+    if (running()) {
+      engine.resetSchedulers();
+      engine.setMasterGain(state.patch.master.gain);
+      hideGate();
+    } else {
+      showGate('resume');
+    }
+  } else {
+    paused = true;
+    setTransport();
+    engine.ramp(engine.masterGain.gain, 0, 0.25);
+    pauseTimer = setTimeout(() => {
+      if (paused && engine.ctx) engine.ctx.suspend();
+    }, 900);
+  }
+}
+
+transportEl.addEventListener('click', (e) => {
+  e.stopPropagation();
+  togglePlay();
+});
 
 gateEl.addEventListener('click', begin);
