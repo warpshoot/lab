@@ -46,19 +46,30 @@ export class Engine {
     this.convolver.connect(this.reverbReturn);
     this.reverbReturn.connect(this.masterBus);
 
-    // ディレイ（マスターに1系統だけ）
+    // ディレイ（マスターに1系統だけ）。左右を交互に打つピンポン。
+    // 1本の DelayNode だと反射が左右同じ位置に出て、幅に一切寄与しない。
     this.delayInput = ctx.createGain();
-    this.delay = ctx.createDelay(2.5);
+    this.delayL = ctx.createDelay(2.5);
+    this.delayR = ctx.createDelay(2.5);
+    this.panL = ctx.createStereoPanner();
+    this.panL.pan.value = -0.85;
+    this.panR = ctx.createStereoPanner();
+    this.panR.pan.value = 0.85;
     this.feedback = ctx.createGain();
     this.feedbackFilter = ctx.createBiquadFilter();
     this.feedbackFilter.type = 'lowpass';
     this.feedbackFilter.frequency.value = 4000;
     this.delayReturn = ctx.createGain();
-    this.delayInput.connect(this.delay);
-    this.delay.connect(this.feedback);
-    this.feedback.connect(this.feedbackFilter);
-    this.feedbackFilter.connect(this.delay);
-    this.delay.connect(this.delayReturn);
+
+    this.delayInput.connect(this.delayL);
+    this.delayL.connect(this.panL);
+    this.panL.connect(this.delayReturn);
+    this.delayL.connect(this.delayR);
+    this.delayR.connect(this.panR);
+    this.panR.connect(this.delayReturn);
+    this.delayR.connect(this.feedbackFilter);
+    this.feedbackFilter.connect(this.feedback);
+    this.feedback.connect(this.delayL);
     this.delayReturn.connect(this.masterBus);
 
     this.ready = true;
@@ -91,7 +102,9 @@ export class Engine {
   }
 
   setDelayTime(ms) {
-    this.ramp(this.delay.delayTime, Math.min(2.0, ms / 1000), 0.08);
+    const t = Math.min(2.0, ms / 1000);
+    this.ramp(this.delayL.delayTime, t, 0.08);
+    this.ramp(this.delayR.delayTime, t, 0.08);
   }
 
   setDelayFeedback(v) {
