@@ -188,8 +188,12 @@ body {
   fill: none;
 }
 
-#field .orbit { stroke: rgba(255, 255, 255, 0.16); stroke-width: 1; }
-#field .tether { stroke: rgba(255, 255, 255, 0.1); stroke-width: 1; stroke-dasharray: 3 5; }
+#field .orbit { stroke: rgba(255, 255, 255, 0.13); stroke-width: 1; }
+#field .tether { stroke: rgba(255, 255, 255, 0.09); stroke-width: 1; stroke-dasharray: 3 5; }
+
+/* 選択中のものだけはっきり見せる */
+#field .orbit.on { stroke: rgba(255, 255, 255, 0.62); }
+#field .tether.on { stroke: rgba(255, 255, 255, 0.4); }
 
 /* 音を持たない星 */
 .dot.star .dot-body {
