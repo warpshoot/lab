@@ -5,20 +5,13 @@ const KEY = 'satellites.patch.v1';
 const OLD_KEY = 'drift.patch.v1'; // DRIFT 時代の保存を引き継ぐ
 const VERSION = 2;
 
-export const DRIFT_SHAPES = ['wander', 'orbit', 'swing', 'breath'];
-export const DRIFT_LABELS = { wander: 'ふらつき', orbit: '円', swing: '振り子', breath: '呼吸' };
-
-// 周回のときだけ意味を持つ
+// 周回するときだけ意味を持つ
 export const ORBIT_PARAMS = [
+  { key: 'orbitPeriod', label: '周期', min: 5, max: 600, scale: 'log', unit: 's' },
   { key: 'orbitEcc', label: 'つぶれ具合（0 = 正円）', min: 0, max: 0.9, scale: 'lin' },
   { key: 'orbitAngle', label: '軌道の向き', min: 0, max: 360, scale: 'lin', unit: '°' },
-  { key: 'orbitIncl', label: '軌道の傾斜（倒すと立体になる）', min: 0, max: 90, scale: 'lin', unit: '°' }
-];
-
-export const DRIFT_PARAMS = [
-  { key: 'driftShape', label: '軌道', type: 'select', options: DRIFT_SHAPES, labels: DRIFT_LABELS },
-  { key: 'driftSpeed', label: 'ゆらぎの速さ', min: 0.1, max: 5, scale: 'log', unit: '倍' },
-  { key: 'driftRange', label: 'ゆらぎの幅', min: 0, max: 0.4, scale: 'lin' }
+  { key: 'orbitIncl', label: '軌道の傾斜（倒すと立体になる）', min: 0, max: 90, scale: 'lin', unit: '°' },
+  { key: 'orbitDir', label: '回り方', type: 'select', options: ['prograde', 'retrograde'], labels: { prograde: '順行', retrograde: '逆行' } }
 ];
 
 export const MASTER_DEFAULTS = {
@@ -54,14 +47,12 @@ export function newVoiceData(type, x, y) {
     id: 'v' + (++seq) + '-' + Math.random().toString(36).slice(2, 7),
     type: V.type,
     x, y,
-    driftShape: 'wander',
-    driftSpeed: 1,
-    driftRange: 0.15,
+    orbit: false,
+    orbitPeriod: Math.round(30 + Math.random() * 120), // 星ごとに散らす。揃うと動きが噛み合う
     orbitEcc: 0,      // 0 = 正円
     orbitAngle: 0,    // 面の中での向き（昇交点、度）
     orbitIncl: 0,     // 面を奥へ倒す角度（軌道傾斜角、度）
-
-    drift: false,
+    orbitDir: 'prograde',
     common: Object.assign({}, COMMON_DEFAULTS),
     params: Object.assign({}, V.defaults)
   };
@@ -98,10 +89,10 @@ function sanitize(raw) {
       type: v.type,
       x: clamp01(num(v.x, 0.5)),
       y: clamp01(num(v.y, 0.5)),
-      drift: !!v.drift,
-      driftShape: DRIFT_SHAPES.includes(v.driftShape) ? v.driftShape : 'wander',
-      driftSpeed: Math.min(5, Math.max(0.1, num(v.driftSpeed, 1))),
-      driftRange: Math.min(0.4, Math.max(0, num(v.driftRange, 0.15))),
+      // 旧版の「ゆらぎ」は周回として読み替える
+      orbit: !!(v.orbit != null ? v.orbit : v.drift),
+      orbitPeriod: Math.min(600, Math.max(5, num(v.orbitPeriod, 30 + Math.random() * 120))),
+      orbitDir: v.orbitDir === 'retrograde' ? 'retrograde' : 'prograde',
       orbitEcc: Math.min(0.9, Math.max(0, num(v.orbitEcc, 0))),
       orbitAngle: ((num(v.orbitAngle, 0) % 360) + 360) % 360,
       orbitIncl: Math.min(90, Math.max(0, num(v.orbitIncl, 0))),

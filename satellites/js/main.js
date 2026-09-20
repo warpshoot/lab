@@ -13,7 +13,6 @@ const transportEl = document.getElementById('transport');
 const live = new Map();   // id -> Voice
 const muted = new Set();  // 保存しない。次に開いて無音だと壊れたように見える。
 const soloed = new Set();
-const drifts = new Map(); // id -> ゆらぎのパラメータ組
 let started = false;
 let noticeTimer = null;
 let lastVoiceId = null;
@@ -64,42 +63,28 @@ function orbitSeed(dx, dy, angleDeg) {
   return { rho: Math.hypot(ur, wr), theta: Math.atan2(wr, ur) };
 }
 
-// 周期と位相は点ごとに固定。保存はしない（同じ動きを再現する意味がない）。
-function driftFor(id) {
-  if (!drifts.has(id)) {
-    const axis = () => ({
-      T1: 20 + Math.random() * 160,
-      T2: 20 + Math.random() * 160,
-      p1: Math.random() * TAU,
-      p2: Math.random() * TAU
-    });
-    drifts.set(id, {
-      x: axis(), y: axis(), z: axis(),
-      orbitT: 30 + Math.random() * 120,
-      orbitP: Math.random() * TAU,
-      dir: Math.random() < 0.5 ? -1 : 1
-    });
-  }
-  return drifts.get(id);
+export function orbitState(v, t) {
+  const ang = v.orbitAngle || 0;
+  const period = Math.max(1, v.orbitPeriod || 60);
+  const dir = v.orbitDir === 'retrograde' ? -1 : 1;
+  const seed = orbitSeed(v.x - CENTER.x, v.y - CENTER.y, ang);
+  const theta = seed.theta + ((TAU * t) / period) * dir;
+  const p = ellipsePoint(seed.rho, v.orbitEcc || 0, ang, v.orbitIncl || 0, theta);
+  return { x: p.x, y: p.y, z: p.z, rho: seed.rho };
 }
 
-// 2つの低速サインの合成。周期が噛み合わないので戻ってこない。
-function wander(a, t) {
-  return 0.6 * Math.sin((TAU * t) / a.T1 + a.p1) + 0.4 * Math.sin((TAU * t) / a.T2 + a.p2);
-}
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
 
-// 中心は盤面のど真ん中に固定。動かないので、周回は常にここを回る。
+// 核は盤面のど真ん中に固定。動かないので、周回は常にここを回る。
 export const CENTER = { x: 0.5, y: 0.5 };
 
 function resolve(v, t) {
-  if (v.drift && v.driftShape === 'orbit') {
+  if (v.orbit) {
     // 半径はノブではなく「核からどれだけ離して置いたか」で決まる
     const o = orbitState(v, t);
     return { x: clamp01(CENTER.x + o.x), y: clamp01(CENTER.y + o.y), zOff: o.z };
   }
-  if (!v.drift) return { x: v.x, y: v.y, zOff: 0 };
-  const d = driftVector(v, t);
-  return { x: clamp01(v.x + d.x), y: clamp01(v.y + d.y), zOff: 0 };
+  return { x: v.x, y: v.y, zOff: 0 };
 }
 
 // 核からの3次元距離。盤面は正方形でないので縦は縦横比で割って揃える。
@@ -115,42 +100,6 @@ export function nearFromDistance(d) {
   return clamp01(1 - (d - 0.05) / (FAR - 0.05));
 }
 
-export function orbitState(v, t) {
-  const d = driftFor(v.id);
-  const sp = v.driftSpeed != null ? v.driftSpeed : 1;
-  const ang = v.orbitAngle || 0;
-  const seed = orbitSeed(v.x - CENTER.x, v.y - CENTER.y, ang);
-  const theta = seed.theta + ((TAU * t * sp) / d.orbitT) * d.dir;
-  const p = ellipsePoint(seed.rho, v.orbitEcc || 0, ang, v.orbitIncl || 0, theta);
-  return { x: p.x, y: p.y, z: p.z, rho: seed.rho };
-}
-
-function driftVector(v, t) {
-  const d = driftFor(v.id);
-  const r = v.driftRange != null ? v.driftRange : 0.15;
-  const tt = t * (v.driftSpeed != null ? v.driftSpeed : 1);
-  switch (v.driftShape) {
-    case 'orbit':
-      return { x: 0, y: 0, z: 0 }; // 周回は resolve() が中心から組み立てる
-    case 'swing':
-      return { x: r * Math.sin((TAU * tt) / d.x.T1 + d.x.p1), y: 0, z: 0 };
-    case 'breath': {
-      // 核に近づいたり遠ざかったりする。距離が音量とリバーブを決めるので、
-      // これがそのまま呼吸になる。
-      let ux = v.x - CENTER.x;
-      let uy = (v.y - CENTER.y) / aspect;
-      const len = Math.hypot(ux, uy) || 1;
-      ux /= len;
-      uy /= len;
-      const amt = r * 1.4 * wander(d.z, tt);
-      return { x: ux * amt, y: uy * amt * aspect, z: 0 };
-    }
-    default:
-      return { x: r * wander(d.x, tt), y: r * wander(d.y, tt), z: r * wander(d.z, tt) };
-  }
-}
-
-const clamp01 = (v) => Math.min(1, Math.max(0, v));
 
 const app = {
   voices: () => state.patch.voices,
@@ -178,7 +127,7 @@ const app = {
 
   // 軌道の道筋。傾斜で面が倒れるので点列で返す。
   orbitPath(v, n) {
-    if (!v.drift || v.driftShape !== 'orbit') return null;
+    if (!v.orbit) return null;
     const seed = orbitSeed(v.x - CENTER.x, v.y - CENTER.y, v.orbitAngle || 0);
     if (seed.rho < 0.004) return null;
     const pts = [];
@@ -248,10 +197,9 @@ const app = {
     if (!src) return;
     if (!this.canAdd()) return this.notice('星は8つまで');
     const data = newVoiceData(src.type, clamp01(src.x + 0.07), clamp01(src.y - 0.07));
-    data.drift = src.drift;
-    data.driftShape = src.driftShape;
-    data.driftSpeed = src.driftSpeed;
-    data.driftRange = src.driftRange;
+    data.orbit = src.orbit;
+    data.orbitPeriod = src.orbitPeriod;
+    data.orbitDir = src.orbitDir;
     data.orbitEcc = src.orbitEcc;
     data.orbitAngle = src.orbitAngle;
     data.orbitIncl = src.orbitIncl;
@@ -274,7 +222,6 @@ const app = {
       live.delete(id);
       voice.stop(); // release をかけてから切る
     }
-    drifts.delete(id);
     muted.delete(id);
     soloed.delete(id);
     applyAudible();
@@ -304,21 +251,19 @@ const app = {
     if (voice) voice.setParam(key, value);
   },
 
-  setDriftParam(id, key, value) {
+  setOrbitParam(id, key, value) {
     const v = findVoice(id);
     if (!v) return;
     v[key] = value;
     applyPos(v);
     field.layout();
-    // 軌道の種類で出す項目が変わるので、そのときだけパネルを組み直す
-    if (key === 'driftShape') panel.render();
   },
 
-  toggleDrift(id) {
+  toggleOrbit(id) {
     const v = findVoice(id);
     if (!v) return;
-    v.drift = !v.drift;
-    if (!v.drift) applyPos(v);
+    v.orbit = !v.orbit;
+    applyPos(v);
     field.render();
     panel.render();
     save();
@@ -384,11 +329,11 @@ loadPatch();
 field.render();
 panel.render();
 
-// ゆらぎは 10Hz で十分。毎フレームは回さない。
+// 周回の計算は 10Hz で十分。毎フレームは回さない。
 setInterval(() => {
   // 誰かが漂っていれば全員を計算し直す。ゆらぎOFFの星でも、
   // 錨が動けば付いていく必要がある。
-  if (!state.patch.voices.some((v) => v.drift)) return;
+  if (!state.patch.voices.some((v) => v.orbit)) return;
   for (const v of state.patch.voices) applyPos(v);
   field.layout();
 }, 100);

@@ -1,5 +1,5 @@
 import { COMMON_PARAMS } from '../audio/voices/base.js';
-import { DRIFT_PARAMS, ORBIT_PARAMS } from '../state.js';
+import { ORBIT_PARAMS } from '../state.js';
 import { renderMaster } from './master.js';
 
 export function toNorm(p, value) {
@@ -155,25 +155,20 @@ export function createPanel(el, app) {
 
     const common = section('共通');
 
-    // ゆらぎは2値。ナビゲーションの並びに置くと「設定画面が開く」に見えるので
-    // 他のパラメータと同じ顔をした選択行にしてある。
+    // 周回するかしないか。他のパラメータと同じ顔をした選択行にしてある。
     common.appendChild(
       buildControl(
-        { key: 'drift', label: 'ゆらぎ（自動で漂う）', type: 'select', options: ['OFF', 'ON'] },
-        v.drift ? 'ON' : 'OFF',
+        { key: 'orbit', label: '周回', type: 'select', options: ['OFF', 'ON'] },
+        v.orbit ? 'ON' : 'OFF',
         (val) => {
-          if ((val === 'ON') !== !!v.drift) app.toggleDrift(v.id);
+          if ((val === 'ON') !== !!v.orbit) app.toggleOrbit(v.id);
         }
       )
     );
-    if (v.drift) {
-      // 周回の半径は「中心からどれだけ離して置いたか」で決まるので幅は出さない
-      const rows = v.driftShape === 'orbit'
-        ? DRIFT_PARAMS.filter((p) => p.key !== 'driftRange').concat(ORBIT_PARAMS)
-        : DRIFT_PARAMS;
-      rows.forEach((p) => {
+    if (v.orbit) {
+      ORBIT_PARAMS.forEach((p) => {
         common.appendChild(
-          buildControl(p, v[p.key], (val) => app.setDriftParam(v.id, p.key, val), () => app.commit())
+          buildControl(p, v[p.key], (val) => app.setOrbitParam(v.id, p.key, val), () => app.commit())
         );
       });
     }
