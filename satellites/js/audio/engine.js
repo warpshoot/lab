@@ -1,7 +1,6 @@
 import { createIR } from './ir.js';
 
 // AudioParam への直接代入はクリック音になる。変更は必ず engine.ramp() を通す。
-export const MAX_VOICES = 8;
 const LOOKAHEAD_MS = 25;
 const HORIZON = 0.1;
 
