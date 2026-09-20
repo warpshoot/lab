@@ -54,7 +54,6 @@ export function newVoiceData(type, x, y) {
     id: 'v' + (++seq) + '-' + Math.random().toString(36).slice(2, 7),
     type: V.type,
     x, y,
-    z: 0.6, // 近さ。0 = 遠い / 1 = 手前
     driftShape: 'wander',
     driftSpeed: 1,
     driftRange: 0.15,
@@ -99,8 +98,6 @@ function sanitize(raw) {
       type: v.type,
       x: clamp01(num(v.x, 0.5)),
       y: clamp01(num(v.y, 0.5)),
-      // v1 は音量を持っていた。そのまま近さとして読み替える。
-      z: clamp01(num(v.z != null ? v.z : v.level, 0.6)),
       drift: !!v.drift,
       driftShape: DRIFT_SHAPES.includes(v.driftShape) ? v.driftShape : 'wander',
       driftSpeed: Math.min(5, Math.max(0.1, num(v.driftSpeed, 1))),

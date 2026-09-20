@@ -3,41 +3,19 @@ import { VOICE_TYPES } from '../audio/voices/registry.js';
 export const DOT_MIN = 3;
 export const DOT_MAX = 22;
 const HIT_MIN = 46;          // 星は小さいが、掴める大きさは別に確保する
-const GIZ_MIN = 32;
-const GIZ_MAX = 116;
 
 // 星の大きさは距離。遠いほど小さく、淡く、奥に描く。
 export function dotRadius(z) {
   return DOT_MIN + z * (DOT_MAX - DOT_MIN);
 }
 
-// ギズモの輪は星の大きさから切り離す。星に比例させると可動域が潰れる。
-function gizmoRadius(z) {
-  return GIZ_MIN + z * (GIZ_MAX - GIZ_MIN);
+// 真上から見た図。消失点を作らないので、中心は核だけを意味する。
+export function project(x, y, w, h) {
+  return { sx: x * w, sy: (1 - y) * h };
 }
 
-export function zFromGizmo(dist) {
-  return Math.min(1, Math.max(0, (dist - GIZ_MIN) / (GIZ_MAX - GIZ_MIN)));
-}
-
-// 一点透視。消失点は盤面の中心。遠いほど中心に寄り、手前ほど外へ広がる。
-export const FAR_SCALE = 0.52;
-
-export function perspective(z) {
-  return FAR_SCALE + (1 - FAR_SCALE) * Math.min(1, Math.max(0, z));
-}
-
-export function project(x, y, z, w, h) {
-  const k = perspective(z);
-  return { sx: (0.5 + (x - 0.5) * k) * w, sy: (0.5 - (y - 0.5) * k) * h };
-}
-
-export function unproject(sx, sy, z, w, h) {
-  const k = perspective(z);
-  return {
-    x: 0.5 + (sx / w - 0.5) / k,
-    y: 0.5 - (sy / h - 0.5) / k
-  };
+export function unproject(sx, sy, w, h) {
+  return { x: sx / w, y: 1 - sy / h };
 }
 
 // 背景の星。中心ほど密にして、奥行きのある空に見せる。
@@ -64,31 +42,6 @@ export function createField(el, app) {
   const links = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   links.setAttribute('class', 'links');
   el.appendChild(links);
-
-  // 選択中の点にだけ出る奥行きのハンドル。小さい点でも必ず掴める位置に立つ。
-  const gizmo = document.createElement('div');
-  gizmo.className = 'gizmo hidden';
-  const ring = document.createElement('div');
-  ring.className = 'gizmo-ring';
-  const handle = document.createElement('div');
-  handle.className = 'gizmo-handle';
-  const readout = document.createElement('div');
-  readout.className = 'gizmo-readout';
-  gizmo.appendChild(ring);
-  gizmo.appendChild(handle);
-  gizmo.appendChild(readout);
-  el.appendChild(gizmo);
-
-  // ソロ中は全体が黙って見えるので、解除の出口を常に見せておく
-  const soloBar = document.createElement('button');
-  soloBar.className = 'solo-bar hidden';
-  soloBar.type = 'button';
-  soloBar.textContent = 'ソロ中 · すべて解除';
-  soloBar.addEventListener('click', (e) => {
-    e.stopPropagation();
-    app.clearSolo();
-  });
-  el.appendChild(soloBar);
 
   // 削除の確認。confirm() はシステムダイアログで、iOS だと音声を持っていかれる。
   const ask = document.createElement('div');
@@ -124,12 +77,13 @@ export function createField(el, app) {
     ask._id = id;
     ask.classList.remove('hidden');
     const rect = el.getBoundingClientRect();
-    const pt = project(app.effectivePos(v).x, app.effectivePos(v).y, app.effectiveZ(v), rect.width, rect.height);
+    const p = app.effectivePos(v);
+    const pt = project(p.x, p.y, rect.width, rect.height);
     const aw = ask.offsetWidth;
     const ah = ask.offsetHeight;
     const mx = aw / 2 + 6;
     ask.style.left = Math.min(Math.max(pt.sx, mx), Math.max(mx, rect.width - mx)) + 'px';
-    ask.style.top = Math.min(Math.max(pt.sy - dotRadius(app.effectiveZ(v)) - ah, 6), Math.max(6, rect.height - ah - 6)) + 'px';
+    ask.style.top = Math.min(Math.max(pt.sy - dotRadius(app.nearOf(v)) - ah, 6), Math.max(6, rect.height - ah - 6)) + 'px';
   }
 
   function hideAsk() {
@@ -137,60 +91,17 @@ export function createField(el, app) {
     ask.classList.add('hidden');
   }
 
-  bindHandle();
+  // ソロ中は全体が黙って見えるので、解除の出口を常に見せておく
+  const soloBar = document.createElement('button');
+  soloBar.className = 'solo-bar hidden';
+  soloBar.type = 'button';
+  soloBar.textContent = 'ソロ中 · すべて解除';
+  soloBar.addEventListener('click', (e) => {
+    e.stopPropagation();
+    app.clearSolo();
+  });
+  el.appendChild(soloBar);
 
-  function bindHandle() {
-    let active = false;
-    handle.addEventListener('pointerdown', (e) => {
-      e.stopPropagation();
-      const v = app.selected();
-      if (!v) return;
-      active = true;
-      handle.setPointerCapture(e.pointerId);
-      gizmo.classList.add('active');
-    });
-    handle.addEventListener('pointermove', (e) => {
-      if (!active) return;
-      const v = app.selected();
-      if (!v) return;
-      const rect = el.getBoundingClientRect();
-      const pos = app.effectivePos(v);
-      const pt = project(pos.x, pos.y, app.effectiveZ(v), rect.width, rect.height);
-      const dist = Math.hypot(e.clientX - (rect.left + pt.sx), e.clientY - (rect.top + pt.sy));
-      app.setZFromView(v.id, zFromGizmo(dist));
-    });
-    const end = () => {
-      if (!active) return;
-      active = false;
-      gizmo.classList.remove('active');
-      app.commit();
-      app.refreshPanel(); // パネルの近さスライダを追従させる
-    };
-    handle.addEventListener('pointerup', end);
-    handle.addEventListener('pointercancel', end);
-  }
-
-  function layoutGizmo() {
-    const v = app.selected();
-    if (!v) {
-      gizmo.classList.add('hidden');
-      return;
-    }
-    gizmo.classList.remove('hidden');
-    const rect = el.getBoundingClientRect();
-    const pos = app.effectivePos(v);
-    const ez = app.effectiveZ(v);
-    const d = gizmoRadius(ez);
-    const pt = project(pos.x, pos.y, ez, rect.width, rect.height);
-    gizmo.style.transform = 'translate(' + pt.sx + 'px,' + pt.sy + 'px)';
-    ring.style.width = ring.style.height = d * 2 + 'px';
-    ring.style.marginLeft = ring.style.marginTop = -d + 'px';
-    const a = -Math.PI / 4;
-    handle.style.transform =
-      'translate(' + (Math.cos(a) * d - 12) + 'px,' + (Math.sin(a) * d - 12) + 'px)';
-    readout.textContent = '近さ ' + Math.round(ez * 100) + '%';
-    readout.style.transform = 'translate(-50%,' + (-d - 26) + 'px)';
-  }
   const picker = document.createElement('div');
   picker.className = 'picker hidden';
   el.appendChild(picker);
@@ -221,7 +132,7 @@ export function createField(el, app) {
     const ph = picker.offsetHeight;
     const mx = pw / 2 + 6;
     const my = ph / 2 + 6;
-    const pt = project(x, y, 0.6, r.width, r.height);
+    const pt = project(x, y, r.width, r.height);
     const px = Math.min(Math.max(pt.sx, mx), Math.max(mx, r.width - mx));
     const py = Math.min(Math.max(pt.sy - ph * 0.9, my), Math.max(my, r.height - my));
     picker.style.left = px + 'px';
@@ -282,7 +193,7 @@ export function createField(el, app) {
       }
       if (!moved) return;
       const rect = el.getBoundingClientRect();
-      const u = unproject(e.clientX - rect.left, e.clientY - rect.top, app.effectiveZ(v0()), rect.width, rect.height);
+      const u = unproject(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height);
       app.moveTo(id, u.x, u.y);
     });
 
@@ -327,7 +238,7 @@ export function createField(el, app) {
       return;
     }
     const rect = el.getBoundingClientRect();
-    const u = unproject(e.clientX - rect.left, e.clientY - rect.top, 0.6, rect.width, rect.height);
+    const u = unproject(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height);
     const x = Math.min(1, Math.max(0, u.x));
     const y = Math.min(1, Math.max(0, u.y));
     app.select(null);
@@ -371,20 +282,19 @@ export function createField(el, app) {
       const d = dots.get(v.id);
       if (!d) continue;
       const pos = app.effectivePos(v);
-      const z = app.effectiveZ(v);
-      const r = dotRadius(z);
+      const near = app.nearOf(v);
+      const r = dotRadius(near);
       const hit = Math.max(HIT_MIN, r * 2 + 18);
       d.el.style.width = hit + 'px';
       d.el.style.height = hit + 'px';
-      d.el.style.zIndex = String(2 + Math.round(z * 100));
+      d.el.style.zIndex = String(2 + Math.round(near * 100));
       d.body.style.width = r * 2 + 'px';
       d.body.style.height = r * 2 + 'px';
-      d.body.style.opacity = (0.34 + 0.62 * z).toFixed(3);
-      d.body.style.setProperty('--glow', (7 + z * 26).toFixed(1) + 'px');
-      const pt = project(pos.x, pos.y, z, rect.width, rect.height);
+      d.body.style.opacity = (0.34 + 0.62 * near).toFixed(3);
+      d.body.style.setProperty('--glow', (7 + near * 26).toFixed(1) + 'px');
+      const pt = project(pos.x, pos.y, rect.width, rect.height);
       d.el.style.transform = 'translate(' + (pt.sx - hit / 2) + 'px,' + (pt.sy - hit / 2) + 'px)';
     }
-    layoutGizmo();
     layoutLinks();
   }
 
@@ -411,7 +321,7 @@ export function createField(el, app) {
       let near = '';
       let prevBehind = null;
       for (const pt of pts) {
-        const p = project(pt.x, pt.y, pt.z, rect.width, rect.height);
+        const p = project(pt.x, pt.y, rect.width, rect.height);
         const behind = pt.dz < 0;
         const seg = (behind === prevBehind ? 'L' : 'M') + p.sx.toFixed(1) + ' ' + p.sy.toFixed(1);
         if (behind) far += seg; else near += seg;
