@@ -30,8 +30,8 @@ export function setAspect(a) {
 // 面から浮く量。盤面の横幅 1 に対してどれだけ動かすか。
 const Z_GAIN = 0.85;
 
-// 核からの距離。ここまで離れると最も遠い扱いになる。
-const FAR = 0.62;
+// 距離の減衰の基準。この距離で音量がおよそ半分になる。
+const HALF = 0.32;
 
 // 軌道上の一点を、正規化座標の差分として返す。半径 rho は画面の横幅を 1 とした長さ。
 // 実際の軌道要素と同じ組み立て: 面の中で楕円を描き、傾斜で面ごと奥へ倒し、
@@ -80,9 +80,10 @@ export const CENTER = { x: 0.5, y: 0.5 };
 
 function resolve(v, t) {
   if (v.orbit) {
-    // 半径はノブではなく「核からどれだけ離して置いたか」で決まる
+    // 半径はノブではなく「核からどれだけ離して置いたか」で決まる。
+    // 盤面の外へ出る軌道もあるので、ここでは丸めない。丸めると距離が頭打ちになる。
     const o = orbitState(v, t);
-    return { x: clamp01(CENTER.x + o.x), y: clamp01(CENTER.y + o.y), zOff: o.z };
+    return { x: CENTER.x + o.x, y: CENTER.y + o.y, zOff: o.z };
   }
   return { x: v.x, y: v.y, zOff: 0 };
 }
@@ -95,9 +96,11 @@ export function coreDistance(pos) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-// 0 = 最も遠い / 1 = 核のすぐそば
+// 0 = 遠い / 1 = 核のすぐそば。逆二乗で落とすので、
+// 盤面の外へ出てもそのまま減り続け、底打ちしない。
 export function nearFromDistance(d) {
-  return clamp01(1 - (d - 0.05) / (FAR - 0.05));
+  const r = d / HALF;
+  return 1 / (1 + r * r);
 }
 
 
