@@ -1,16 +1,23 @@
 import { VOICE_TYPES } from '../audio/voices/registry.js';
 
-export const DOT_MIN = 12;
-export const DOT_MAX = 58;
-const HANDLE_GAP = 16;
+export const DOT_MIN = 3;
+export const DOT_MAX = 22;
+const HIT_MIN = 46;          // 星は小さいが、掴める大きさは別に確保する
+const GIZ_MIN = 32;
+const GIZ_MAX = 116;
 
-// 点の大きさは音量ではなく距離。遠いほど小さく、淡く、奥に描く。
+// 星の大きさは距離。遠いほど小さく、淡く、奥に描く。
 export function dotRadius(z) {
   return DOT_MIN + z * (DOT_MAX - DOT_MIN);
 }
 
-export function zFromRadius(r) {
-  return Math.min(1, Math.max(0, (r - DOT_MIN) / (DOT_MAX - DOT_MIN)));
+// ギズモの輪は星の大きさから切り離す。星に比例させると可動域が潰れる。
+function gizmoRadius(z) {
+  return GIZ_MIN + z * (GIZ_MAX - GIZ_MIN);
+}
+
+export function zFromGizmo(dist) {
+  return Math.min(1, Math.max(0, (dist - GIZ_MIN) / (GIZ_MAX - GIZ_MIN)));
 }
 
 // 一点透視。消失点は盤面の中心。遠いほど中心に寄り、手前ほど外へ広がる。
@@ -33,17 +40,25 @@ export function unproject(sx, sy, z, w, h) {
   };
 }
 
-const BOX_SVG =
-  '<svg class="box" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">' +
-  '<rect class="box-far" x="24" y="24" width="52" height="52" vector-effect="non-scaling-stroke"/>' +
-  '<rect class="box-mid" x="12" y="12" width="76" height="76" vector-effect="non-scaling-stroke"/>' +
-  '<path class="box-edge" d="M0 0 L24 24 M100 0 L76 24 M0 100 L24 76 M100 100 L76 76" vector-effect="non-scaling-stroke"/>' +
-  '<path class="box-cross" d="M50 24 L50 76 M24 50 L76 50" vector-effect="non-scaling-stroke"/>' +
-  '</svg>';
+// 背景の星。中心ほど密にして、奥行きのある空に見せる。
+function skySvg() {
+  const stars = [];
+  for (let i = 0; i < 220; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const rad = Math.pow(Math.random(), 0.62) * 720;
+    const x = (500 + Math.cos(ang) * rad).toFixed(1);
+    const y = (500 + Math.sin(ang) * rad).toFixed(1);
+    const r = (0.6 + Math.pow(Math.random(), 3) * 2.6).toFixed(2);
+    const o = (0.12 + Math.random() * 0.55).toFixed(2);
+    stars.push('<circle cx="' + x + '" cy="' + y + '" r="' + r + '" opacity="' + o + '"/>');
+  }
+  return '<svg class="sky" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">' +
+    stars.join('') + '</svg>';
+}
 
 export function createField(el, app) {
   const dots = new Map();
-  el.insertAdjacentHTML('afterbegin', BOX_SVG);
+  el.insertAdjacentHTML('afterbegin', skySvg());
 
   // 周回の軌道と、錨への結び。関係が見えないと群れに見えない。
   const links = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -142,7 +157,7 @@ export function createField(el, app) {
       const pos = app.effectivePos(v);
       const pt = project(pos.x, pos.y, app.effectiveZ(v), rect.width, rect.height);
       const dist = Math.hypot(e.clientX - (rect.left + pt.sx), e.clientY - (rect.top + pt.sy));
-      app.setZFromView(v.id, zFromRadius(dist - HANDLE_GAP));
+      app.setZFromView(v.id, zFromGizmo(dist));
     });
     const end = () => {
       if (!active) return;
@@ -165,14 +180,14 @@ export function createField(el, app) {
     const rect = el.getBoundingClientRect();
     const pos = app.effectivePos(v);
     const ez = app.effectiveZ(v);
-    const d = dotRadius(ez) + HANDLE_GAP;
+    const d = gizmoRadius(ez);
     const pt = project(pos.x, pos.y, ez, rect.width, rect.height);
     gizmo.style.transform = 'translate(' + pt.sx + 'px,' + pt.sy + 'px)';
     ring.style.width = ring.style.height = d * 2 + 'px';
     ring.style.marginLeft = ring.style.marginTop = -d + 'px';
     const a = -Math.PI / 4;
     handle.style.transform =
-      'translate(' + (Math.cos(a) * d - 13) + 'px,' + (Math.sin(a) * d - 13) + 'px)';
+      'translate(' + (Math.cos(a) * d - 12) + 'px,' + (Math.sin(a) * d - 12) + 'px)';
     readout.textContent = '近さ ' + Math.round(ez * 100) + '%';
     readout.style.transform = 'translate(-50%,' + (-d - 26) + 'px)';
   }
@@ -224,12 +239,9 @@ export function createField(el, app) {
     const body = document.createElement('span');
     body.className = 'dot-body';
     dot.appendChild(body);
-    const label = document.createElement('span');
-    label.className = 'dot-label';
-    dot.appendChild(label);
     bindDot(dot, v.id);
     el.appendChild(dot);
-    return { el: dot, body, label };
+    return { el: dot, body };
   }
 
   function bindDot(dot, id) {
@@ -346,7 +358,6 @@ export function createField(el, app) {
       d.el.classList.toggle('drifting', !!v.drift);
       d.el.classList.toggle('muted', !app.audible(v.id));
       d.el.classList.toggle('soloed', app.isSoloed(v.id));
-      d.label.textContent = V.label;
     }
     if (ask._id && !app.find(ask._id)) hideAsk();
     soloBar.classList.toggle('hidden', !app.soloActive());
@@ -362,14 +373,16 @@ export function createField(el, app) {
       const pos = app.effectivePos(v);
       const z = app.effectiveZ(v);
       const r = dotRadius(z);
-      d.el.style.width = r * 2 + 'px';
-      d.el.style.height = r * 2 + 'px';
-      d.el.style.opacity = (0.3 + 0.62 * z).toFixed(3);
+      const hit = Math.max(HIT_MIN, r * 2 + 18);
+      d.el.style.width = hit + 'px';
+      d.el.style.height = hit + 'px';
       d.el.style.zIndex = String(2 + Math.round(z * 100));
-      d.el.style.setProperty('--glow', (10 + z * 28).toFixed(1) + 'px');
-      d.el.style.filter = 'saturate(' + (0.4 + 0.6 * z).toFixed(2) + ')';
+      d.body.style.width = r * 2 + 'px';
+      d.body.style.height = r * 2 + 'px';
+      d.body.style.opacity = (0.34 + 0.62 * z).toFixed(3);
+      d.body.style.setProperty('--glow', (7 + z * 26).toFixed(1) + 'px');
       const pt = project(pos.x, pos.y, z, rect.width, rect.height);
-      d.el.style.transform = 'translate(' + (pt.sx - r) + 'px,' + (pt.sy - r) + 'px)';
+      d.el.style.transform = 'translate(' + (pt.sx - hit / 2) + 'px,' + (pt.sy - hit / 2) + 'px)';
     }
     layoutGizmo();
     layoutLinks();
@@ -382,8 +395,14 @@ export function createField(el, app) {
     links.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
     const cx = rect.width / 2;
     const cy = rect.height / 2;
-    const parts = ['<g class="hub"><circle r="3.5" cx="' + cx + '" cy="' + cy + '"/>' +
-      '<path d="M' + (cx - 11) + ' ' + cy + 'H' + (cx + 11) + 'M' + cx + ' ' + (cy - 11) + 'V' + (cy + 11) + '"/></g>'];
+    // 中心の星。芯のまわりに薄い層を重ねて滲ませる。
+    const parts = ['<g class="hub">' +
+      '<circle class="halo3" r="26" cx="' + cx + '" cy="' + cy + '"/>' +
+      '<circle class="halo2" r="13" cx="' + cx + '" cy="' + cy + '"/>' +
+      '<circle class="halo1" r="6" cx="' + cx + '" cy="' + cy + '"/>' +
+      '<circle class="core" r="2.2" cx="' + cx + '" cy="' + cy + '"/>' +
+      '<path class="glint" d="M' + (cx - 34) + ' ' + cy + 'H' + (cx + 34) +
+      'M' + cx + ' ' + (cy - 34) + 'V' + (cy + 34) + '"/></g>'];
     for (const v of app.voices()) {
       const pts = app.orbitPath(v);
       if (!pts) continue;

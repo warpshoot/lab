@@ -34,62 +34,71 @@ body {
   overflow: hidden;
   touch-action: none;
   background:
-    radial-gradient(120% 90% at 50% 0%, rgba(90, 120, 190, 0.16), transparent 70%),
-    linear-gradient(180deg, #11141b 0%, #08090c 100%);
+    radial-gradient(60% 45% at 28% 22%, rgba(86, 104, 190, 0.16), transparent 70%),
+    radial-gradient(55% 40% at 76% 74%, rgba(150, 86, 150, 0.12), transparent 72%),
+    radial-gradient(90% 70% at 50% 50%, #0d1119 0%, #05060a 100%);
   border-bottom: 1px solid var(--line);
 }
 
-/* 一点透視の箱。奥行きの向きを絵で示す。 */
-#field .box {
+/* 背景の星 */
+#field .sky {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 1;
-  fill: none;
+  z-index: 0;
+  fill: #dfe8ff;
 }
 
-#field .box-far { stroke: rgba(255, 255, 255, 0.13); stroke-width: 1; }
-#field .box-mid { stroke: rgba(255, 255, 255, 0.06); stroke-width: 1; }
-#field .box-edge { stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; }
-#field .box-cross { stroke: rgba(255, 255, 255, 0.05); stroke-width: 1; }
-
+/* 縁を落として、中心に向かって抜けていくように見せる */
 #field::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 1;
-  background: radial-gradient(70% 55% at 50% 50%, rgba(0, 0, 0, 0.45), transparent 75%);
+  background: radial-gradient(75% 60% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
 }
 
 .dot {
   position: absolute;
   top: 0;
   left: 0;
-  border-radius: 50%;
   touch-action: none;
-  display: grid;
-  place-items: center;
-  transition: transform 0.12s linear, width 0.12s linear, height 0.12s linear, opacity 0.12s linear, filter 0.12s linear;
+  transition: transform 0.12s linear;
   cursor: grab;
 }
 
-/* 見えている丸。位置は外側が持ち、ここは出音で膨らむだけ。 */
+/* 見えている星。芯は白く、外に色が滲む。 */
 .dot-body {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 50%;
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 34%, color-mix(in srgb, var(--c) 85%, #fff), var(--c) 62%, color-mix(in srgb, var(--c) 45%, #000));
-  box-shadow: 0 0 var(--glow, 22px) color-mix(in srgb, var(--c) 45%, transparent);
-  transform: scale(var(--pulse, 1));
+  background: radial-gradient(circle at 50% 50%, #fff 0%, #fff 22%, var(--c) 58%, transparent 78%);
+  box-shadow: 0 0 var(--glow, 12px) color-mix(in srgb, var(--c) 70%, transparent);
+  transform: translate(-50%, -50%) scale(var(--pulse, 1));
   filter: brightness(var(--lift, 1));
+  transition: width 0.12s linear, height 0.12s linear, opacity 0.12s linear;
 }
 
 .dot.grabbing { transition: none; }
 
-/* 奥行きのギズモ。選択中の点にだけ立つ。 */
+.dot.muted .dot-body {
+  opacity: 0.12 !important;
+  filter: saturate(0.1) !important;
+}
+
+.dot.soloed .dot-body {
+  box-shadow: 0 0 0 1.5px rgba(255, 224, 130, 0.9), 0 0 var(--glow, 12px) color-mix(in srgb, var(--c) 70%, transparent);
+}
+
+.dot.selected .dot-body {
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9), 0 0 calc(var(--glow, 12px) * 1.6) color-mix(in srgb, var(--c) 85%, transparent);
+}
+
+/* 奥行きのギズモ。選択中の星にだけ立つ。 */
 .gizmo {
   position: absolute;
   top: 0;
@@ -106,17 +115,17 @@ body {
 .gizmo-ring {
   position: absolute;
   border-radius: 50%;
-  border: 1px dashed rgba(255, 255, 255, 0.3);
+  border: 1px dashed rgba(255, 255, 255, 0.24);
   transition: width 0.12s linear, height 0.12s linear, margin 0.12s linear;
 }
 
 .gizmo-handle {
   position: absolute;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: rgba(232, 234, 238, 0.92);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
   pointer-events: auto;
   touch-action: none;
   cursor: grab;
@@ -126,13 +135,13 @@ body {
 .gizmo-handle::after {
   content: '';
   position: absolute;
-  inset: 9px;
+  inset: 8px;
   border-radius: 50%;
-  background: #0e1015;
+  background: #05060a;
 }
 
-.gizmo.active .gizmo-handle { transform-origin: center; cursor: grabbing; }
-.gizmo.active .gizmo-ring { border-color: rgba(255, 255, 255, 0.6); }
+.gizmo.active .gizmo-handle { cursor: grabbing; }
+.gizmo.active .gizmo-ring { border-color: rgba(255, 255, 255, 0.5); }
 .gizmo.active .gizmo-handle,
 .gizmo.active .gizmo-ring { transition: none; }
 
@@ -148,35 +157,6 @@ body {
 
 .gizmo.active .gizmo-readout { opacity: 1; color: var(--text); }
 
-.dot.selected {
-  opacity: 1;
-  outline: 2px solid rgba(255, 255, 255, 0.85);
-  outline-offset: 3px;
-}
-
-.dot.muted {
-  opacity: 0.16 !important;
-  filter: saturate(0.1) !important;
-}
-
-.dot.soloed .dot-body {
-  box-shadow: 0 0 0 2px rgba(255, 224, 130, 0.9), 0 0 var(--glow, 22px) color-mix(in srgb, var(--c) 45%, transparent);
-}
-
-.dot.drifting .dot-body {
-  border: 2px dashed rgba(255, 255, 255, 0.55);
-}
-
-.dot-label {
-  position: relative;
-  z-index: 1;
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  color: rgba(0, 0, 0, 0.6);
-  pointer-events: none;
-  user-select: none;
-}
-
 /* 軌道と結び */
 #field .links {
   position: absolute;
@@ -188,7 +168,7 @@ body {
   fill: none;
 }
 
-#field .orbit { stroke: rgba(255, 255, 255, 0.13); stroke-width: 1; }
+#field .orbit { stroke: rgba(255, 255, 255, 0.11); stroke-width: 1; }
 #field .orbit.far { stroke: rgba(255, 255, 255, 0.05); }
 
 /* 選択中のものだけはっきり見せる */
@@ -196,8 +176,12 @@ body {
 #field .orbit.far.on { stroke: rgba(255, 255, 255, 0.2); }
 
 /* 動かない中心 */
-#field .hub circle { fill: rgba(255, 255, 255, 0.8); stroke: none; }
-#field .hub path { stroke: rgba(255, 255, 255, 0.22); stroke-width: 1; }
+#field .hub circle { stroke: none; }
+#field .hub .core { fill: #fff; }
+#field .hub .halo1 { fill: rgba(224, 234, 255, 0.16); }
+#field .hub .halo2 { fill: rgba(200, 218, 255, 0.07); }
+#field .hub .halo3 { fill: rgba(180, 205, 255, 0.035); }
+#field .hub .glint { stroke: rgba(255, 255, 255, 0.13); stroke-width: 1; }
 
 /* ---- 停止／再生 ---- */
 #transport {
