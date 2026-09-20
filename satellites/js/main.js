@@ -127,6 +127,14 @@ const app = {
     return this.nearOf(v) * (0.25 + 0.75 * (v.vol != null ? v.vol : 0.85));
   },
 
+  setLook(id, look) {
+    const v = findVoice(id);
+    if (!v) return;
+    v.look = look;
+    field.render();
+    save();
+  },
+
   setVolume(id, vol) {
     const v = findVoice(id);
     if (!v) return;
@@ -212,6 +220,7 @@ const app = {
     const data = newVoiceData(src.type, clamp01(src.x + 0.07), clamp01(src.y - 0.07));
     data.orbit = src.orbit;
     data.vol = src.vol;
+    data.look = src.look;
     data.orbitPeriod = src.orbitPeriod;
     data.orbitDir = src.orbitDir;
     data.orbitEcc = src.orbitEcc;
@@ -283,6 +292,8 @@ const app = {
     save();
   },
 
+  sky: () => state.patch.master.sky,
+
   applyMaster(withIR) {
     if (!engine.ready) return;
     const m = state.patch.master;
@@ -295,6 +306,8 @@ const app = {
   commit() { save(); },
 
   refreshPanel() { panel.render(); },
+
+  refreshField() { field.render(); },
 
   requestDelete(id) { field.askDelete(id); },
 

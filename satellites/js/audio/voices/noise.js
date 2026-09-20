@@ -11,6 +11,7 @@ function makeup(q) {
 export class NoiseVoice extends Voice {
   static type = 'noise';
   static label = 'NOISE';
+  static look = 'neptune';
   static color = '#7fd6b5';
   static defaults = { center: 800, q: 2.0, swellDepth: 0.3, swellRate: 0.15, width: 0.8 };
   static params = [

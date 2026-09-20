@@ -1,5 +1,5 @@
 import { COMMON_PARAMS } from '../audio/voices/base.js';
-import { ORBIT_PARAMS } from '../state.js';
+import { ORBIT_PARAMS, LOOK_PARAM } from '../state.js';
 import { renderMaster } from './master.js';
 
 export function toNorm(p, value) {
@@ -155,6 +155,9 @@ export function createPanel(el, app) {
 
     const common = section('共通');
 
+    common.appendChild(
+      buildControl(LOOK_PARAM, v.look, (val) => app.setLook(v.id, val))
+    );
     common.appendChild(
       buildControl(
         { key: 'vol', label: '音量', min: 0, max: 1, scale: 'lin' },

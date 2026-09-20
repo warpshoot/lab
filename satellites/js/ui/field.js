@@ -1,7 +1,8 @@
 import { VOICE_TYPES } from '../audio/voices/registry.js';
+import { lookOf, skySvg } from './looks.js';
 
-export const DOT_MIN = 3;
-export const DOT_MAX = 22;
+export const DOT_MIN = 2;
+export const DOT_MAX = 11;
 const HIT_MIN = 46;          // 星は小さいが、掴める大きさは別に確保する
 
 // 星の大きさは距離。遠いほど小さく、淡く、奥に描く。
@@ -18,25 +19,17 @@ export function unproject(sx, sy, w, h) {
   return { x: sx / w, y: 1 - sy / h };
 }
 
-// 背景の星。中心ほど密にして、奥行きのある空に見せる。
-function skySvg() {
-  const stars = [];
-  for (let i = 0; i < 220; i++) {
-    const ang = Math.random() * Math.PI * 2;
-    const rad = Math.pow(Math.random(), 0.62) * 720;
-    const x = (500 + Math.cos(ang) * rad).toFixed(1);
-    const y = (500 + Math.sin(ang) * rad).toFixed(1);
-    const r = (0.6 + Math.pow(Math.random(), 3) * 2.6).toFixed(2);
-    const o = (0.12 + Math.random() * 0.55).toFixed(2);
-    stars.push('<circle cx="' + x + '" cy="' + y + '" r="' + r + '" opacity="' + o + '"/>');
-  }
-  return '<svg class="sky" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">' +
-    stars.join('') + '</svg>';
-}
-
 export function createField(el, app) {
   const dots = new Map();
-  el.insertAdjacentHTML('afterbegin', skySvg());
+  let skyStyle = null;
+  function renderSky() {
+    if (skyStyle === app.sky()) return;
+    skyStyle = app.sky();
+    const old = el.querySelector('.sky');
+    if (old) old.remove();
+    el.insertAdjacentHTML('afterbegin', skySvg(skyStyle));
+  }
+  renderSky();
 
   // 周回の軌道と、錨への結び。関係が見えないと群れに見えない。
   const links = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -111,7 +104,7 @@ export function createField(el, app) {
     b.className = 'picker-btn';
     b.type = 'button';
     b.textContent = V.label;
-    b.style.setProperty('--c', V.color);
+    b.style.setProperty('--c', lookOf(V.look).c);
     b.addEventListener('pointerup', (e) => {
       e.stopPropagation();
       if (performance.now() - picker._shownAt < 220) return; // 同じタップの pointerup を拾わない
@@ -250,6 +243,7 @@ export function createField(el, app) {
   });
 
   function render() {
+    renderSky();
     const seen = new Set();
     for (const v of app.voices()) {
       seen.add(v.id);
@@ -263,8 +257,11 @@ export function createField(el, app) {
     }
     for (const v of app.voices()) {
       const d = dots.get(v.id);
-      const V = app.typeOf(v);
-      d.el.style.setProperty('--c', V.color);
+      const look = lookOf(v.look);
+      d.el.style.setProperty('--c', look.c);
+      d.el.style.setProperty('--b', look.b || 'transparent');
+      d.el.classList.toggle('ring', !!look.ring);
+      d.el.classList.toggle('banded', !!look.b);
       d.el.classList.toggle('selected', app.selectedId() === v.id);
       d.el.classList.toggle('muted', !app.audible(v.id));
       d.el.classList.toggle('soloed', app.isSoloed(v.id));
@@ -281,15 +278,15 @@ export function createField(el, app) {
       const d = dots.get(v.id);
       if (!d) continue;
       const pos = app.effectivePos(v);
-      const near = app.apparentOf(v);
-      const r = dotRadius(near);
+      const r = dotRadius(app.apparentOf(v));
       const hit = Math.max(HIT_MIN, r * 2 + 18);
       d.el.style.width = hit + 'px';
       d.el.style.height = hit + 'px';
-      d.el.style.zIndex = String(2 + Math.round(near * 100));
+      // 重なり順は見かけの明るさではなく実際の距離で決める
+      d.el.style.zIndex = String(2 + Math.round(app.nearOf(v) * 100));
       d.body.style.width = r * 2 + 'px';
       d.body.style.height = r * 2 + 'px';
-      d.body.style.opacity = (0.34 + 0.62 * near).toFixed(3);
+      d.body.style.opacity = (0.4 + 0.58 * app.nearOf(v)).toFixed(3);
       const pt = project(pos.x, pos.y, rect.width, rect.height);
       d.el.style.transform = 'translate(' + (pt.sx - hit / 2) + 'px,' + (pt.sy - hit / 2) + 'px)';
     }
@@ -303,14 +300,10 @@ export function createField(el, app) {
     links.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
     const cx = rect.width / 2;
     const cy = rect.height / 2;
-    // 中心の星。芯のまわりに薄い層を重ねて滲ませる。
+    // 中心もただの星。目立たせる飾りは置かない。
     const parts = ['<g class="hub">' +
-      '<circle class="halo3" r="26" cx="' + cx + '" cy="' + cy + '"/>' +
-      '<circle class="halo2" r="13" cx="' + cx + '" cy="' + cy + '"/>' +
-      '<circle class="halo1" r="6" cx="' + cx + '" cy="' + cy + '"/>' +
-      '<circle class="core" r="2.2" cx="' + cx + '" cy="' + cy + '"/>' +
-      '<path class="glint" d="M' + (cx - 34) + ' ' + cy + 'H' + (cx + 34) +
-      'M' + cx + ' ' + (cy - 34) + 'V' + (cy + 34) + '"/></g>'];
+      '<circle class="halo1" r="5" cx="' + cx + '" cy="' + cy + '"/>' +
+      '<circle class="core" r="2" cx="' + cx + '" cy="' + cy + '"/></g>'];
     for (const v of app.voices()) {
       const pts = app.orbitPath(v);
       if (!pts) continue;

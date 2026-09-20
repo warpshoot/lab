@@ -20,6 +20,7 @@ function makeCurve(amount) {
 export class DriveVoice extends Voice {
   static type = 'drive';
   static label = 'DRIVE';
+  static look = 'mars';
   static color = '#e0776f';
   static defaults = { freq: 55, drive: 0.5, filterPos: 'post', swellRate: 0.08, swellDepth: 30 };
   static params = [

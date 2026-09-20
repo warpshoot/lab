@@ -82,12 +82,41 @@ body {
       var(--c) 46%,
       color-mix(in srgb, var(--c) 55%, #000) 82%,
       color-mix(in srgb, var(--c) 28%, #000) 100%);
+  overflow: visible;
   transform: translate(-50%, -50%) scale(var(--pulse, 1));
   filter: brightness(var(--lift, 1));
   transition: width 0.12s linear, height 0.12s linear, opacity 0.12s linear;
 }
 
 .dot.grabbing { transition: none; }
+
+/* 帯のある星 */
+.dot.banded .dot-body {
+  background:
+    repeating-linear-gradient(168deg,
+      transparent 0 14%,
+      color-mix(in srgb, var(--b) 60%, transparent) 14% 21%),
+    radial-gradient(circle at 33% 29%,
+      color-mix(in srgb, var(--c) 55%, #fff) 0%,
+      var(--c) 46%,
+      color-mix(in srgb, var(--c) 55%, #000) 82%,
+      color-mix(in srgb, var(--c) 28%, #000) 100%);
+}
+
+/* 輪。飾りなので一枚の楕円でいい。 */
+.dot.ring .dot-body::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 250%;
+  height: 74%;
+  margin: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--c) 70%, transparent);
+  transform: translate(-50%, -50%) rotate(-17deg);
+  pointer-events: none;
+}
 
 .dot.muted .dot-body {
   opacity: 0.12 !important;
@@ -123,10 +152,7 @@ body {
 /* 動かない中心 */
 #field .hub circle { stroke: none; }
 #field .hub .core { fill: #fff; }
-#field .hub .halo1 { fill: rgba(224, 234, 255, 0.16); }
-#field .hub .halo2 { fill: rgba(200, 218, 255, 0.07); }
-#field .hub .halo3 { fill: rgba(180, 205, 255, 0.035); }
-#field .hub .glint { stroke: rgba(255, 255, 255, 0.13); stroke-width: 1; }
+#field .hub .halo1 { fill: rgba(224, 234, 255, 0.13); }
 
 /* ---- 停止／再生 ---- */
 #transport {
