@@ -9,6 +9,7 @@ const VERSION = 2;
 // 周回するときだけ意味を持つ
 export const ORBIT_PARAMS = [
   { key: 'orbitPeriod', label: '周期', min: 5, max: 600, scale: 'log', unit: 's' },
+  { key: 'orbitRadius', label: '軌道の大きさ', min: 0.02, max: 2, scale: 'log' },
   { key: 'orbitEcc', label: 'つぶれ具合（0 = 正円）', min: 0, max: 0.9, scale: 'lin' },
   { key: 'orbitAngle', label: '軌道の向き', min: 0, max: 360, scale: 'lin', unit: '°' },
   { key: 'orbitIncl', label: '軌道の傾斜（倒すと立体になる）', min: 0, max: 90, scale: 'lin', unit: '°' },
@@ -58,6 +59,8 @@ export function newVoiceData(type, x, y) {
     vol: 0.85,     // 星自身の音量。距離による減り方とは別。
     orbit: false,
     orbitPeriod: Math.round(30 + Math.random() * 120), // 星ごとに散らす。揃うと動きが噛み合う
+    orbitRadius: null, // 周回を入れたときに現在地から割り出す
+    orbitPhase: 0,
     orbitEcc: 0,      // 0 = 正円
     orbitAngle: 0,    // 面の中での向き（昇交点、度）
     orbitIncl: 0,     // 面を奥へ倒す角度（軌道傾斜角、度）
@@ -105,6 +108,8 @@ function sanitize(raw) {
       // 旧版の「ゆらぎ」は周回として読み替える
       orbit: !!(v.orbit != null ? v.orbit : v.drift),
       orbitPeriod: Math.min(600, Math.max(5, num(v.orbitPeriod, 30 + Math.random() * 120))),
+      orbitRadius: v.orbitRadius == null ? null : Math.min(2, Math.max(0.02, num(v.orbitRadius, 0.3))),
+      orbitPhase: num(v.orbitPhase, 0),
       orbitDir: v.orbitDir === 'retrograde' ? 'retrograde' : 'prograde',
       orbitEcc: Math.min(0.9, Math.max(0, num(v.orbitEcc, 0))),
       orbitAngle: ((num(v.orbitAngle, 0) % 360) + 360) % 360,
