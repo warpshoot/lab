@@ -1,5 +1,5 @@
 import { VOICE_TYPES } from '../audio/voices/registry.js';
-import { lookOf, skySvg } from './looks.js';
+import { lookOf, skySvg, LOOK_IDS } from './looks.js';
 
 export const DOT_MIN = 2;
 export const DOT_MAX = 11;
@@ -259,9 +259,7 @@ export function createField(el, app) {
       const d = dots.get(v.id);
       const look = lookOf(v.look);
       d.el.style.setProperty('--c', look.c);
-      d.el.style.setProperty('--b', look.b || 'transparent');
-      d.el.classList.toggle('ring', !!look.ring);
-      d.el.classList.toggle('banded', !!look.b);
+      for (const l of LOOK_IDS) d.el.classList.toggle('look-' + l, look.id === l);
       d.el.classList.toggle('selected', app.selectedId() === v.id);
       d.el.classList.toggle('muted', !app.audible(v.id));
       d.el.classList.toggle('soloed', app.isSoloed(v.id));

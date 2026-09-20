@@ -1,11 +1,13 @@
-// 星の見た目。音源の種類とは切り離してあり、あとから選び直せる。
+// 星の見た目。半径 2〜11px では陰影も質感も載らないので、
+// 疑似的な球体をやめて、形で見分ける記号にしてある。
+// 呼称は記号的に A〜F。中身の名前は形を表す。
 export const LOOKS = [
-  { id: 'jupiter', label: '木星', c: '#c8a179', b: '#9c7148', ring: false },
-  { id: 'saturn', label: '土星', c: '#d8c48e', b: '#b39a63', ring: true },
-  { id: 'mars', label: '火星', c: '#b0563a', b: '#8a4029', ring: false },
-  { id: 'neptune', label: '海王星', c: '#3f63a4', b: null, ring: false },
-  { id: 'venus', label: '金星', c: '#d3bd97', b: null, ring: false },
-  { id: 'moon', label: '月', c: '#979ea7', b: null, ring: false }
+  { id: 'solid', label: 'A', c: '#7d90ad' },  // 実体
+  { id: 'ring', label: 'B', c: '#c6ad7e' },   // 環
+  { id: 'hollow', label: 'C', c: '#93a0ab' }, // 中空
+  { id: 'crescent', label: 'D', c: '#b06a51' },// 欠け
+  { id: 'band', label: 'E', c: '#bc9a74' },   // 帯
+  { id: 'binary', label: 'F', c: '#9484ad' }  // 伴星
 ];
 
 export const LOOK_LABELS = LOOKS.reduce((m, l) => { m[l.id] = l.label; return m; }, {});
