@@ -214,7 +214,7 @@ export function createField(el, app) {
       if (!moved) {
         const t = performance.now();
         if (t - lastTap < 320) {
-          app.toggleDrift(id);
+          app.toggleOrbit(id);
           lastTap = 0;
         } else {
           lastTap = t;
@@ -266,7 +266,6 @@ export function createField(el, app) {
       const V = app.typeOf(v);
       d.el.style.setProperty('--c', V.color);
       d.el.classList.toggle('selected', app.selectedId() === v.id);
-      d.el.classList.toggle('drifting', !!v.drift);
       d.el.classList.toggle('muted', !app.audible(v.id));
       d.el.classList.toggle('soloed', app.isSoloed(v.id));
     }
