@@ -54,7 +54,6 @@ export function newVoiceData(type, x, y) {
     type: V.type,
     x, y,
     z: 0.6, // 近さ。0 = 遠い / 1 = 手前
-    anchor: null,      // 周回の中心にする星の id
     driftShape: 'wander',
     driftSpeed: 1,
     driftRange: 0.15,
@@ -89,7 +88,7 @@ function sanitize(raw) {
       feedback: Math.min(0.85, num(raw.master && raw.master.delay && raw.master.delay.feedback, MASTER_DEFAULTS.delay.feedback))
     }
   };
-  const voices = Array.isArray(raw.voices) ? raw.voices.slice(0, 16) : [];
+  const voices = Array.isArray(raw.voices) ? raw.voices.slice(0, 8) : [];
   for (const v of voices) {
     const V = voiceClass(v.type);
     if (!v.type || V.type !== v.type) continue;
@@ -101,7 +100,6 @@ function sanitize(raw) {
       // v1 は音量を持っていた。そのまま近さとして読み替える。
       z: clamp01(num(v.z != null ? v.z : v.level, 0.6)),
       drift: !!v.drift,
-      anchor: typeof v.anchor === 'string' ? v.anchor : null,
       driftShape: DRIFT_SHAPES.includes(v.driftShape) ? v.driftShape : 'wander',
       driftSpeed: Math.min(5, Math.max(0.1, num(v.driftSpeed, 1))),
       driftRange: Math.min(0.4, Math.max(0, num(v.driftRange, 0.15))),
@@ -111,35 +109,10 @@ function sanitize(raw) {
       params: Object.assign({}, V.defaults, v.params || {})
     });
   }
-  dropBadAnchors(patch.voices);
   return patch;
 }
 
-// 存在しない星・自分自身・輪になっている参照を落とす
-export function dropBadAnchors(voices) {
-  const byId = new Map(voices.map((v) => [v.id, v]));
-  for (const v of voices) {
-    if (!v.anchor) continue;
-    let cur = byId.get(v.anchor);
-    let hops = 0;
-    let ok = !!cur && v.anchor !== v.id;
-    while (ok && cur && hops++ < voices.length) {
-      if (cur.id === v.id) { ok = false; break; }
-      cur = cur.anchor ? byId.get(cur.anchor) : null;
-    }
-    if (!ok) v.anchor = null;
-  }
-}
-
-export function soundingCount(voices) {
-  return voices.filter((v) => !voiceClass(v.type).silent).length;
-}
-
-export function canAddType(voices, type) {
-  const V = voiceClass(type);
-  if (V.silent) return voices.length < 16;      // 鳴らない星は枠を食わない
-  return soundingCount(voices) < 8 && voices.length < 16;
-}
+export const MAX_VOICES = 8;
 
 function num(v, fallback) {
   return typeof v === 'number' && isFinite(v) ? v : fallback;

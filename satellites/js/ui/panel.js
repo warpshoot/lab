@@ -128,19 +128,17 @@ export function createPanel(el, app) {
     name.style.setProperty('--c', V.color);
     head.appendChild(name);
 
-    const silent = !!V.silent;
-
     const solo = document.createElement('button');
     solo.className = 'chip' + (app.isSoloed(v.id) ? ' solo' : '');
     solo.textContent = 'ソロ';
     solo.addEventListener('click', () => app.toggleSolo(v.id));
-    if (!silent) head.appendChild(solo);
+    head.appendChild(solo);
 
     const mute = document.createElement('button');
     mute.className = 'chip' + (app.isMuted(v.id) ? ' mute' : '');
     mute.textContent = 'ミュート';
     mute.addEventListener('click', () => app.toggleMute(v.id));
-    if (!silent) head.appendChild(mute);
+    head.appendChild(mute);
 
     const dup = document.createElement('button');
     dup.className = 'chip';
@@ -155,38 +153,7 @@ export function createPanel(el, app) {
     head.appendChild(del);
     el.appendChild(head);
 
-    const common = section(silent ? '星' : '共通');
-
-    // 周回の中心。半径はここではなく「置いた距離」で決まる。
-    const others = app.voices().filter((o) => o.id !== v.id);
-    if (others.length) {
-      const row = document.createElement('div');
-      row.className = 'ctrl';
-      const head2 = document.createElement('div');
-      head2.className = 'ctrl-head';
-      const n2 = document.createElement('span');
-      n2.textContent = '周回の中心';
-      head2.appendChild(n2);
-      row.appendChild(head2);
-      const seg = document.createElement('div');
-      seg.className = 'seg';
-      const mk = (label, id, color) => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.textContent = label;
-        if (color) b.style.color = color;
-        if ((v.anchor || null) === id) b.classList.add('on');
-        b.addEventListener('click', () => app.setAnchor(v.id, id));
-        seg.appendChild(b);
-      };
-      mk('なし', null, null);
-      others.forEach((o, i) => {
-        const OV = app.typeOf(o);
-        mk(OV.label + (others.filter((x) => x.type === o.type).length > 1 ? ' ' + (i + 1) : ''), o.id, OV.color);
-      });
-      row.appendChild(seg);
-      common.appendChild(row);
-    }
+    const common = section('共通');
 
     // ゆらぎは2値。ナビゲーションの並びに置くと「設定画面が開く」に見えるので
     // 他のパラメータと同じ顔をした選択行にしてある。
@@ -200,8 +167,9 @@ export function createPanel(el, app) {
       )
     );
     if (v.drift) {
+      // 周回の半径は「中心からどれだけ離して置いたか」で決まるので幅は出さない
       const rows = v.driftShape === 'orbit'
-        ? DRIFT_PARAMS.filter((p) => p.key !== 'driftRange' || !v.anchor).concat(ORBIT_PARAMS)
+        ? DRIFT_PARAMS.filter((p) => p.key !== 'driftRange').concat(ORBIT_PARAMS)
         : DRIFT_PARAMS;
       rows.forEach((p) => {
         common.appendChild(
@@ -211,22 +179,18 @@ export function createPanel(el, app) {
     }
     common.appendChild(
       buildControl(
-        { key: 'z', label: silent ? '近さ（奥行き）' : '近さ（奥ほど静かで深い）', min: 0, max: 1, scale: 'lin' },
+        { key: 'z', label: '近さ（奥ほど静かで深い）', min: 0, max: 1, scale: 'lin' },
         v.z,
         (val) => { app.setZ(v.id, val); },
         () => app.commit()
       )
     );
-    if (!silent) {
-      COMMON_PARAMS.forEach((p) => {
-        common.appendChild(
-          buildControl(p, v.common[p.key], (val) => app.setParam(v.id, p.key, val), () => app.commit())
-        );
-      });
-    }
+    COMMON_PARAMS.forEach((p) => {
+      common.appendChild(
+        buildControl(p, v.common[p.key], (val) => app.setParam(v.id, p.key, val), () => app.commit())
+      );
+    });
     el.appendChild(common);
-
-    if (silent) return;
 
     const own = section(V.label);
     V.params.forEach((p) => {
