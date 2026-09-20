@@ -267,6 +267,86 @@ body {
 
 .ask .ask-yes { color: #e0776f; border-color: rgba(224, 119, 111, 0.5); }
 
+/* ---- 星の帯 ---- */
+#stars {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 10px;
+  background: #0b0d12;
+  border-bottom: 1px solid var(--line);
+}
+
+#stars.hidden { display: none; }
+
+.star-tab {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.star-tab.on {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* 帯の中の印。盤面の星と同じ形を使う。 */
+.star-mark {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, #fff);
+}
+
+.star-mark.off { opacity: 0.25; }
+
+.star-mark.look-hollow { background: transparent; box-shadow: inset 0 0 0 1.5px var(--c); }
+
+.star-mark.look-crescent {
+  -webkit-mask-image: radial-gradient(circle at 128% 50%, transparent 0 56%, #000 56%);
+  mask-image: radial-gradient(circle at 128% 50%, transparent 0 56%, #000 56%);
+}
+
+.star-mark.look-band {
+  background:
+    repeating-linear-gradient(172deg, transparent 0 26%, color-mix(in srgb, var(--c) 45%, #000) 26% 38%),
+    var(--c);
+}
+
+.star-mark.look-ring::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 230%;
+  height: 74%;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--c) 65%, #fff);
+  transform: translate(-50%, -50%) rotate(-17deg);
+}
+
+.star-mark.look-binary::after {
+  content: '';
+  position: absolute;
+  left: 104%;
+  top: 4%;
+  width: 46%;
+  height: 46%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--c) 70%, #fff);
+}
+
 /* ---- パネル ---- */
 #panel {
   flex: 1 1 auto;

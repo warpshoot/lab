@@ -3,9 +3,11 @@ import { createVoice, voiceClass } from './audio/voices/registry.js';
 import { state, loadPatch, save, newVoiceData, findVoice, MAX_VOICES } from './state.js';
 import { createField } from './ui/field.js';
 import { createPanel } from './ui/panel.js';
+import { createStrip } from './ui/strip.js';
 
 const fieldEl = document.getElementById('field');
 const panelEl = document.getElementById('panel');
+const starsEl = document.getElementById('stars');
 const gateEl = document.getElementById('gate');
 const noticeEl = document.getElementById('notice');
 const transportEl = document.getElementById('transport');
@@ -164,8 +166,7 @@ const app = {
       old.stop();
     }
     if (started) spawn(v);
-    field.render();
-    panel.render();
+    redraw();
     save();
   },
 
@@ -174,6 +175,7 @@ const app = {
     if (!v) return;
     v.look = look;
     field.render();
+    strip.render();
     save();
   },
 
@@ -234,8 +236,7 @@ const app = {
   select(id) {
     state.selectedId = id;
     if (id) lastVoiceId = id;
-    field.render();
-    panel.render();
+    redraw();
   },
 
   // タブから音色パネルに戻るとき、直前に見ていた点を開く
@@ -250,8 +251,7 @@ const app = {
     state.patch.voices.push(data);
     if (started) spawn(data);
     state.selectedId = lastVoiceId = data.id;
-    field.render();
-    panel.render();
+    redraw();
     save();
   },
 
@@ -275,8 +275,7 @@ const app = {
     state.patch.voices.push(data);
     if (started) spawn(data);
     state.selectedId = lastVoiceId = data.id;
-    field.render();
-    panel.render();
+    redraw();
     save();
   },
 
@@ -293,8 +292,7 @@ const app = {
     soloed.delete(id);
     applyAudible();
     if (state.selectedId === id) state.selectedId = null;
-    field.render();
-    panel.render();
+    redraw();
     save();
   },
 
@@ -356,12 +354,12 @@ const app = {
       v.orbit = false;
     }
     applyPos(v);
-    field.render();
-    panel.render();
+    redraw();
     save();
   },
 
   sky: () => state.patch.master.sky,
+  cameraFollow: () => state.patch.master.follow,
 
   applyMaster(withIR) {
     if (!engine.ready) return;
@@ -376,7 +374,8 @@ const app = {
 
   refreshPanel() { panel.render(); },
 
-  refreshField() { field.render(); },
+  refreshField() { field.render(); strip.render(); },
+
 
   requestDelete(id) { field.askDelete(id); },
 
@@ -389,13 +388,19 @@ const app = {
 };
 
 // ソロは全体に効くので、1つ変わったら全ボイスに掛け直す
+// 盤面・パネル・星の帯をまとめて描き直す
+function redraw() {
+  field.render();
+  panel.render();
+  strip.render();
+}
+
 function applyAudible() {
   for (const v of state.patch.voices) {
     const voice = live.get(v.id);
     if (voice) voice.setMuted(!app.audible(v.id));
   }
-  field.render();
-  panel.render();
+  redraw();
 }
 
 function applyPos(v) {
@@ -421,17 +426,17 @@ function spawn(data) {
 
 const field = createField(fieldEl, app);
 const panel = createPanel(panelEl, app);
+const strip = createStrip(starsEl, app);
 
 loadPatch();
-field.render();
-panel.render();
+redraw();
 
 // 周回の計算は 10Hz で十分。毎フレームは回さない。
 setInterval(() => {
-  // 誰かが漂っていれば全員を計算し直す。ゆらぎOFFの星でも、
-  // 錨が動けば付いていく必要がある。
-  if (!state.patch.voices.some((v) => v.orbit)) return;
-  for (const v of state.patch.voices) applyPos(v);
+  const orbiting = state.patch.voices.some((v) => v.orbit);
+  const camMoving = field.stepCamera();
+  if (!orbiting && !camMoving) return;
+  if (orbiting) for (const v of state.patch.voices) applyPos(v);
   field.layout();
 }, 100);
 
@@ -522,8 +527,7 @@ async function begin() {
   for (const data of state.patch.voices) spawn(data); // 復帰した点は一斉にフェードイン
   hideGate();
   setTransport();
-  field.render();
-  panel.render();
+  redraw();
 }
 
 // ---- 停止／再生 -------------------------------------------------------
