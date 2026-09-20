@@ -184,11 +184,6 @@
       "path": "./voicesynth/",
       "title": "Voice Synth",
       "description": "Voice synthesizer with pitch, formant, and effects"
-    },
-    {
-      "path": "./satellites/",
-      "title": "SATELLITES",
-      "description": "盤面を星空に見立てて音源の星を置く。錨になる星を中心に周回させて放置するアンビエント生成ツール"
     }
   ]
 }
