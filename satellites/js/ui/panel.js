@@ -155,6 +155,15 @@ export function createPanel(el, app) {
 
     const common = section('共通');
 
+    common.appendChild(
+      buildControl(
+        { key: 'lum', label: '光度（星自身の明るさ）', min: 0, max: 1, scale: 'lin' },
+        v.lum,
+        (val) => app.setLum(v.id, val),
+        () => app.commit()
+      )
+    );
+
     // 周回するかしないか。他のパラメータと同じ顔をした選択行にしてある。
     common.appendChild(
       buildControl(
