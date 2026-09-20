@@ -98,65 +98,6 @@ body {
   box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9), 0 0 calc(var(--glow, 12px) * 1.6) color-mix(in srgb, var(--c) 85%, transparent);
 }
 
-/* 奥行きのギズモ。選択中の星にだけ立つ。 */
-.gizmo {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 0;
-  height: 0;
-  z-index: 150;
-  pointer-events: none;
-  transition: transform 0.12s linear;
-}
-
-.gizmo.hidden { display: none; }
-
-.gizmo-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px dashed rgba(255, 255, 255, 0.24);
-  transition: width 0.12s linear, height 0.12s linear, margin 0.12s linear;
-}
-
-.gizmo-handle {
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(232, 234, 238, 0.92);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
-  pointer-events: auto;
-  touch-action: none;
-  cursor: grab;
-  transition: transform 0.12s linear;
-}
-
-.gizmo-handle::after {
-  content: '';
-  position: absolute;
-  inset: 8px;
-  border-radius: 50%;
-  background: #05060a;
-}
-
-.gizmo.active .gizmo-handle { cursor: grabbing; }
-.gizmo.active .gizmo-ring { border-color: rgba(255, 255, 255, 0.5); }
-.gizmo.active .gizmo-handle,
-.gizmo.active .gizmo-ring { transition: none; }
-
-.gizmo-readout {
-  position: absolute;
-  white-space: nowrap;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  color: var(--dim);
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.gizmo.active .gizmo-readout { opacity: 1; color: var(--text); }
-
 /* 軌道と結び */
 #field .links {
   position: absolute;

@@ -28,8 +28,11 @@ export function setAspect(a) {
   if (a > 0) aspect = a;
 }
 
-// 奥行きへの振れ幅。盤面の横幅 1 に対してどれだけ z を動かすか。
+// 面から浮く量。盤面の横幅 1 に対してどれだけ動かすか。
 const Z_GAIN = 0.85;
+
+// 核からの距離。ここまで離れると最も遠い扱いになる。
+const FAR = 0.62;
 
 // 軌道上の一点を、正規化座標の差分として返す。半径 rho は画面の横幅を 1 とした長さ。
 // 実際の軌道要素と同じ組み立て: 面の中で楕円を描き、傾斜で面ごと奥へ倒し、
@@ -90,12 +93,26 @@ export const CENTER = { x: 0.5, y: 0.5 };
 
 function resolve(v, t) {
   if (v.drift && v.driftShape === 'orbit') {
-    // 半径はノブではなく「中心からどれだけ離して置いたか」で決まる
+    // 半径はノブではなく「核からどれだけ離して置いたか」で決まる
     const o = orbitState(v, t);
-    return { x: clamp01(CENTER.x + o.x), y: clamp01(CENTER.y + o.y), z: clamp01(v.z + o.z) };
+    return { x: clamp01(CENTER.x + o.x), y: clamp01(CENTER.y + o.y), zOff: o.z };
   }
+  if (!v.drift) return { x: v.x, y: v.y, zOff: 0 };
   const d = driftVector(v, t);
-  return { x: clamp01(v.x + d.x), y: clamp01(v.y + d.y), z: clamp01(v.z + d.z) };
+  return { x: clamp01(v.x + d.x), y: clamp01(v.y + d.y), zOff: 0 };
+}
+
+// 核からの3次元距離。盤面は正方形でないので縦は縦横比で割って揃える。
+export function coreDistance(pos) {
+  const dx = pos.x - CENTER.x;
+  const dy = (pos.y - CENTER.y) / aspect;
+  const dz = pos.zOff || 0;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+// 0 = 最も遠い / 1 = 核のすぐそば
+export function nearFromDistance(d) {
+  return clamp01(1 - (d - 0.05) / (FAR - 0.05));
 }
 
 export function orbitState(v, t) {
@@ -117,9 +134,17 @@ function driftVector(v, t) {
       return { x: 0, y: 0, z: 0 }; // 周回は resolve() が中心から組み立てる
     case 'swing':
       return { x: r * Math.sin((TAU * tt) / d.x.T1 + d.x.p1), y: 0, z: 0 };
-    case 'breath':
-      // 位置は動かさず、奥行きだけ出入りさせる。音量とリバーブだけが呼吸する。
-      return { x: 0, y: 0, z: r * 1.8 * wander(d.z, tt) };
+    case 'breath': {
+      // 核に近づいたり遠ざかったりする。距離が音量とリバーブを決めるので、
+      // これがそのまま呼吸になる。
+      let ux = v.x - CENTER.x;
+      let uy = (v.y - CENTER.y) / aspect;
+      const len = Math.hypot(ux, uy) || 1;
+      ux /= len;
+      uy /= len;
+      const amt = r * 1.4 * wander(d.z, tt);
+      return { x: ux * amt, y: uy * amt * aspect, z: 0 };
+    }
     default:
       return { x: r * wander(d.x, tt), y: r * wander(d.y, tt), z: r * wander(d.z, tt) };
   }
@@ -144,14 +169,14 @@ const app = {
     return this.resolved(v);
   },
 
-  effectiveZ(v) {
-    return this.resolved(v).z;
+  // 星の大きさも音量も、核からの距離だけで決まる
+  nearOf(v) {
+    return nearFromDistance(coreDistance(this.resolved(v)));
   },
 
   setAspect: (a) => setAspect(a),
 
-  // 軌道の道筋。傾斜が入ると奥行きが動くので、遠近が一様でなくなる。
-  // 楕円ひとつでは描けないから点列で返す。
+  // 軌道の道筋。傾斜で面が倒れるので点列で返す。
   orbitPath(v, n) {
     if (!v.drift || v.driftShape !== 'orbit') return null;
     const seed = orbitSeed(v.x - CENTER.x, v.y - CENTER.y, v.orbitAngle || 0);
@@ -160,7 +185,7 @@ const app = {
     const steps = n || 96;
     for (let i = 0; i <= steps; i++) {
       const p = ellipsePoint(seed.rho, v.orbitEcc || 0, v.orbitAngle || 0, v.orbitIncl || 0, (TAU * i) / steps);
-      pts.push({ x: CENTER.x + p.x, y: CENTER.y + p.y, z: clamp01(v.z + p.z), dz: p.z });
+      pts.push({ x: CENTER.x + p.x, y: CENTER.y + p.y, dz: p.z });
     }
     return pts;
   },
@@ -223,7 +248,6 @@ const app = {
     if (!src) return;
     if (!this.canAdd()) return this.notice('星は8つまで');
     const data = newVoiceData(src.type, clamp01(src.x + 0.07), clamp01(src.y - 0.07));
-    data.z = src.z;
     data.drift = src.drift;
     data.driftShape = src.driftShape;
     data.driftSpeed = src.driftSpeed;
@@ -269,22 +293,6 @@ const app = {
     v.y = clamp01(y - (cur.y - v.y));
     applyPos(v);
     field.layout();
-  },
-
-  // パネルのスライダは基準値をそのまま動かす
-  setZ(id, z) {
-    const v = findVoice(id);
-    if (!v) return;
-    v.z = clamp01(z);
-    applyPos(v);
-    field.layout();
-  },
-
-  // ギズモは画面に見えている位置を動かすので、ゆらぎの分を引く
-  setZFromView(id, z) {
-    const v = findVoice(id);
-    if (!v) return;
-    this.setZ(id, z - (this.resolved(v).z - v.z));
   },
 
   setParam(id, key, value) {
@@ -352,8 +360,8 @@ function applyAudible() {
 function applyPos(v) {
   const voice = live.get(v.id);
   if (!voice) return;
-  const p = app.effectivePos(v);
-  voice.setDistance(app.effectiveZ(v));
+  const p = app.resolved(v);
+  voice.setDistance(nearFromDistance(coreDistance(p)));
   voice.setPosition(p.x, p.y);
 }
 
@@ -361,8 +369,8 @@ function spawn(data) {
   const voice = createVoice(engine, data);
   engine.addVoice(voice);
   live.set(data.id, voice);
-  const p = app.effectivePos(data);
-  voice.setDistance(app.effectiveZ(data));
+  const p = app.resolved(data);
+  voice.setDistance(nearFromDistance(coreDistance(p)));
   voice.setPosition(p.x, p.y);
   voice.setMuted(!app.audible(data.id));
   voice.start();
