@@ -324,8 +324,10 @@ export function createField(el, app) {
   function layoutLinks() {
     const rect = el.getBoundingClientRect();
     links.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
-    const cx = rect.width / 2;
-    const cy = rect.height / 2;
+    // 核も投影を通す。素の画面中心に描くと、カメラを動かしたとき核まで付いてくる。
+    const core = project(0.5, 0.5, rect.width, rect.height);
+    const cx = core.sx;
+    const cy = core.sy;
     // 中心もただの星。目立たせる飾りは置かない。
     const parts = ['<g class="hub">' +
       '<circle class="halo1" r="5" cx="' + cx + '" cy="' + cy + '"/>' +
