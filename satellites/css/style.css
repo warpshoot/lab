@@ -189,9 +189,11 @@ body {
 }
 
 #field .orbit { stroke: rgba(255, 255, 255, 0.13); stroke-width: 1; }
+#field .orbit.far { stroke: rgba(255, 255, 255, 0.05); }
 
 /* 選択中のものだけはっきり見せる */
 #field .orbit.on { stroke: rgba(255, 255, 255, 0.62); }
+#field .orbit.far.on { stroke: rgba(255, 255, 255, 0.2); }
 
 /* 動かない中心 */
 #field .hub circle { fill: rgba(255, 255, 255, 0.8); stroke: none; }
