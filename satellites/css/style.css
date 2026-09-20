@@ -70,19 +70,15 @@ body {
   cursor: grab;
 }
 
-/* 見えている星。自分では光らない。核の光を受けている球として描く。 */
+/* 見えている星。この大きさでは陰影が載らないので、平たい面と
+   きっちりした輪郭の記号にしてある。形で見分ける。 */
 .dot-body {
   position: absolute;
   left: 50%;
   top: 50%;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 33% 29%,
-      color-mix(in srgb, var(--c) 55%, #fff) 0%,
-      var(--c) 46%,
-      color-mix(in srgb, var(--c) 55%, #000) 82%,
-      color-mix(in srgb, var(--c) 28%, #000) 100%);
-  overflow: visible;
+  background: var(--c);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, #fff);
   transform: translate(-50%, -50%) scale(var(--pulse, 1));
   filter: brightness(var(--lift, 1));
   transition: width 0.12s linear, height 0.12s linear, opacity 0.12s linear;
@@ -90,31 +86,51 @@ body {
 
 .dot.grabbing { transition: none; }
 
-/* 帯のある星 */
-.dot.banded .dot-body {
-  background:
-    repeating-linear-gradient(168deg,
-      transparent 0 14%,
-      color-mix(in srgb, var(--b) 60%, transparent) 14% 21%),
-    radial-gradient(circle at 33% 29%,
-      color-mix(in srgb, var(--c) 55%, #fff) 0%,
-      var(--c) 46%,
-      color-mix(in srgb, var(--c) 55%, #000) 82%,
-      color-mix(in srgb, var(--c) 28%, #000) 100%);
+/* C 中空 */
+.dot.look-hollow .dot-body {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--c);
 }
 
-/* 輪。飾りなので一枚の楕円でいい。 */
-.dot.ring .dot-body::before {
+/* D 欠け。背景を塗って隠すのではなく、実際に切り欠く。 */
+.dot.look-crescent .dot-body {
+  -webkit-mask-image: radial-gradient(circle at 128% 50%, transparent 0 56%, #000 56%);
+  mask-image: radial-gradient(circle at 128% 50%, transparent 0 56%, #000 56%);
+}
+
+/* E 帯 */
+.dot.look-band .dot-body {
+  background:
+    repeating-linear-gradient(172deg,
+      transparent 0 26%,
+      color-mix(in srgb, var(--c) 45%, #000) 26% 38%),
+    var(--c);
+}
+
+/* B 環 */
+.dot.look-ring .dot-body::before {
   content: '';
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 250%;
-  height: 74%;
-  margin: 0;
+  width: 260%;
+  height: 78%;
   border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--c) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 65%, #fff);
   transform: translate(-50%, -50%) rotate(-17deg);
+  pointer-events: none;
+}
+
+/* F 伴星 */
+.dot.look-binary .dot-body::after {
+  content: '';
+  position: absolute;
+  left: 104%;
+  top: 4%;
+  width: 46%;
+  height: 46%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--c) 70%, #fff);
   pointer-events: none;
 }
 
@@ -124,11 +140,13 @@ body {
 }
 
 .dot.soloed .dot-body {
-  box-shadow: 0 0 0 1.5px rgba(255, 224, 130, 0.9);
+  outline: 1.5px solid rgba(255, 224, 130, 0.9);
+  outline-offset: 2px;
 }
 
 .dot.selected .dot-body {
-  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85);
+  outline: 1.5px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 2px;
 }
 
 /* 軌道と結び */
