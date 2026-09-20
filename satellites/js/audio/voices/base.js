@@ -44,7 +44,7 @@ export class Voice {
     this.common = Object.assign({}, COMMON_DEFAULTS, data.common || {});
     this.params = Object.assign({}, this.constructor.defaults, data.params || {});
     this.near = 0.5;
-    this.lum = data.lum != null ? data.lum : 0.85;
+    this.vol = data.vol != null ? data.vol : 0.85;
     this.disposed = false;
 
     const ctx = this.ctx;
@@ -63,7 +63,7 @@ export class Voice {
     this._lvl = 0;
 
     this.levelGain = ctx.createGain();
-    this.levelGain.gain.value = this.lum * gainFromNear(this.near);
+    this.levelGain.gain.value = this.vol * gainFromNear(this.near);
 
     this.toneFilter = ctx.createBiquadFilter();
     this.toneFilter.type = 'lowpass';
@@ -175,14 +175,14 @@ export class Voice {
     this.setPosition(this._x, this._y);
   }
 
-  // 光度。その星自身の明るさで、距離とは無関係な性質。
-  setLum(lum) {
-    this.lum = lum;
+  // その星自身の音量。距離による減り方とは別に掛かる。
+  setVolume(vol) {
+    this.vol = vol;
     this.applyLevel();
   }
 
   applyLevel() {
-    this.engine.ramp(this.levelGain.gain, this.lum * gainFromNear(this.near));
+    this.engine.ramp(this.levelGain.gain, this.vol * gainFromNear(this.near));
   }
 
   applySend() {

@@ -17,7 +17,8 @@ export const ORBIT_PARAMS = [
 export const MASTER_DEFAULTS = {
   gain: 0.8,
   reverb: { length: 3.0, decay: 2.5 },
-  delay: { time: 420, feedback: 0.35 }
+  delay: { time: 420, feedback: 0.35 },
+  pulse: true   // 音に合わせて星を動かすか
 };
 
 export const MASTER_PARAMS = [
@@ -25,7 +26,8 @@ export const MASTER_PARAMS = [
   { path: 'reverb.length', label: 'リバーブ長さ', min: 0.5, max: 8, scale: 'lin', unit: 's', deferred: true },
   { path: 'reverb.decay', label: 'リバーブ減衰', min: 1, max: 6, scale: 'lin', deferred: true },
   { path: 'delay.time', label: 'ディレイ時間', min: 50, max: 2000, scale: 'log', unit: 'ms' },
-  { path: 'delay.feedback', label: 'フィードバック', min: 0, max: 0.85, scale: 'lin' }
+  { path: 'delay.feedback', label: 'フィードバック', min: 0, max: 0.85, scale: 'lin' },
+  { path: 'pulse', label: '音に合わせて星を動かす', type: 'select', options: [true, false], labels: { true: 'ON', false: 'OFF' } }
 ];
 
 export function getPath(obj, path) {
@@ -47,7 +49,7 @@ export function newVoiceData(type, x, y) {
     id: 'v' + (++seq) + '-' + Math.random().toString(36).slice(2, 7),
     type: V.type,
     x, y,
-    lum: 0.85,     // 星自身の明るさ。距離とは別の性質。
+    vol: 0.85,     // 星自身の音量。距離による減り方とは別。
     orbit: false,
     orbitPeriod: Math.round(30 + Math.random() * 120), // 星ごとに散らす。揃うと動きが噛み合う
     orbitEcc: 0,      // 0 = 正円
@@ -79,7 +81,8 @@ function sanitize(raw) {
     delay: {
       time: num(raw.master && raw.master.delay && raw.master.delay.time, MASTER_DEFAULTS.delay.time),
       feedback: Math.min(0.85, num(raw.master && raw.master.delay && raw.master.delay.feedback, MASTER_DEFAULTS.delay.feedback))
-    }
+    },
+    pulse: raw.master && raw.master.pulse != null ? !!raw.master.pulse : true
   };
   const voices = Array.isArray(raw.voices) ? raw.voices.slice(0, 8) : [];
   for (const v of voices) {
@@ -90,7 +93,7 @@ function sanitize(raw) {
       type: v.type,
       x: clamp01(num(v.x, 0.5)),
       y: clamp01(num(v.y, 0.5)),
-      lum: clamp01(num(v.lum, 0.85)),
+      vol: clamp01(num(v.vol != null ? v.vol : v.lum, 0.85)),
       // 旧版の「ゆらぎ」は周回として読み替える
       orbit: !!(v.orbit != null ? v.orbit : v.drift),
       orbitPeriod: Math.min(600, Math.max(5, num(v.orbitPeriod, 30 + Math.random() * 120))),

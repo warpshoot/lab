@@ -290,7 +290,6 @@ export function createField(el, app) {
       d.body.style.width = r * 2 + 'px';
       d.body.style.height = r * 2 + 'px';
       d.body.style.opacity = (0.34 + 0.62 * near).toFixed(3);
-      d.body.style.setProperty('--glow', (7 + near * 26).toFixed(1) + 'px');
       const pt = project(pos.x, pos.y, rect.width, rect.height);
       d.el.style.transform = 'translate(' + (pt.sx - hit / 2) + 'px,' + (pt.sy - hit / 2) + 'px)';
     }

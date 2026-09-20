@@ -122,17 +122,17 @@ const app = {
     return nearFromDistance(coreDistance(this.resolved(v)));
   },
 
-  // 見かけの明るさ。光度と近さの積。星の大きさはこれで決まる。
+  // 星の見た目の大きさ。音量と近さの積。
   apparentOf(v) {
-    return this.nearOf(v) * (0.25 + 0.75 * (v.lum != null ? v.lum : 0.85));
+    return this.nearOf(v) * (0.25 + 0.75 * (v.vol != null ? v.vol : 0.85));
   },
 
-  setLum(id, lum) {
+  setVolume(id, vol) {
     const v = findVoice(id);
     if (!v) return;
-    v.lum = lum;
+    v.vol = vol;
     const voice = live.get(id);
-    if (voice) voice.setLum(lum);
+    if (voice) voice.setVolume(vol);
     field.layout();
   },
 
@@ -211,7 +211,7 @@ const app = {
     if (!this.canAdd()) return this.notice('星は8つまで');
     const data = newVoiceData(src.type, clamp01(src.x + 0.07), clamp01(src.y - 0.07));
     data.orbit = src.orbit;
-    data.lum = src.lum;
+    data.vol = src.vol;
     data.orbitPeriod = src.orbitPeriod;
     data.orbitDir = src.orbitDir;
     data.orbitEcc = src.orbitEcc;
@@ -320,7 +320,7 @@ function applyPos(v) {
   const voice = live.get(v.id);
   if (!voice) return;
   const p = app.resolved(v);
-  voice.setLum(v.lum != null ? v.lum : 0.85);
+  voice.setVolume(v.vol != null ? v.vol : 0.85);
   voice.setDistance(nearFromDistance(coreDistance(p)));
   voice.setPosition(p.x, p.y);
 }
@@ -354,9 +354,19 @@ setInterval(() => {
 }, 100);
 
 // 出音に合わせた膨らみ。見た目だけなので毎フレームでいい。
+let pulseWasOn = true;
+
 function meterLoop() {
   requestAnimationFrame(meterLoop);
   if (!started || !engine.ctx || engine.ctx.state !== 'running') return;
+  if (!state.patch.master.pulse) {
+    if (pulseWasOn) {
+      for (const id of live.keys()) field.setPulse(id, 0); // 切った瞬間に静止させる
+      pulseWasOn = false;
+    }
+    return;
+  }
+  pulseWasOn = true;
   for (const [id, voice] of live) field.setPulse(id, voice.getLevel());
 }
 requestAnimationFrame(meterLoop);
