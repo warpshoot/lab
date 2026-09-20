@@ -47,6 +47,7 @@ export function newVoiceData(type, x, y) {
     id: 'v' + (++seq) + '-' + Math.random().toString(36).slice(2, 7),
     type: V.type,
     x, y,
+    lum: 0.85,     // 星自身の明るさ。距離とは別の性質。
     orbit: false,
     orbitPeriod: Math.round(30 + Math.random() * 120), // 星ごとに散らす。揃うと動きが噛み合う
     orbitEcc: 0,      // 0 = 正円
@@ -89,6 +90,7 @@ function sanitize(raw) {
       type: v.type,
       x: clamp01(num(v.x, 0.5)),
       y: clamp01(num(v.y, 0.5)),
+      lum: clamp01(num(v.lum, 0.85)),
       // 旧版の「ゆらぎ」は周回として読み替える
       orbit: !!(v.orbit != null ? v.orbit : v.drift),
       orbitPeriod: Math.min(600, Math.max(5, num(v.orbitPeriod, 30 + Math.random() * 120))),

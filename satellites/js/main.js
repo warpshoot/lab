@@ -118,9 +118,22 @@ const app = {
     return this.resolved(v);
   },
 
-  // 星の大きさも音量も、核からの距離だけで決まる
   nearOf(v) {
     return nearFromDistance(coreDistance(this.resolved(v)));
+  },
+
+  // 見かけの明るさ。光度と近さの積。星の大きさはこれで決まる。
+  apparentOf(v) {
+    return this.nearOf(v) * (0.25 + 0.75 * (v.lum != null ? v.lum : 0.85));
+  },
+
+  setLum(id, lum) {
+    const v = findVoice(id);
+    if (!v) return;
+    v.lum = lum;
+    const voice = live.get(id);
+    if (voice) voice.setLum(lum);
+    field.layout();
   },
 
   setAspect: (a) => setAspect(a),
@@ -198,6 +211,7 @@ const app = {
     if (!this.canAdd()) return this.notice('星は8つまで');
     const data = newVoiceData(src.type, clamp01(src.x + 0.07), clamp01(src.y - 0.07));
     data.orbit = src.orbit;
+    data.lum = src.lum;
     data.orbitPeriod = src.orbitPeriod;
     data.orbitDir = src.orbitDir;
     data.orbitEcc = src.orbitEcc;
@@ -306,6 +320,7 @@ function applyPos(v) {
   const voice = live.get(v.id);
   if (!voice) return;
   const p = app.resolved(v);
+  voice.setLum(v.lum != null ? v.lum : 0.85);
   voice.setDistance(nearFromDistance(coreDistance(p)));
   voice.setPosition(p.x, p.y);
 }

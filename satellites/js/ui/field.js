@@ -83,7 +83,7 @@ export function createField(el, app) {
     const ah = ask.offsetHeight;
     const mx = aw / 2 + 6;
     ask.style.left = Math.min(Math.max(pt.sx, mx), Math.max(mx, rect.width - mx)) + 'px';
-    ask.style.top = Math.min(Math.max(pt.sy - dotRadius(app.nearOf(v)) - ah, 6), Math.max(6, rect.height - ah - 6)) + 'px';
+    ask.style.top = Math.min(Math.max(pt.sy - dotRadius(app.apparentOf(v)) - ah, 6), Math.max(6, rect.height - ah - 6)) + 'px';
   }
 
   function hideAsk() {
@@ -281,7 +281,7 @@ export function createField(el, app) {
       const d = dots.get(v.id);
       if (!d) continue;
       const pos = app.effectivePos(v);
-      const near = app.nearOf(v);
+      const near = app.apparentOf(v);
       const r = dotRadius(near);
       const hit = Math.max(HIT_MIN, r * 2 + 18);
       d.el.style.width = hit + 'px';
