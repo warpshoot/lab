@@ -1,5 +1,14 @@
 import { COMMON_PARAMS } from '../audio/voices/base.js';
 import { ORBIT_PARAMS, LOOK_PARAM } from '../state.js';
+import { VOICE_TYPES } from '../audio/voices/registry.js';
+
+const TYPE_PARAM = {
+  key: 'type',
+  label: '音源',
+  type: 'select',
+  options: VOICE_TYPES.map((V) => V.type),
+  labels: VOICE_TYPES.reduce((m, V) => { m[V.type] = V.label; return m; }, {})
+};
 import { renderMaster } from './master.js';
 
 export function toNorm(p, value) {
@@ -155,6 +164,9 @@ export function createPanel(el, app) {
 
     const common = section('共通');
 
+    common.appendChild(
+      buildControl(TYPE_PARAM, v.type, (val) => app.setType(v.id, val))
+    );
     common.appendChild(
       buildControl(LOOK_PARAM, v.look, (val) => app.setLook(v.id, val))
     );

@@ -127,6 +127,27 @@ const app = {
     return this.nearOf(v) * (0.25 + 0.75 * (v.vol != null ? v.vol : 0.85));
   },
 
+  // 種類の差し替え。古い音は release で消えていき、新しい音が
+  // アタックで立ち上がるので、切り替わりは自然につながる。
+  setType(id, type) {
+    const v = findVoice(id);
+    if (!v || v.type === type) return;
+    const OldV = voiceClass(v.type);
+    const V = voiceClass(type);
+    v.type = type;
+    v.params = Object.assign({}, V.defaults); // 固有パラメータは引き継げない
+    if (v.look === OldV.look) v.look = V.look; // 触っていない見た目は種類に追従させる
+    const old = live.get(id);
+    if (old) {
+      live.delete(id);
+      old.stop();
+    }
+    if (started) spawn(v);
+    field.render();
+    panel.render();
+    save();
+  },
+
   setLook(id, look) {
     const v = findVoice(id);
     if (!v) return;
