@@ -4,6 +4,7 @@ import { Voice } from './base.js';
 export class DroneVoice extends Voice {
   static type = 'drone';
   static label = 'DRONE';
+  static look = 'jupiter';
   static color = '#6f9dff';
   static defaults = { freq: 80, count: 3, detune: 12, wave: 'sawtooth', width: 0.6 };
   static params = [

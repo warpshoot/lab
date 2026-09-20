@@ -1,4 +1,5 @@
 import { voiceClass } from './audio/voices/registry.js';
+import { LOOK_IDS, LOOK_LABELS, SKY_STYLES, SKY_LABELS } from './ui/looks.js';
 import { COMMON_DEFAULTS } from './audio/voices/base.js';
 
 const KEY = 'satellites.patch.v1';
@@ -18,7 +19,8 @@ export const MASTER_DEFAULTS = {
   gain: 0.8,
   reverb: { length: 3.0, decay: 2.5 },
   delay: { time: 420, feedback: 0.35 },
-  pulse: true   // 音に合わせて星を動かすか
+  pulse: true,  // 音に合わせて星を動かすか
+  sky: 'noise'  // 背景の星の種類
 };
 
 export const MASTER_PARAMS = [
@@ -27,8 +29,11 @@ export const MASTER_PARAMS = [
   { path: 'reverb.decay', label: 'リバーブ減衰', min: 1, max: 6, scale: 'lin', deferred: true },
   { path: 'delay.time', label: 'ディレイ時間', min: 50, max: 2000, scale: 'log', unit: 'ms' },
   { path: 'delay.feedback', label: 'フィードバック', min: 0, max: 0.85, scale: 'lin' },
-  { path: 'pulse', label: '音に合わせて星を動かす', type: 'select', options: [true, false], labels: { true: 'ON', false: 'OFF' } }
+  { path: 'pulse', label: '音に合わせて星を動かす', type: 'select', options: [true, false], labels: { true: 'ON', false: 'OFF' } },
+  { path: 'sky', label: '背景の星', type: 'select', options: SKY_STYLES, labels: SKY_LABELS, visual: true }
 ];
+
+export const LOOK_PARAM = { key: 'look', label: '見た目', type: 'select', options: LOOK_IDS, labels: LOOK_LABELS };
 
 export function getPath(obj, path) {
   return path.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
@@ -49,6 +54,7 @@ export function newVoiceData(type, x, y) {
     id: 'v' + (++seq) + '-' + Math.random().toString(36).slice(2, 7),
     type: V.type,
     x, y,
+    look: V.look,  // 見た目。種類ごとの既定だが、あとから選び直せる。
     vol: 0.85,     // 星自身の音量。距離による減り方とは別。
     orbit: false,
     orbitPeriod: Math.round(30 + Math.random() * 120), // 星ごとに散らす。揃うと動きが噛み合う
@@ -82,7 +88,8 @@ function sanitize(raw) {
       time: num(raw.master && raw.master.delay && raw.master.delay.time, MASTER_DEFAULTS.delay.time),
       feedback: Math.min(0.85, num(raw.master && raw.master.delay && raw.master.delay.feedback, MASTER_DEFAULTS.delay.feedback))
     },
-    pulse: raw.master && raw.master.pulse != null ? !!raw.master.pulse : true
+    pulse: raw.master && raw.master.pulse != null ? !!raw.master.pulse : true,
+    sky: raw.master && SKY_STYLES.includes(raw.master.sky) ? raw.master.sky : 'noise'
   };
   const voices = Array.isArray(raw.voices) ? raw.voices.slice(0, 8) : [];
   for (const v of voices) {
@@ -93,6 +100,7 @@ function sanitize(raw) {
       type: v.type,
       x: clamp01(num(v.x, 0.5)),
       y: clamp01(num(v.y, 0.5)),
+      look: LOOK_IDS.includes(v.look) ? v.look : V.look,
       vol: clamp01(num(v.vol != null ? v.vol : v.lum, 0.85)),
       // 旧版の「ゆらぎ」は周回として読み替える
       orbit: !!(v.orbit != null ? v.orbit : v.drift),

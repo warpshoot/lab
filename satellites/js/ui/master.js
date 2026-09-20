@@ -23,12 +23,14 @@ export function renderMaster(el, app, ui) {
         value,
         (val) => {
           setPath(app.master(), p.path, val);
+          if (p.visual) return app.refreshField(); // 音ではなく見た目の設定
           // IR の再生成は音が途切れる。ドラッグ中は触らない。
           if (!p.deferred) app.applyMaster();
         },
         (val) => {
           setPath(app.master(), p.path, val);
-          app.applyMaster(p.deferred);
+          if (p.visual) app.refreshField();
+          else app.applyMaster(p.deferred);
           app.commit();
         }
       )

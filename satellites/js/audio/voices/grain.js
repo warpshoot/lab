@@ -5,6 +5,7 @@ import { getNoiseBuffer } from '../noiseBuffer.js';
 export class GrainVoice extends Voice {
   static type = 'grain';
   static label = 'GRAIN';
+  static look = 'saturn';
   static color = '#f0c674';
   static defaults = {
     interval: 1.2, jitter: 40, grainLen: 300,
