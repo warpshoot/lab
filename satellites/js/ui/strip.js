@@ -18,7 +18,8 @@ export function createStrip(el, app) {
       mark.style.setProperty('--c', look.c);
       if (!app.audible(v.id)) mark.classList.add('off');
       b.appendChild(mark);
-      b.addEventListener('click', () => app.select(v.id));
+      // 選択中のものをもう一度押すと外れる。核を中心に全体を眺める状態へ戻る。
+      b.addEventListener('click', () => app.select(app.selectedId() === v.id ? null : v.id));
       el.appendChild(b);
     });
   }

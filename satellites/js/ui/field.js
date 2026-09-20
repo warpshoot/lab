@@ -178,7 +178,7 @@ export function createField(el, app) {
     let mode = null;
     let moved = false;
     let longTimer = null;
-    let lastTap = 0;
+    let wasSelected = false;
     let startX = 0;
     let startY = 0;
 
@@ -189,8 +189,9 @@ export function createField(el, app) {
       const v = app.find(id);
       if (!v) return;
       dot.setPointerCapture(e.pointerId);
-      mode = 'move'; // 縁ドラッグは廃止。奥行きはギズモが持つ。
+      mode = 'move';
       moved = false;
+      wasSelected = app.selectedId() === id; // 押した時点で選ばれていたか
       dot.classList.add('grabbing'); // 掴んでいる間は補間を切る。指から遅れる。
       startX = e.clientX;
       startY = e.clientY;
@@ -232,15 +233,9 @@ export function createField(el, app) {
         app.remove(id); // 盤面外に投げたら削除。周回中は指に付いてこないので対象外。
         return;
       }
-      if (!moved) {
-        const t = performance.now();
-        if (t - lastTap < 320) {
-          app.toggleOrbit(id);
-          lastTap = 0;
-        } else {
-          lastTap = t;
-        }
-      }
+      // 動かさずに離したとき、既に選ばれていた星なら選択を外す。
+      // 核を中心に全体を眺める状態へ戻れるようにする。
+      if (!moved && wasSelected) app.select(null);
       app.commit();
     };
 
