@@ -157,9 +157,9 @@ export function createPanel(el, app) {
 
     common.appendChild(
       buildControl(
-        { key: 'lum', label: '光度（星自身の明るさ）', min: 0, max: 1, scale: 'lin' },
-        v.lum,
-        (val) => app.setLum(v.id, val),
+        { key: 'vol', label: '音量', min: 0, max: 1, scale: 'lin' },
+        v.vol,
+        (val) => app.setVolume(v.id, val),
         () => app.commit()
       )
     );

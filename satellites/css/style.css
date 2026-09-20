@@ -70,14 +70,18 @@ body {
   cursor: grab;
 }
 
-/* 見えている星。芯は白く、外に色が滲む。 */
+/* 見えている星。自分では光らない。核の光を受けている球として描く。 */
 .dot-body {
   position: absolute;
   left: 50%;
   top: 50%;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 50%, #fff 0%, #fff 22%, var(--c) 58%, transparent 78%);
-  box-shadow: 0 0 var(--glow, 12px) color-mix(in srgb, var(--c) 70%, transparent);
+  background:
+    radial-gradient(circle at 33% 29%,
+      color-mix(in srgb, var(--c) 55%, #fff) 0%,
+      var(--c) 46%,
+      color-mix(in srgb, var(--c) 55%, #000) 82%,
+      color-mix(in srgb, var(--c) 28%, #000) 100%);
   transform: translate(-50%, -50%) scale(var(--pulse, 1));
   filter: brightness(var(--lift, 1));
   transition: width 0.12s linear, height 0.12s linear, opacity 0.12s linear;
@@ -91,11 +95,11 @@ body {
 }
 
 .dot.soloed .dot-body {
-  box-shadow: 0 0 0 1.5px rgba(255, 224, 130, 0.9), 0 0 var(--glow, 12px) color-mix(in srgb, var(--c) 70%, transparent);
+  box-shadow: 0 0 0 1.5px rgba(255, 224, 130, 0.9);
 }
 
 .dot.selected .dot-body {
-  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9), 0 0 calc(var(--glow, 12px) * 1.6) color-mix(in srgb, var(--c) 85%, transparent);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85);
 }
 
 /* 軌道と結び */
