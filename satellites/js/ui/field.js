@@ -11,15 +11,40 @@ export function dotRadius(z) {
 }
 
 // 真上から見た図。消失点を作らないので、中心は核だけを意味する。
+// cam は画面の中心に置く座標。選んだ星を追うときだけ動く。
+const cam = { x: 0.5, y: 0.5 };
+
 export function project(x, y, w, h) {
-  return { sx: x * w, sy: (1 - y) * h };
+  return { sx: (x - cam.x + 0.5) * w, sy: (1 - (y - cam.y + 0.5)) * h };
 }
 
 export function unproject(sx, sy, w, h) {
-  return { x: sx / w, y: 1 - sy / h };
+  return { x: sx / w + cam.x - 0.5, y: 1 - sy / h + cam.y - 0.5 };
 }
 
 export function createField(el, app) {
+  // 選んだ星を中心に寄せる。飛ばさずに寄せたいので少しずつ近づける。
+  function cameraTarget() {
+    const v = app.cameraFollow() ? app.selected() : null;
+    if (!v) return { x: 0.5, y: 0.5 };
+    const p = app.effectivePos(v);
+    return { x: p.x, y: p.y };
+  }
+
+  function stepCamera() {
+    const t = cameraTarget();
+    const dx = t.x - cam.x;
+    const dy = t.y - cam.y;
+    if (Math.abs(dx) < 0.0004 && Math.abs(dy) < 0.0004) {
+      cam.x = t.x;
+      cam.y = t.y;
+      return false;
+    }
+    cam.x += dx * 0.25;
+    cam.y += dy * 0.25;
+    return true;
+  }
+
   const dots = new Map();
   let skyStyle = null;
   function renderSky() {
@@ -185,6 +210,8 @@ export function createField(el, app) {
         longTimer = null;
       }
       if (!moved) return;
+      const v = v0();
+      if (!v || v.orbit) return; // 周回中の位置は軌道が決める
       const rect = el.getBoundingClientRect();
       const u = unproject(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height);
       app.moveTo(id, u.x, u.y);
@@ -200,8 +227,9 @@ export function createField(el, app) {
       const out =
         e.clientX < rect.left - 4 || e.clientX > rect.right + 4 ||
         e.clientY < rect.top - 4 || e.clientY > rect.bottom + 4;
-      if (moved && out) {
-        app.remove(id); // 盤面外に投げたら削除
+      const vv = v0();
+      if (moved && out && vv && !vv.orbit) {
+        app.remove(id); // 盤面外に投げたら削除。周回中は指に付いてこないので対象外。
         return;
       }
       if (!moved) {
@@ -330,5 +358,5 @@ export function createField(el, app) {
     d.body.style.setProperty('--lift', (1 + level * 0.22).toFixed(3));
   }
 
-  return { render, layout, hidePicker, setPulse, askDelete };
+  return { render, layout, hidePicker, setPulse, askDelete, stepCamera };
 }

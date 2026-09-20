@@ -21,7 +21,8 @@ export const MASTER_DEFAULTS = {
   reverb: { length: 3.0, decay: 2.5 },
   delay: { time: 420, feedback: 0.35 },
   pulse: true,  // 音に合わせて星を動かすか
-  sky: 'noise'  // 背景の星の種類
+  sky: 'noise', // 背景の星の種類
+  follow: false // 選んだ星を画面の中心に置くか
 };
 
 export const MASTER_PARAMS = [
@@ -31,7 +32,8 @@ export const MASTER_PARAMS = [
   { path: 'delay.time', label: 'ディレイ時間', min: 50, max: 2000, scale: 'log', unit: 'ms' },
   { path: 'delay.feedback', label: 'フィードバック', min: 0, max: 0.85, scale: 'lin' },
   { path: 'pulse', label: '音に合わせて星を動かす', type: 'select', options: [true, false], labels: { true: 'ON', false: 'OFF' } },
-  { path: 'sky', label: '背景の星', type: 'select', options: SKY_STYLES, labels: SKY_LABELS, visual: true }
+  { path: 'sky', label: '背景の星', type: 'select', options: SKY_STYLES, labels: SKY_LABELS, visual: true },
+  { path: 'follow', label: '選んだ星を中心に置く', type: 'select', options: [true, false], labels: { true: 'ON', false: 'OFF' }, visual: true }
 ];
 
 export const LOOK_PARAM = { key: 'look', label: '見た目', type: 'select', options: LOOK_IDS, labels: LOOK_LABELS };
@@ -92,7 +94,8 @@ function sanitize(raw) {
       feedback: Math.min(0.85, num(raw.master && raw.master.delay && raw.master.delay.feedback, MASTER_DEFAULTS.delay.feedback))
     },
     pulse: raw.master && raw.master.pulse != null ? !!raw.master.pulse : true,
-    sky: raw.master && SKY_STYLES.includes(raw.master.sky) ? raw.master.sky : 'noise'
+    sky: raw.master && SKY_STYLES.includes(raw.master.sky) ? raw.master.sky : 'noise',
+    follow: !!(raw.master && raw.master.follow)
   };
   const voices = Array.isArray(raw.voices) ? raw.voices.slice(0, 8) : [];
   for (const v of voices) {
