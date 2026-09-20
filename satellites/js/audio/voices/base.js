@@ -22,9 +22,9 @@ export function cutoffFromY(y) {
 }
 
 // near は核への近さ（0 = 遠い / 1 = 核のすぐそば）。
-// 音量・リバーブ・空気の減衰が、核からの距離だけで決まる。
+// 床を持たせない。遠ざかった星が鳴り続けるのは嘘になる。
 export function gainFromNear(near) {
-  return 0.1 + 0.9 * Math.pow(Math.min(1, Math.max(0, near)), 1.5);
+  return Math.pow(Math.min(1, Math.max(0, near)), 1.3);
 }
 
 export function distanceSend(near) {
@@ -193,7 +193,7 @@ export class Voice {
     if (x == null || y == null) return;
     this._x = x;
     this._y = y;
-    if (this.panner) this.engine.ramp(this.panner.pan, x * 2 - 1);
+    if (this.panner) this.engine.ramp(this.panner.pan, Math.min(1, Math.max(-1, x * 2 - 1)));
     this.applyTone(cutoffFromY(y) * airFactor(this.near));
   }
 
