@@ -28,17 +28,27 @@ export function setAspect(a) {
   if (a > 0) aspect = a;
 }
 
-// 離心率と傾きを掛けた軌道上の一点を、正規化座標の差分として返す。
-// 半径 rho は画面の横幅を 1 とした長さ。
-function ellipsePoint(rho, ecc, angleDeg, theta) {
+// 奥行きへの振れ幅。盤面の横幅 1 に対してどれだけ z を動かすか。
+const Z_GAIN = 0.85;
+
+// 軌道上の一点を、正規化座標の差分として返す。半径 rho は画面の横幅を 1 とした長さ。
+// 実際の軌道要素と同じ組み立て: 面の中で楕円を描き、傾斜で面ごと奥へ倒し、
+// 最後に向き（昇交点）で面の中を回す。
+function ellipsePoint(rho, ecc, angleDeg, inclDeg, theta) {
   const a = rho;
   const b = rho * Math.sqrt(1 - ecc * ecc);
   const ph = (angleDeg * Math.PI) / 180;
+  const ic = (inclDeg * Math.PI) / 180;
   const ct = Math.cos(theta);
   const st = Math.sin(theta);
-  const u = a * ct * Math.cos(ph) - b * st * Math.sin(ph);
-  const w = a * ct * Math.sin(ph) + b * st * Math.cos(ph);
-  return { x: u, y: w * aspect };
+  const px = a * ct;
+  const py = b * st * Math.cos(ic);
+  const pz = b * st * Math.sin(ic);
+  return {
+    x: px * Math.cos(ph) - py * Math.sin(ph),
+    y: (px * Math.sin(ph) + py * Math.cos(ph)) * aspect,
+    z: pz * Z_GAIN
+  };
 }
 
 // 置いた位置から、半径と開始角を逆算する
@@ -82,7 +92,7 @@ function resolve(v, t) {
   if (v.drift && v.driftShape === 'orbit') {
     // 半径はノブではなく「中心からどれだけ離して置いたか」で決まる
     const o = orbitState(v, t);
-    return { x: clamp01(CENTER.x + o.x), y: clamp01(CENTER.y + o.y), z: clamp01(v.z) };
+    return { x: clamp01(CENTER.x + o.x), y: clamp01(CENTER.y + o.y), z: clamp01(v.z + o.z) };
   }
   const d = driftVector(v, t);
   return { x: clamp01(v.x + d.x), y: clamp01(v.y + d.y), z: clamp01(v.z + d.z) };
@@ -94,8 +104,8 @@ export function orbitState(v, t) {
   const ang = v.orbitAngle || 0;
   const seed = orbitSeed(v.x - CENTER.x, v.y - CENTER.y, ang);
   const theta = seed.theta + ((TAU * t * sp) / d.orbitT) * d.dir;
-  const p = ellipsePoint(seed.rho, v.orbitEcc || 0, ang, theta);
-  return { x: p.x, y: p.y, rho: seed.rho };
+  const p = ellipsePoint(seed.rho, v.orbitEcc || 0, ang, v.orbitIncl || 0, theta);
+  return { x: p.x, y: p.y, z: p.z, rho: seed.rho };
 }
 
 function driftVector(v, t) {
@@ -140,11 +150,19 @@ const app = {
 
   setAspect: (a) => setAspect(a),
 
-  // 軌道を描くための半径・離心率・傾き。中心は常に盤面の真ん中。
-  orbitInfo(v) {
+  // 軌道の道筋。傾斜が入ると奥行きが動くので、遠近が一様でなくなる。
+  // 楕円ひとつでは描けないから点列で返す。
+  orbitPath(v, n) {
     if (!v.drift || v.driftShape !== 'orbit') return null;
-    const o = orbitState(v, engine.ctx ? engine.ctx.currentTime : 0);
-    return { rho: o.rho, ecc: v.orbitEcc || 0, angle: v.orbitAngle || 0, z: v.z };
+    const seed = orbitSeed(v.x - CENTER.x, v.y - CENTER.y, v.orbitAngle || 0);
+    if (seed.rho < 0.004) return null;
+    const pts = [];
+    const steps = n || 96;
+    for (let i = 0; i <= steps; i++) {
+      const p = ellipsePoint(seed.rho, v.orbitEcc || 0, v.orbitAngle || 0, v.orbitIncl || 0, (TAU * i) / steps);
+      pts.push({ x: CENTER.x + p.x, y: CENTER.y + p.y, z: clamp01(v.z + p.z), dz: p.z });
+    }
+    return pts;
   },
 
   hasVoices: () => state.patch.voices.length > 0,
@@ -212,6 +230,7 @@ const app = {
     data.driftRange = src.driftRange;
     data.orbitEcc = src.orbitEcc;
     data.orbitAngle = src.orbitAngle;
+    data.orbitIncl = src.orbitIncl;
     data.common = Object.assign({}, src.common);
     data.params = Object.assign({}, src.params);
     state.patch.voices.push(data);
@@ -283,6 +302,8 @@ const app = {
     v[key] = value;
     applyPos(v);
     field.layout();
+    // 軌道の種類で出す項目が変わるので、そのときだけパネルを組み直す
+    if (key === 'driftShape') panel.render();
   },
 
   toggleDrift(id) {

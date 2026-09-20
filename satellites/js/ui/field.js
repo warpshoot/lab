@@ -375,7 +375,8 @@ export function createField(el, app) {
     layoutLinks();
   }
 
-  // 周回の軌道。中心は盤面の真ん中（＝透視の消失点）に固定されている。
+  // 周回の軌道。傾斜で面が倒れるため、点列を追って描く。
+  // 奥側を薄く、手前側を濃くすることで立体に見せる。
   function layoutLinks() {
     const rect = el.getBoundingClientRect();
     links.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
@@ -384,16 +385,21 @@ export function createField(el, app) {
     const parts = ['<g class="hub"><circle r="3.5" cx="' + cx + '" cy="' + cy + '"/>' +
       '<path d="M' + (cx - 11) + ' ' + cy + 'H' + (cx + 11) + 'M' + cx + ' ' + (cy - 11) + 'V' + (cy + 11) + '"/></g>'];
     for (const v of app.voices()) {
-      const orbit = app.orbitInfo(v);
-      if (!orbit) continue;
-      const k = perspective(orbit.z);
-      const rx = orbit.rho * rect.width * k;
-      const ry = rx * Math.sqrt(1 - orbit.ecc * orbit.ecc);
-      parts.push(
-        '<ellipse class="orbit' + (app.selectedId() === v.id ? ' on' : '') +
-        '" cx="' + cx + '" cy="' + cy + '" rx="' + rx + '" ry="' + ry +
-        '" transform="rotate(' + (-orbit.angle) + ' ' + cx + ' ' + cy + ')"/>'
-      );
+      const pts = app.orbitPath(v);
+      if (!pts) continue;
+      const sel = app.selectedId() === v.id ? ' on' : '';
+      let far = '';
+      let near = '';
+      let prevBehind = null;
+      for (const pt of pts) {
+        const p = project(pt.x, pt.y, pt.z, rect.width, rect.height);
+        const behind = pt.dz < 0;
+        const seg = (behind === prevBehind ? 'L' : 'M') + p.sx.toFixed(1) + ' ' + p.sy.toFixed(1);
+        if (behind) far += seg; else near += seg;
+        prevBehind = behind;
+      }
+      if (far) parts.push('<path class="orbit far' + sel + '" d="' + far + '"/>');
+      if (near) parts.push('<path class="orbit' + sel + '" d="' + near + '"/>');
     }
     links.innerHTML = parts.join('');
   }
