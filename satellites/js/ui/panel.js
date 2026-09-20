@@ -191,8 +191,9 @@ export function createPanel(el, app) {
     );
     if (v.orbit) {
       ORBIT_PARAMS.forEach((p) => {
+        const value = p.key === 'orbitRadius' ? app.orbitRadiusOf(v) : v[p.key];
         common.appendChild(
-          buildControl(p, v[p.key], (val) => app.setOrbitParam(v.id, p.key, val), () => app.commit())
+          buildControl(p, value, (val) => app.setOrbitParam(v.id, p.key, val), () => app.commit())
         );
       });
     }

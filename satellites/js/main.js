@@ -63,14 +63,32 @@ function orbitSeed(dx, dy, angleDeg) {
   return { rho: Math.hypot(ur, wr), theta: Math.atan2(wr, ur) };
 }
 
+// 周回の半径と位相はパラメータとして持つ。まだ無ければ現在地から割り出す。
+export function orbitGeom(v) {
+  if (v.orbitRadius != null) return { rho: v.orbitRadius, phase: v.orbitPhase || 0 };
+  const seed = orbitSeed(v.x - CENTER.x, v.y - CENTER.y, v.orbitAngle || 0);
+  return { rho: seed.rho, phase: seed.theta };
+}
+
+// いまの見えている位置から、半径と位相を逆算する
+export function orbitFromPoint(v, x, y, t) {
+  const seed = orbitSeed(x - CENTER.x, y - CENTER.y, v.orbitAngle || 0);
+  const period = Math.max(1, v.orbitPeriod || 60);
+  const dir = v.orbitDir === 'retrograde' ? -1 : 1;
+  return {
+    rho: Math.min(2, Math.max(0.02, seed.rho)),
+    phase: seed.theta - ((TAU * t) / period) * dir
+  };
+}
+
 export function orbitState(v, t) {
   const ang = v.orbitAngle || 0;
   const period = Math.max(1, v.orbitPeriod || 60);
   const dir = v.orbitDir === 'retrograde' ? -1 : 1;
-  const seed = orbitSeed(v.x - CENTER.x, v.y - CENTER.y, ang);
-  const theta = seed.theta + ((TAU * t) / period) * dir;
-  const p = ellipsePoint(seed.rho, v.orbitEcc || 0, ang, v.orbitIncl || 0, theta);
-  return { x: p.x, y: p.y, z: p.z, rho: seed.rho };
+  const g = orbitGeom(v);
+  const theta = g.phase + ((TAU * t) / period) * dir;
+  const p = ellipsePoint(g.rho, v.orbitEcc || 0, ang, v.orbitIncl || 0, theta);
+  return { x: p.x, y: p.y, z: p.z, rho: g.rho };
 }
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
@@ -173,12 +191,12 @@ const app = {
   // 軌道の道筋。傾斜で面が倒れるので点列で返す。
   orbitPath(v, n) {
     if (!v.orbit) return null;
-    const seed = orbitSeed(v.x - CENTER.x, v.y - CENTER.y, v.orbitAngle || 0);
-    if (seed.rho < 0.004) return null;
+    const g = orbitGeom(v);
+    if (g.rho < 0.004) return null;
     const pts = [];
     const steps = n || 96;
     for (let i = 0; i <= steps; i++) {
-      const p = ellipsePoint(seed.rho, v.orbitEcc || 0, v.orbitAngle || 0, v.orbitIncl || 0, (TAU * i) / steps);
+      const p = ellipsePoint(g.rho, v.orbitEcc || 0, v.orbitAngle || 0, v.orbitIncl || 0, (TAU * i) / steps);
       pts.push({ x: CENTER.x + p.x, y: CENTER.y + p.y, dz: p.z });
     }
     return pts;
@@ -247,6 +265,8 @@ const app = {
     data.look = src.look;
     data.orbitPeriod = src.orbitPeriod;
     data.orbitDir = src.orbitDir;
+    data.orbitRadius = src.orbitRadius;
+    data.orbitPhase = src.orbitPhase;
     data.orbitEcc = src.orbitEcc;
     data.orbitAngle = src.orbitAngle;
     data.orbitIncl = src.orbitIncl;
@@ -278,13 +298,20 @@ const app = {
     save();
   },
 
-  // 受け取るのは指のいる位置。ゆらぎと錨のぶんを引いて基準座標にする。
+  // 周回中は指の位置から半径と位相を書き換える。止まっていれば座標をそのまま動かす。
   moveTo(id, x, y) {
     const v = findVoice(id);
     if (!v) return;
-    const cur = this.resolved(v);
-    v.x = clamp01(x - (cur.x - v.x));
-    v.y = clamp01(y - (cur.y - v.y));
+    if (v.orbit) {
+      const g = orbitFromPoint(v, x, y, engine.ctx ? engine.ctx.currentTime : 0);
+      v.orbitRadius = g.rho;
+      v.orbitPhase = g.phase;
+      applyPos(v);
+      field.layout();
+      return;
+    }
+    v.x = clamp01(x);
+    v.y = clamp01(y);
     applyPos(v);
     field.layout();
   },
@@ -298,6 +325,11 @@ const app = {
     if (voice) voice.setParam(key, value);
   },
 
+  // 古いパッチでは半径が未設定なので、そのときは現在地から割り出した値を見せる
+  orbitRadiusOf(v) {
+    return orbitGeom(v).rho;
+  },
+
   setOrbitParam(id, key, value) {
     const v = findVoice(id);
     if (!v) return;
@@ -309,7 +341,20 @@ const app = {
   toggleOrbit(id) {
     const v = findVoice(id);
     if (!v) return;
-    v.orbit = !v.orbit;
+    const t = engine.ctx ? engine.ctx.currentTime : 0;
+    if (!v.orbit) {
+      // 入れた瞬間に飛ばないよう、いまの場所から半径と位相を割り出す
+      const g = orbitFromPoint(v, v.x, v.y, t);
+      v.orbitRadius = g.rho;
+      v.orbitPhase = g.phase;
+      v.orbit = true;
+    } else {
+      // 外すときは、いま見えている場所に置いていく
+      const pos = this.resolved(v);
+      v.x = clamp01(pos.x);
+      v.y = clamp01(pos.y);
+      v.orbit = false;
+    }
     applyPos(v);
     field.render();
     panel.render();
