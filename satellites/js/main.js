@@ -1,6 +1,6 @@
 import { engine } from './audio/engine.js';
-import { createVoice, voiceClass, VOICE_TYPES } from './audio/voices/registry.js';
-import { state, loadPatch, save, newVoiceData, findVoice, canAddType, dropBadAnchors } from './state.js';
+import { createVoice, voiceClass } from './audio/voices/registry.js';
+import { state, loadPatch, save, newVoiceData, findVoice, MAX_VOICES } from './state.js';
 import { createField } from './ui/field.js';
 import { createPanel } from './ui/panel.js';
 
@@ -75,39 +75,24 @@ function wander(a, t) {
   return 0.6 * Math.sin((TAU * t) / a.T1 + a.p1) + 0.4 * Math.sin((TAU * t) / a.T2 + a.p2);
 }
 
-function anchorOf(v) {
-  return v.anchor ? findVoice(v.anchor) : null;
-}
+// 中心は盤面のど真ん中に固定。動かないので、周回は常にここを回る。
+export const CENTER = { x: 0.5, y: 0.5 };
 
-// 錨を持つ星は、錨の現在位置を基準に置き直す。
-// 周回の半径はノブではなく「置いた距離」で決まる。遠くに置けば大きい軌道になる。
-function resolve(v, t, depth) {
-  const d = driftVector(v, t);
-  const a = depth < 6 ? anchorOf(v) : null;
-  if (!a) {
-    return { x: clamp01(v.x + d.x), y: clamp01(v.y + d.y), z: clamp01(v.z + d.z) };
-  }
-  const ap = resolve(a, t, depth + 1);
+function resolve(v, t) {
   if (v.drift && v.driftShape === 'orbit') {
-    const o = orbitState(v, t, v.x - a.x, v.y - a.y);
-    return { x: clamp01(ap.x + o.x), y: clamp01(ap.y + o.y), z: clamp01(v.z + d.z) };
+    // 半径はノブではなく「中心からどれだけ離して置いたか」で決まる
+    const o = orbitState(v, t);
+    return { x: clamp01(CENTER.x + o.x), y: clamp01(CENTER.y + o.y), z: clamp01(v.z) };
   }
-  // 周回以外は、錨が動いたぶんだけ付いていく
-  return {
-    x: clamp01(v.x + (ap.x - a.x) + d.x),
-    y: clamp01(v.y + (ap.y - a.y) + d.y),
-    z: clamp01(v.z + d.z)
-  };
+  const d = driftVector(v, t);
+  return { x: clamp01(v.x + d.x), y: clamp01(v.y + d.y), z: clamp01(v.z + d.z) };
 }
 
-// 錨があれば置いた距離、なければ「ゆらぎの幅」が半径になる
-export function orbitState(v, t, dx, dy) {
+export function orbitState(v, t) {
   const d = driftFor(v.id);
   const sp = v.driftSpeed != null ? v.driftSpeed : 1;
   const ang = v.orbitAngle || 0;
-  const seed = dx == null
-    ? { rho: v.driftRange != null ? v.driftRange : 0.15, theta: d.orbitP }
-    : orbitSeed(dx, dy, ang);
+  const seed = orbitSeed(v.x - CENTER.x, v.y - CENTER.y, ang);
   const theta = seed.theta + ((TAU * t * sp) / d.orbitT) * d.dir;
   const p = ellipsePoint(seed.rho, v.orbitEcc || 0, ang, theta);
   return { x: p.x, y: p.y, rho: seed.rho };
@@ -118,10 +103,8 @@ function driftVector(v, t) {
   const r = v.driftRange != null ? v.driftRange : 0.15;
   const tt = t * (v.driftSpeed != null ? v.driftSpeed : 1);
   switch (v.driftShape) {
-    case 'orbit': {
-      const o = orbitState(v, t, null, null);
-      return { x: o.x, y: o.y, z: 0 };
-    }
+    case 'orbit':
+      return { x: 0, y: 0, z: 0 }; // 周回は resolve() が中心から組み立てる
     case 'swing':
       return { x: r * Math.sin((TAU * tt) / d.x.T1 + d.x.p1), y: 0, z: 0 };
     case 'breath':
@@ -141,11 +124,10 @@ const app = {
   typeOf: (v) => voiceClass(v.type),
   selectedId: () => state.selectedId,
   selected: () => (state.selectedId ? findVoice(state.selectedId) : null),
-  canAdd: (type) => canAddType(state.patch.voices, type || 'drone'),
-  canAddAny: () => VOICE_TYPES.some((V) => canAddType(state.patch.voices, V.type)),
+  canAdd: () => state.patch.voices.length < MAX_VOICES,
 
   resolved(v) {
-    return resolve(v, engine.ctx ? engine.ctx.currentTime : 0, 0);
+    return resolve(v, engine.ctx ? engine.ctx.currentTime : 0);
   },
 
   effectivePos(v) {
@@ -156,34 +138,13 @@ const app = {
     return this.resolved(v).z;
   },
 
-  anchorOf: (v) => anchorOf(v),
   setAspect: (a) => setAspect(a),
 
-  // 軌道を描くための半径・離心率・傾き。錨がなければ自分の位置が中心。
+  // 軌道を描くための半径・離心率・傾き。中心は常に盤面の真ん中。
   orbitInfo(v) {
     if (!v.drift || v.driftShape !== 'orbit') return null;
-    const a = anchorOf(v);
-    const t = engine.ctx ? engine.ctx.currentTime : 0;
-    const o = a ? orbitState(v, t, v.x - a.x, v.y - a.y) : orbitState(v, t, null, null);
-    const center = a ? this.resolved(a) : { x: v.x, y: v.y, z: v.z };
-    return { center, rho: o.rho, ecc: v.orbitEcc || 0, angle: v.orbitAngle || 0 };
-  },
-
-  // 輪になる指定は受け付けない
-  setAnchor(id, anchorId) {
-    const v = findVoice(id);
-    if (!v) return;
-    const before = v.anchor;
-    v.anchor = anchorId || null;
-    dropBadAnchors(state.patch.voices);
-    if (anchorId && v.anchor !== anchorId) {
-      v.anchor = before;
-      return this.notice('その指定は輪になる');
-    }
-    applyPos(v);
-    field.render();
-    panel.render();
-    save();
+    const o = orbitState(v, engine.ctx ? engine.ctx.currentTime : 0);
+    return { rho: o.rho, ecc: v.orbitEcc || 0, angle: v.orbitAngle || 0, z: v.z };
   },
 
   hasVoices: () => state.patch.voices.length > 0,
@@ -229,7 +190,7 @@ const app = {
   },
 
   add(type, x, y) {
-    if (!this.canAdd(type)) return this.notice('鳴る星は8つまで');
+    if (!this.canAdd()) return this.notice('星は8つまで');
     const data = newVoiceData(type, clamp01(x), clamp01(y));
     state.patch.voices.push(data);
     if (started) spawn(data);
@@ -242,14 +203,13 @@ const app = {
   duplicate(id) {
     const src = findVoice(id);
     if (!src) return;
-    if (!this.canAdd(src.type)) return this.notice('鳴る星は8つまで');
+    if (!this.canAdd()) return this.notice('星は8つまで');
     const data = newVoiceData(src.type, clamp01(src.x + 0.07), clamp01(src.y - 0.07));
     data.z = src.z;
     data.drift = src.drift;
     data.driftShape = src.driftShape;
     data.driftSpeed = src.driftSpeed;
     data.driftRange = src.driftRange;
-    data.anchor = src.anchor;
     data.orbitEcc = src.orbitEcc;
     data.orbitAngle = src.orbitAngle;
     data.common = Object.assign({}, src.common);
@@ -266,9 +226,6 @@ const app = {
     const i = state.patch.voices.findIndex((v) => v.id === id);
     if (i < 0) return;
     state.patch.voices.splice(i, 1);
-    for (const other of state.patch.voices) {
-      if (other.anchor === id) other.anchor = null; // 錨が消えたら自立させる
-    }
     const voice = live.get(id);
     if (voice) {
       live.delete(id);

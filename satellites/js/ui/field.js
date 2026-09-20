@@ -176,7 +176,6 @@ export function createField(el, app) {
     readout.textContent = '近さ ' + Math.round(ez * 100) + '%';
     readout.style.transform = 'translate(-50%,' + (-d - 26) + 'px)';
   }
-  const pickerBtns = [];
   const picker = document.createElement('div');
   picker.className = 'picker hidden';
   el.appendChild(picker);
@@ -190,19 +189,16 @@ export function createField(el, app) {
     b.addEventListener('pointerup', (e) => {
       e.stopPropagation();
       if (performance.now() - picker._shownAt < 220) return; // 同じタップの pointerup を拾わない
-      if (b.disabled) return;
       hidePicker();
       app.add(V.type, picker._x, picker._y);
     });
     picker.appendChild(b);
-    pickerBtns.push({ type: V.type, el: b });
   });
 
   function showPicker(x, y) {
     picker._x = x;
     picker._y = y;
     picker._shownAt = performance.now();
-    for (const p of pickerBtns) p.el.disabled = !app.canAdd(p.type);
     picker.classList.remove('hidden');
     // 実寸を測ってから寄せる。決め打ちの余白だと盤面の端で種別が切れる。
     const r = el.getBoundingClientRect();
@@ -323,8 +319,8 @@ export function createField(el, app) {
     const x = Math.min(1, Math.max(0, u.x));
     const y = Math.min(1, Math.max(0, u.y));
     app.select(null);
-    if (!app.canAddAny()) {
-      app.notice('これ以上は置けない');
+    if (!app.canAdd()) {
+      app.notice('星は8つまで');
       return;
     }
     showPicker(x, y);
@@ -349,8 +345,7 @@ export function createField(el, app) {
       d.el.classList.toggle('selected', app.selectedId() === v.id);
       d.el.classList.toggle('drifting', !!v.drift);
       d.el.classList.toggle('muted', !app.audible(v.id));
-      d.el.classList.toggle('soloed', !V.silent && app.isSoloed(v.id));
-      d.el.classList.toggle('star', !!V.silent);
+      d.el.classList.toggle('soloed', app.isSoloed(v.id));
       d.label.textContent = V.label;
     }
     if (ask._id && !app.find(ask._id)) hideAsk();
@@ -380,37 +375,24 @@ export function createField(el, app) {
     layoutLinks();
   }
 
-  // 錨を持つ星の軌道（周回なら円、それ以外は結びの線）を描く
+  // 周回の軌道。中心は盤面の真ん中（＝透視の消失点）に固定されている。
   function layoutLinks() {
     const rect = el.getBoundingClientRect();
     links.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
-    const parts = [];
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    const parts = ['<g class="hub"><circle r="3.5" cx="' + cx + '" cy="' + cy + '"/>' +
+      '<path d="M' + (cx - 11) + ' ' + cy + 'H' + (cx + 11) + 'M' + cx + ' ' + (cy - 11) + 'V' + (cy + 11) + '"/></g>'];
     for (const v of app.voices()) {
-      const sel = app.selectedId() === v.id ? ' on' : '';
       const orbit = app.orbitInfo(v);
-      if (orbit) {
-        // 軌道は中心と同じ奥行きの面に描く。半径は横幅を 1 とした長さ。
-        const c = orbit.center;
-        const k = perspective(c.z);
-        const cpt = project(c.x, c.y, c.z, rect.width, rect.height);
-        const rx = orbit.rho * rect.width * k;
-        const ry = rx * Math.sqrt(1 - orbit.ecc * orbit.ecc);
-        parts.push(
-          '<ellipse class="orbit' + sel + '" cx="' + cpt.sx + '" cy="' + cpt.sy +
-          '" rx="' + rx + '" ry="' + ry +
-          '" transform="rotate(' + (-orbit.angle) + ' ' + cpt.sx + ' ' + cpt.sy + ')"/>'
-        );
-        continue;
-      }
-      const a = app.anchorOf(v);
-      if (!a) continue;
-      const ap = app.effectivePos(a);
-      const apt = project(ap.x, ap.y, app.effectiveZ(a), rect.width, rect.height);
-      const vp = app.effectivePos(v);
-      const vpt = project(vp.x, vp.y, app.effectiveZ(v), rect.width, rect.height);
+      if (!orbit) continue;
+      const k = perspective(orbit.z);
+      const rx = orbit.rho * rect.width * k;
+      const ry = rx * Math.sqrt(1 - orbit.ecc * orbit.ecc);
       parts.push(
-        '<line class="tether' + sel + '" x1="' + apt.sx + '" y1="' + apt.sy +
-        '" x2="' + vpt.sx + '" y2="' + vpt.sy + '"/>'
+        '<ellipse class="orbit' + (app.selectedId() === v.id ? ' on' : '') +
+        '" cx="' + cx + '" cy="' + cy + '" rx="' + rx + '" ry="' + ry +
+        '" transform="rotate(' + (-orbit.angle) + ' ' + cx + ' ' + cy + ')"/>'
       );
     }
     links.innerHTML = parts.join('');

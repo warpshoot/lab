@@ -189,19 +189,13 @@ body {
 }
 
 #field .orbit { stroke: rgba(255, 255, 255, 0.13); stroke-width: 1; }
-#field .tether { stroke: rgba(255, 255, 255, 0.09); stroke-width: 1; stroke-dasharray: 3 5; }
 
 /* 選択中のものだけはっきり見せる */
 #field .orbit.on { stroke: rgba(255, 255, 255, 0.62); }
-#field .tether.on { stroke: rgba(255, 255, 255, 0.4); }
 
-/* 音を持たない星 */
-.dot.star .dot-body {
-  background: radial-gradient(circle at 50% 50%, #fff 0%, var(--c) 34%, transparent 72%);
-  box-shadow: 0 0 var(--glow, 22px) rgba(223, 230, 242, 0.55);
-}
-
-.dot.star .dot-label { color: rgba(255, 255, 255, 0.5); }
+/* 動かない中心 */
+#field .hub circle { fill: rgba(255, 255, 255, 0.8); stroke: none; }
+#field .hub path { stroke: rgba(255, 255, 255, 0.22); stroke-width: 1; }
 
 /* ---- 停止／再生 ---- */
 #transport {
